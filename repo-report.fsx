@@ -59,16 +59,26 @@ let getCIStatus dir =
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
 
-let currentDir = Directory.GetCurrentDirectory()
+let scriptDir =
+    let s = __SOURCE_DIRECTORY__
+    if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
+let parentDir = Directory.GetParent(scriptDir).FullName
 
-printfn "Scanning repos in %s..." currentDir
+printfn "Scanning repos in %s..." parentDir
 
-let dirs = Directory.GetDirectories(currentDir) |> Array.filter isGitRepo
+let allDirs = Directory.GetDirectories(parentDir) |> Array.filter isGitRepo
 
-printfn "Found %d git repos" dirs.Length
+printfn "Found %d git repos" allDirs.Length
+
+// Pick top 20 by filesystem last write time, then scan only those
+let dirs =
+    allDirs
+    |> Array.sortByDescending (fun dir -> Directory.GetLastWriteTimeUtc(dir))
+    |> Array.truncate 20
 
 type RepoInfo = {
     Name: string
+    FolderModified: DateTime
     ModifiedCount: int
     LastEdit: string
     Branch: string
@@ -83,21 +93,20 @@ let repos =
     |> Array.map (fun dir ->
         let name = Path.GetFileName(dir)
         printfn "  %s..." name
+        let folderMod = Directory.GetLastWriteTimeUtc(dir)
         let modCount = getModifiedCount dir
         let lastEdit = getLastEditDate dir
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
         let openPR = getOpenPR dir
         let ciStatus, ciDate = getCIStatus dir
-        { Name = name; ModifiedCount = modCount; LastEdit = lastEdit
+        { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PushStatus = pushStatus; OpenPR = openPR
           CIStatus = ciStatus; CIDate = ciDate }
     )
-    |> Array.filter (fun r -> r.ModifiedCount > 0)
-    |> Array.sortByDescending (fun r -> r.ModifiedCount)
-    |> Array.truncate 20
+    |> Array.sortByDescending (fun r -> r.FolderModified)
 
-printfn "\nBuilding report for %d repos with changes..." repos.Length
+printfn "\nBuilding report for %d repos..." repos.Length
 
 let sb = StringBuilder()
 
@@ -173,6 +182,6 @@ else
 a "</body>"
 a "</html>"
 
-let outputPath = Path.Combine(currentDir, "repo-report.html")
+let outputPath = Path.Combine(scriptDir, "repo-report.html")
 File.WriteAllText(outputPath, sb.ToString())
 printfn "Report written to %s" outputPath
