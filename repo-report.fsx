@@ -49,12 +49,14 @@ let getOpenPR dir =
     let output = run "gh" "pr list --state open --json title --limit 1 --jq .[0].title" dir
     if String.IsNullOrWhiteSpace(output) || output = "null" then "" else output
 
-let getCIStatus dir =
-    let status = run "gh" "run list --limit 1 --json conclusion --jq .[0].conclusion" dir
-    let date = run "gh" "run list --limit 1 --json startedAt --jq .[0].startedAt" dir
-    let dateShort = if date.Length >= 10 then date.[0..9] else date
-    let s = if status = "null" then "" else status
-    (s, dateShort)
+let getCIStatus dir (hasPR: bool) =
+    if not hasPR then ("", "")
+    else
+        let status = run "gh" "pr checks --json state --jq .[0].state" dir
+        let date = run "gh" "pr checks --json startedAt --jq .[0].startedAt" dir
+        let dateShort = if date.Length >= 10 then date.[0..9] else date
+        let s = if String.IsNullOrWhiteSpace(status) || status = "null" then "" else status
+        (s, dateShort)
 
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
@@ -99,7 +101,7 @@ let repos =
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
         let openPR = getOpenPR dir
-        let ciStatus, ciDate = getCIStatus dir
+        let ciStatus, ciDate = getCIStatus dir (openPR <> "")
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PushStatus = pushStatus; OpenPR = openPR
           CIStatus = ciStatus; CIDate = ciDate }
