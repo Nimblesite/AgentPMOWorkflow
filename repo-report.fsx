@@ -76,12 +76,22 @@ let getCIStatus (dir: string) (hasPR: bool) =
         ("", "")
     else
         eprintfn "[CI] Checking PR checks for %s" (Path.GetFileName(dir))
-        let status = run "gh" "pr checks --json state --jq .[0].state" dir
+        let allStates = run "gh" "pr checks --json state --jq .[].state" dir
+        let states =
+            if String.IsNullOrWhiteSpace(allStates) then [||]
+            else allStates.Split('\n') |> Array.map (fun s -> s.Trim().ToUpperInvariant()) |> Array.filter (fun s -> s <> "" && s <> "NULL")
+        // Worst status wins: FAILURE/ERROR > CANCELLED > IN_PROGRESS/PENDING/QUEUED > SUCCESS
+        let aggregate =
+            if states |> Array.exists (fun s -> s = "FAILURE" || s = "ERROR" || s = "STARTUP_FAILURE") then "FAILURE"
+            elif states |> Array.exists (fun s -> s = "CANCELLED") then "CANCELLED"
+            elif states |> Array.exists (fun s -> s = "IN_PROGRESS" || s = "PENDING" || s = "QUEUED") then "IN_PROGRESS"
+            elif states |> Array.exists (fun s -> s = "SUCCESS") then "SUCCESS"
+            elif states.Length > 0 then states.[0]
+            else ""
         let date = run "gh" "pr checks --json startedAt --jq .[0].startedAt" dir
         let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
-        let s = if String.IsNullOrWhiteSpace(status) || status = "null" then "" else status
-        eprintfn "[CI] Result: status='%s' date='%s'" s dateShort
-        (s, dateShort)
+        eprintfn "[CI] Result: aggregate='%s' from states=[%s] date='%s'" aggregate (String.Join(", ", states)) dateShort
+        (aggregate, dateShort)
 
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
