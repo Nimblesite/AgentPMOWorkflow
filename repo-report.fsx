@@ -10,8 +10,10 @@ let resolveCmd (cmd: string) =
     | None -> cmd
 
 let run cmd args workDir =
+    let resolved = resolveCmd cmd
+    eprintfn "[CMD] %s %s (in %s)" resolved args workDir
     try
-        let psi = ProcessStartInfo(fileName = resolveCmd cmd, arguments = (args: string))
+        let psi = ProcessStartInfo(fileName = resolved, arguments = (args: string))
         psi.WorkingDirectory <- workDir
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
@@ -19,9 +21,16 @@ let run cmd args workDir =
         psi.CreateNoWindow <- true
         let p = Process.Start(psi)
         let output = p.StandardOutput.ReadToEnd()
+        let stderr = p.StandardError.ReadToEnd()
         p.WaitForExit(15000) |> ignore
-        output.Trim()
-    with _ -> ""
+        let result = output.Trim()
+        eprintfn "[OUT] %s" (if result.Length > 200 then result.[0..199] + "..." else result)
+        if not (String.IsNullOrWhiteSpace(stderr)) then
+            eprintfn "[ERR] %s" (stderr.Trim())
+        result
+    with ex ->
+        eprintfn "[EXCEPTION] %s: %s" cmd (ex.Message)
+        ""
 
 let isGitRepo dir =
     Directory.Exists(Path.Combine(dir, ".git"))
@@ -51,21 +60,27 @@ let getPushStatus dir =
     | "", _ -> "No upstream"
     | _ -> "Up to date"
 
-let getOpenPR dir currentBranch =
+let getOpenPR (dir: string) currentBranch =
+    eprintfn "[PR] Looking for open PR with --head %s in %s" currentBranch (Path.GetFileName(dir))
     let headArg = "--head " + currentBranch
     let title = run "gh" ("pr list --state open " + headArg + " --json title --limit 1 --jq .[0].title") dir
     let branch = run "gh" ("pr list --state open " + headArg + " --json headRefName --limit 1 --jq .[0].headRefName") dir
     let t = if String.IsNullOrWhiteSpace(title) || title = "null" then "" else title
     let b = if String.IsNullOrWhiteSpace(branch) || branch = "null" then "" else branch
+    eprintfn "[PR] Result: title='%s' branch='%s'" t b
     (t, b)
 
-let getCIStatus dir (hasPR: bool) =
-    if not hasPR then ("", "")
+let getCIStatus (dir: string) (hasPR: bool) =
+    if not hasPR then
+        eprintfn "[CI] Skipping CI for %s (no PR)" (Path.GetFileName(dir))
+        ("", "")
     else
+        eprintfn "[CI] Checking PR checks for %s" (Path.GetFileName(dir))
         let status = run "gh" "pr checks --json state --jq .[0].state" dir
         let date = run "gh" "pr checks --json startedAt --jq .[0].startedAt" dir
-        let dateShort = if date.Length >= 10 then date.[0..9] else date
+        let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
         let s = if String.IsNullOrWhiteSpace(status) || status = "null" then "" else status
+        eprintfn "[CI] Result: status='%s' date='%s'" s dateShort
         (s, dateShort)
 
 let escape (s: string) =
@@ -105,8 +120,9 @@ let repos =
     dirs
     |> Array.map (fun dir ->
         let name = Path.GetFileName(dir)
-        printfn "  %s..." name
         let folderMod = Directory.GetLastWriteTimeUtc(dir)
+        eprintfn "\n=== %s === (modified: %s)" name (folderMod.ToString("yyyy-MM-dd HH:mm:ss"))
+        printfn "  %s..." name
         let modCount = getModifiedCount dir
         let lastEdit = getLastEditDate dir
         let branch = getBranch dir
@@ -175,14 +191,17 @@ else
             if r.PushStatus = "Up to date" then "ok"
             elif r.PushStatus = "No upstream" then "warn"
             else "warn"
+        let ciUpper = r.CIStatus.ToUpperInvariant()
         let ciClass =
-            if r.CIStatus = "success" then "ok"
-            elif r.CIStatus = "failure" then "err"
+            if ciUpper = "SUCCESS" then "ok"
+            elif ciUpper = "FAILURE" || ciUpper = "SKIPPED" || ciUpper = "CANCELLED" || ciUpper = "ERROR" || ciUpper = "STARTUP_FAILURE" then "err"
+            elif ciUpper = "IN_PROGRESS" || ciUpper = "PENDING" || ciUpper = "QUEUED" then "warn"
             else ""
 
         a "<tr>"
         a ("<td>" + escape r.Name + "</td>")
-        a ("<td class=\"count\">" + string r.ModifiedCount + "</td>")
+        let uncommittedClass = if r.ModifiedCount > 0 then "err" else "ok"
+        a ("<td class=\"" + uncommittedClass + "\">" + string r.ModifiedCount + "</td>")
         a ("<td>" + escape r.LastEdit + "</td>")
         a ("<td><span class=\"mono\">" + escape r.Branch + "</span></td>")
         a ("<td><span class=\"mono\">" + escape r.PRBranch + "</span></td>")
