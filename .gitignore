@@ -3,3 +3,5 @@
 repo-report.html
 
 *.log
+
+.dart_tool/
