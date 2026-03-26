@@ -97,17 +97,46 @@ let getCIStatus (dir: string) (prNumber: string) =
             else ""
         let date = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[0].startedAt") dir
         let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
-        // Get failed check names
-        let failedNames = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].name") dir
-        let failedConclusions = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
-        let names = if String.IsNullOrWhiteSpace(failedNames) then [||] else failedNames.Split('\n')
-        let conclusions = if String.IsNullOrWhiteSpace(failedConclusions) then [||] else failedConclusions.Split('\n')
+        // Get all check names and conclusions as paired lines: "name|||conclusion"
+        let allNames = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].name") dir
+        let allConcs = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
+        // jq omits null conclusions, so get the count to detect mismatches
+        let checkCount = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup|length") dir
+        let nameLines = if String.IsNullOrWhiteSpace(allNames) then [||] else allNames.Split('\n')
+        let concLines = if String.IsNullOrWhiteSpace(allConcs) then [||] else allConcs.Split('\n')
+        let expectedCount = match System.Int32.TryParse(checkCount.Trim()) with | true, n -> n | _ -> 0
+        eprintfn "[CI] Check count=%d names=%d conclusions=%d" expectedCount nameLines.Length concLines.Length
+        // If conclusions array is shorter than names, jq skipped nulls - fall back to per-check query
         let failedCheckNames =
-            if names.Length = conclusions.Length && names.Length > 0 then
-                Array.zip names conclusions
-                |> Array.filter (fun (_, c) -> let cu = c.Trim().ToUpperInvariant() in cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE")
-                |> Array.map (fun (n, _) -> n.Trim())
+            if nameLines.Length = concLines.Length && nameLines.Length > 0 then
+                Array.zip nameLines concLines
+                |> Array.choose (fun (n, c) ->
+                    let cu = c.Trim().ToUpperInvariant()
+                    if cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE" then Some (n.Trim())
+                    else None)
                 |> fun arr -> String.Join(" | ", arr)
+            elif nameLines.Length > 0 && concLines.Length <> nameLines.Length then
+                // Mismatch: query each check individually
+                eprintfn "[CI] Length mismatch - querying all conclusions from states array"
+                // Use the states array we already have (index matches names since both iterate the same array)
+                // states comes from .conclusion, allStates - but those also skip nulls
+                // Safest: just report all names where we know there's a failure from the aggregate
+                if aggregate = "FAILURE" || aggregate = "ERROR" then
+                    // Get names of failed checks by re-parsing the full rollup
+                    let fullRollup = run "gh" ("pr view " + prArg + " --json statusCheckRollup") dir
+                    // Parse manually: look for "name" and "conclusion" pairs
+                    let mutable currentName = ""
+                    let failed = System.Collections.Generic.List<string>()
+                    for line in fullRollup.Split('\n') do
+                        let trimmed = line.Trim().TrimEnd(',')
+                        if trimmed.StartsWith("\"name\":") then
+                            currentName <- trimmed.Replace("\"name\":", "").Trim().Trim('"')
+                        elif trimmed.StartsWith("\"conclusion\":") then
+                            let conc = trimmed.Replace("\"conclusion\":", "").Trim().Trim('"').ToUpperInvariant()
+                            if (conc = "FAILURE" || conc = "ERROR" || conc = "STARTUP_FAILURE") && currentName <> "" then
+                                failed.Add(currentName)
+                    String.Join(" | ", failed)
+                else ""
             else ""
         // Get full failed logs from the run
         let detailsUrls = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].detailsUrl") dir
