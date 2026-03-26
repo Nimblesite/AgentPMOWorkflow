@@ -65,33 +65,51 @@ let getOpenPR (dir: string) currentBranch =
     let headArg = "--head " + currentBranch
     let title = run "gh" ("pr list --state open " + headArg + " --json title --limit 1 --jq .[0].title") dir
     let branch = run "gh" ("pr list --state open " + headArg + " --json headRefName --limit 1 --jq .[0].headRefName") dir
+    let number = run "gh" ("pr list --state open " + headArg + " --json number --limit 1 --jq .[0].number") dir
     let t = if String.IsNullOrWhiteSpace(title) || title = "null" then "" else title
     let b = if String.IsNullOrWhiteSpace(branch) || branch = "null" then "" else branch
-    eprintfn "[PR] Result: title='%s' branch='%s'" t b
-    (t, b)
+    let n = if String.IsNullOrWhiteSpace(number) || number = "null" then "" else number
+    eprintfn "[PR] Result: title='%s' branch='%s' number='%s'" t b n
+    (t, b, n)
 
-let getCIStatus (dir: string) (hasPR: bool) =
-    if not hasPR then
+let getCIStatus (dir: string) (prNumber: string) =
+    if prNumber = "" then
         eprintfn "[CI] Skipping CI for %s (no PR)" (Path.GetFileName(dir))
-        ("", "")
+        ("", "", "")
     else
-        eprintfn "[CI] Checking PR checks for %s" (Path.GetFileName(dir))
-        let allStates = run "gh" "pr checks --json state --jq .[].state" dir
+        eprintfn "[CI] Checking PR #%s statusCheckRollup for %s" prNumber (Path.GetFileName(dir))
+        let prArg = prNumber
+        let allStates = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
         let states =
             if String.IsNullOrWhiteSpace(allStates) then [||]
             else allStates.Split('\n') |> Array.map (fun s -> s.Trim().ToUpperInvariant()) |> Array.filter (fun s -> s <> "" && s <> "NULL")
-        // Worst status wins: FAILURE/ERROR > CANCELLED > IN_PROGRESS/PENDING/QUEUED > SUCCESS
+        let allStatuses = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].status") dir
+        let statuses =
+            if String.IsNullOrWhiteSpace(allStatuses) then [||]
+            else allStatuses.Split('\n') |> Array.map (fun s -> s.Trim().ToUpperInvariant()) |> Array.filter (fun s -> s <> "" && s <> "NULL")
+        let hasInProgress = statuses |> Array.exists (fun s -> s = "IN_PROGRESS" || s = "PENDING" || s = "QUEUED")
         let aggregate =
             if states |> Array.exists (fun s -> s = "FAILURE" || s = "ERROR" || s = "STARTUP_FAILURE") then "FAILURE"
             elif states |> Array.exists (fun s -> s = "CANCELLED") then "CANCELLED"
-            elif states |> Array.exists (fun s -> s = "IN_PROGRESS" || s = "PENDING" || s = "QUEUED") then "IN_PROGRESS"
+            elif hasInProgress then "IN_PROGRESS"
             elif states |> Array.exists (fun s -> s = "SUCCESS") then "SUCCESS"
             elif states.Length > 0 then states.[0]
             else ""
-        let date = run "gh" "pr checks --json startedAt --jq .[0].startedAt" dir
+        let date = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[0].startedAt") dir
         let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
-        eprintfn "[CI] Result: aggregate='%s' from states=[%s] date='%s'" aggregate (String.Join(", ", states)) dateShort
-        (aggregate, dateShort)
+        // Get failed check names (simple jq without shell quoting issues)
+        let failedNames = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].name") dir
+        let failedConclusions = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
+        let names = if String.IsNullOrWhiteSpace(failedNames) then [||] else failedNames.Split('\n')
+        let conclusions = if String.IsNullOrWhiteSpace(failedConclusions) then [||] else failedConclusions.Split('\n')
+        let failedDetails =
+            Array.zip names conclusions
+            |> Array.filter (fun (_, c) -> let cu = c.Trim().ToUpperInvariant() in cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE")
+            |> Array.map (fun (n, _) -> n.Trim())
+            |> fun arr -> String.Join("\n", arr)
+        let errorText = if String.IsNullOrWhiteSpace(failedDetails) then "" else failedDetails.Trim()
+        eprintfn "[CI] Result: aggregate='%s' from conclusions=[%s] statuses=[%s] date='%s' errors='%s'" aggregate (String.Join(", ", states)) (String.Join(", ", statuses)) dateShort (errorText.Replace("\n", " | "))
+        (aggregate, dateShort, errorText)
 
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
@@ -124,6 +142,7 @@ type RepoInfo = {
     OpenPR: string
     CIStatus: string
     CIDate: string
+    CIError: string
 }
 
 let repos =
@@ -137,11 +156,11 @@ let repos =
         let lastEdit = getLastEditDate dir
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
-        let openPR, prBranch = getOpenPR dir branch
-        let ciStatus, ciDate = getCIStatus dir (openPR <> "")
+        let openPR, prBranch, prNumber = getOpenPR dir branch
+        let ciStatus, ciDate, ciError = getCIStatus dir prNumber
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
-          CIStatus = ciStatus; CIDate = ciDate }
+          CIStatus = ciStatus; CIDate = ciDate; CIError = ciError }
     )
     |> Array.sortByDescending (fun r -> r.FolderModified)
 
@@ -171,6 +190,8 @@ a ".ok { color: #38a169; }"
 a ".warn { color: #d69e2e; }"
 a ".err { color: #e53e3e; }"
 a ".mono { font-family: monospace; font-size: 0.8rem; background: #edf2f7; padding: 1px 5px; border-radius: 3px; }"
+a ".ci-err { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e53e3e; font-size: 0.8rem; cursor: help; }"
+a ".ci-err:hover { white-space: normal; overflow: visible; position: relative; z-index: 10; background: #fff5f5; padding: 6px 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 500px; }"
 a "</style>"
 a "</head>"
 a "<body>"
@@ -193,6 +214,7 @@ else
     a "<th>Open PR</th>"
     a "<th>CI</th>"
     a "<th>CI Date</th>"
+    a "<th>CI Error</th>"
     a "</tr></thead>"
     a "<tbody>"
 
@@ -219,6 +241,11 @@ else
         a ("<td>" + escape r.OpenPR + "</td>")
         a ("<td class=\"" + ciClass + "\">" + escape r.CIStatus + "</td>")
         a ("<td>" + escape r.CIDate + "</td>")
+        let errDisplay = r.CIError.Replace("\n", " | ")
+        if errDisplay <> "" then
+            a ("<td class=\"ci-err\" title=\"" + escape(r.CIError.Replace("\"", "'")) + "\">" + escape errDisplay + "</td>")
+        else
+            a "<td></td>"
         a "</tr>"
 
     a "</tbody>"
