@@ -1,3 +1,5 @@
 
 .commandtree/
 repo-report.html
+
+*.log
