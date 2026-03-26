@@ -80,6 +80,49 @@ make coverage       # generate and open coverage report
 make coverage-check # assert coverage thresholds
 ```
 
+## Repo Report Dashboard
+
+The core of this project is an F# script (`repo-report.fsx`) that scans all git repos under `~/Documents/Code/`, gathers status info (uncommitted changes, branch, push status, open PRs, CI status), and generates an HTML dashboard (`repo-report.html`).
+
+### How it works
+
+1. `repo-report.fsx` scans `~/Documents/Code/` for git repositories
+2. For each repo it collects: uncommitted file count, current branch, last commit date, push status (ahead/behind), open PRs (via `gh`), and CI status (via `gh`)
+3. Generates a self-contained HTML report at `repo-report.html`
+4. Logs stdout to `repo-report.log`, stderr (debug) to `repo-report-debug.log`
+
+### launchd polling (runs every 3 minutes)
+
+A macOS launchd agent polls the report on a 180-second interval:
+
+- **Plist:** `~/Library/LaunchAgents/com.christianfindlay.repo-report.plist`
+- **Command:** `dotnet fsi repo-report.fsx`
+- **Interval:** 180 seconds (3 minutes)
+- **RunAtLoad:** true (starts on login)
+- **Stdout log:** `repo-report.log`
+- **Stderr log:** `repo-report-debug.log`
+
+### launchd management commands
+
+```bash
+# Check if loaded and running
+launchctl list | grep repo-report
+
+# Unload (stop)
+launchctl unload ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
+
+# Load (start)
+launchctl load ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
+
+# Run manually
+dotnet fsi repo-report.fsx
+```
+
+### Test files
+
+- `repo-report-tests.fsx` — tests for the report generation logic
+- `test-report.fsx` — test runner script
+
 ## Architecture
 
 ```
@@ -92,12 +135,16 @@ project_status/
 │   │   ├── ci.yml
 │   │   └── release.yml
 │   └── pull_request_template.md
-├── app/                 # Flutter app
-├── cli/                 # CLI tool
-├── core/                # Shared core library
-├── repo-report.fsx      # F# report script
-├── repo-report-tests.fsx
-├── test-report.fsx
+├── project_status_ui/   # Flutter app (WIP)
+│   ├── app/             # Flutter app scaffold
+│   ├── cli/             # CLI tool
+│   └── core/            # Shared core library
+├── repo-report.fsx      # F# report generator script
+├── repo-report-tests.fsx # Tests for report logic
+├── test-report.fsx      # Test runner
+├── repo-report.html     # Generated HTML dashboard (output)
+├── repo-report.log      # Stdout log from launchd runs
+├── repo-report-debug.log # Stderr/debug log from launchd runs
 ├── .editorconfig
 ├── .gitignore
 ├── CLAUDE.md

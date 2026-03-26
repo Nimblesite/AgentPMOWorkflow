@@ -75,11 +75,13 @@ let getOpenPR (dir: string) currentBranch =
     let title = run "gh" ("pr list --state open " + headArg + " --json title --limit 1 --jq .[0].title") dir
     let branch = run "gh" ("pr list --state open " + headArg + " --json headRefName --limit 1 --jq .[0].headRefName") dir
     let number = run "gh" ("pr list --state open " + headArg + " --json number --limit 1 --jq .[0].number") dir
+    let url = run "gh" ("pr list --state open " + headArg + " --json url --limit 1 --jq .[0].url") dir
     let t = if String.IsNullOrWhiteSpace(title) || title = "null" then "" else title
     let b = if String.IsNullOrWhiteSpace(branch) || branch = "null" then "" else branch
     let n = if String.IsNullOrWhiteSpace(number) || number = "null" then "" else number
-    eprintfn "[PR] Result: title='%s' branch='%s' number='%s'" t b n
-    (t, b, n)
+    let u = if String.IsNullOrWhiteSpace(url) || url = "null" then "" else url
+    eprintfn "[PR] Result: title='%s' branch='%s' number='%s' url='%s'" t b n u
+    (t, b, n, u)
 
 let getRepoSlug (dir: string) =
     let remote = run "git" "remote get-url origin" dir
@@ -96,7 +98,7 @@ let getRepoSlug (dir: string) =
 let getCIStatus (dir: string) (prNumber: string) =
     if prNumber = "" then
         eprintfn "[CI] Skipping CI for %s (no PR)" (Path.GetFileName(dir))
-        ("", "", "", "")
+        ("", "", "", "", "")
     else
         eprintfn "[CI] Checking PR #%s for %s" prNumber (Path.GetFileName(dir))
         let gh = resolveCmd "gh"
@@ -173,10 +175,17 @@ let getCIStatus (dir: string) (prNumber: string) =
                                     logs.Add("=== " + jobName + " ===\n" + jobLog)
                 String.Join("\n\n", logs)
 
+        let ciUrl =
+            checks
+            |> Array.tryPick (fun c ->
+                if not (String.IsNullOrWhiteSpace(c.DetailsUrl)) then Some c.DetailsUrl
+                else None)
+            |> Option.defaultValue ""
+
         let errorText = if String.IsNullOrWhiteSpace(failedCheckNames) then "" else failedCheckNames
         let fullLog = if String.IsNullOrWhiteSpace(failedLog) then "" else failedLog.Trim()
-        eprintfn "[CI] Result: aggregate='%s' date='%s' errors='%s' logLines=%d" aggregate dateShort errorText (if fullLog = "" then 0 else fullLog.Split('\n').Length)
-        (aggregate, dateShort, errorText, fullLog)
+        eprintfn "[CI] Result: aggregate='%s' date='%s' errors='%s' url='%s' logLines=%d" aggregate dateShort errorText ciUrl (if fullLog = "" then 0 else fullLog.Split('\n').Length)
+        (aggregate, dateShort, errorText, fullLog, ciUrl)
 
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
@@ -207,10 +216,12 @@ type RepoInfo = {
     PRBranch: string
     PushStatus: string
     OpenPR: string
+    PRUrl: string
     CIStatus: string
     CIDate: string
     CIError: string
     CILog: string
+    CIUrl: string
 }
 
 let repos =
@@ -224,11 +235,12 @@ let repos =
         let lastEdit = getLastEditDate dir
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
-        let openPR, prBranch, prNumber = getOpenPR dir branch
-        let ciStatus, ciDate, ciError, ciLog = getCIStatus dir prNumber
+        let openPR, prBranch, prNumber, prUrl = getOpenPR dir branch
+        let ciStatus, ciDate, ciError, ciLog, ciUrl = getCIStatus dir prNumber
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
-          CIStatus = ciStatus; CIDate = ciDate; CIError = ciError; CILog = ciLog }
+          PRUrl = prUrl; CIStatus = ciStatus; CIDate = ciDate; CIError = ciError
+          CILog = ciLog; CIUrl = ciUrl }
     )
     |> Array.sortByDescending (fun r -> r.FolderModified)
 
@@ -258,6 +270,8 @@ a ".ok { color: #38a169; }"
 a ".warn { color: #d69e2e; }"
 a ".err { color: #e53e3e; }"
 a ".mono { font-family: monospace; font-size: 0.8rem; background: #edf2f7; padding: 1px 5px; border-radius: 3px; }"
+a "td a { color: inherit; text-decoration: none; }"
+a "td a:hover { text-decoration: underline; }"
 a ".ci-err { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e53e3e; font-size: 0.8rem; cursor: pointer; }"
 a ".ci-err:hover { text-decoration: underline; }"
 a ".modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }"
@@ -318,8 +332,14 @@ else
         a ("<td><span class=\"mono\">" + escape r.Branch + "</span></td>")
         a ("<td><span class=\"mono\">" + escape r.PRBranch + "</span></td>")
         a ("<td class=\"" + pushClass + "\">" + escape r.PushStatus + "</td>")
-        a ("<td>" + escape r.OpenPR + "</td>")
-        a ("<td class=\"" + ciClass + "\">" + escape r.CIStatus + "</td>")
+        if r.PRUrl <> "" && r.OpenPR <> "" then
+            a ("<td><a href=\"" + escape r.PRUrl + "\" target=\"_blank\">" + escape r.OpenPR + "</a></td>")
+        else
+            a ("<td>" + escape r.OpenPR + "</td>")
+        if r.CIUrl <> "" && r.CIStatus <> "" then
+            a ("<td class=\"" + ciClass + "\"><a href=\"" + escape r.CIUrl + "\" target=\"_blank\">" + escape r.CIStatus + "</a></td>")
+        else
+            a ("<td class=\"" + ciClass + "\">" + escape r.CIStatus + "</td>")
         a ("<td>" + escape r.CIDate + "</td>")
         let errDisplay = r.CIError.Replace("\n", " | ")
         if errDisplay <> "" then
