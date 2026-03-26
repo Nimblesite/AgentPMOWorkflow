@@ -95,8 +95,6 @@ project_status/
 ├── app/                 # Flutter app
 ├── cli/                 # CLI tool
 ├── core/                # Shared core library
-├── scripts/
-│   └── check-coverage.sh
 ├── repo-report.fsx      # F# report script
 ├── repo-report-tests.fsx
 ├── test-report.fsx
