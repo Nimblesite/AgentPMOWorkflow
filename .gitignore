@@ -1,7 +1,83 @@
+# =============================================================================
+# UNIVERSAL — applies to every repo in this portfolio
+# =============================================================================
 
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Portfolio-wide tooling
+.too_many_cooks/
 .commandtree/
-repo-report.html
+.playwright-mcp/
+coordination/
+logs/
+nohup.out
 
-*.log
+# Coverage artifacts (all languages)
+coverage/
+lcov.info
+*.profraw
+*.profdata
+htmlcov/
+.coverage
+coverage.xml
+coverage.out
+coverage-summary.json
+TestResults/
+mutants.out/
 
+# Secrets / local overrides
+.env
+.env.local
+.env.*.local
+*.local
+*.secret
+*.pem
+*.key
+!*.pub.key
+
+# Temporary
+tmp/
+temp/
+scratch/
+
+# =============================================================================
+# DART/FLUTTER
+# =============================================================================
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+ephemeral/
+*.iml
+local.properties
+.gradle/
+GeneratedPluginRegistrant.*
+
+# =============================================================================
+# PROJECT-SPECIFIC
+# =============================================================================
+repo-report.html
+*.log
