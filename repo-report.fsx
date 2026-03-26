@@ -187,6 +187,28 @@ let getCIStatus (dir: string) (prNumber: string) =
         eprintfn "[CI] Result: aggregate='%s' date='%s' errors='%s' url='%s' logLines=%d" aggregate dateShort errorText ciUrl (if fullLog = "" then 0 else fullLog.Split('\n').Length)
         (aggregate, dateShort, errorText, fullLog, ciUrl)
 
+let getLatestRelease (dir: string) =
+    eprintfn "[REL] Checking latest release for %s" (Path.GetFileName(dir))
+    let gh = resolveCmd "gh"
+    let tsv = runShell (gh + " release view --json tagName,publishedAt --jq '[.tagName, .publishedAt] | @tsv'") dir
+    if String.IsNullOrWhiteSpace(tsv) then ("", "", "")
+    else
+        let parts = tsv.Split('\t')
+        if parts.Length >= 2 then
+            let tag = parts.[0].Trim()
+            let raw = parts.[1].Trim()
+            let dateShort =
+                match DateTime.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind) with
+                | true, dt -> dt.ToLocalTime().ToString("yyyy-MM-dd")
+                | _ -> if raw.Length >= 10 then raw.[0..9] else raw
+            let slug = getRepoSlug dir
+            let url =
+                if slug <> "" then "https://github.com/" + slug + "/releases/tag/" + tag
+                else ""
+            eprintfn "[REL] Result: tag='%s' date='%s' url='%s'" tag dateShort url
+            (tag, dateShort, url)
+        else ("", "", "")
+
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
 
@@ -222,6 +244,9 @@ type RepoInfo = {
     CIError: string
     CILog: string
     CIUrl: string
+    ReleaseTag: string
+    ReleaseDate: string
+    ReleaseUrl: string
 }
 
 let repos =
@@ -237,10 +262,12 @@ let repos =
         let pushStatus = getPushStatus dir
         let openPR, prBranch, prNumber, prUrl = getOpenPR dir branch
         let ciStatus, ciDate, ciError, ciLog, ciUrl = getCIStatus dir prNumber
+        let relTag, relDate, relUrl = getLatestRelease dir
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
           PRUrl = prUrl; CIStatus = ciStatus; CIDate = ciDate; CIError = ciError
-          CILog = ciLog; CIUrl = ciUrl }
+          CILog = ciLog; CIUrl = ciUrl
+          ReleaseTag = relTag; ReleaseDate = relDate; ReleaseUrl = relUrl }
     )
     |> Array.sortByDescending (fun r -> r.FolderModified)
 
@@ -309,6 +336,7 @@ else
     a "<th>CI</th>"
     a "<th>CI Date</th>"
     a "<th>CI Error</th>"
+    a "<th>Release</th>"
     a "</tr></thead>"
     a "<tbody>"
 
@@ -345,6 +373,14 @@ else
         if errDisplay <> "" then
             let modalId = "modal-" + r.Name.Replace(" ", "-").Replace(".", "-")
             a ("<td class=\"ci-err\" onclick=\"document.getElementById('" + modalId + "').classList.add('active')\">" + escape errDisplay + "</td>")
+        else
+            a "<td></td>"
+        if r.ReleaseTag <> "" then
+            let relText = r.ReleaseTag + " (" + r.ReleaseDate + ")"
+            if r.ReleaseUrl <> "" then
+                a ("<td><a href=\"" + escape r.ReleaseUrl + "\" target=\"_blank\">" + escape relText + "</a></td>")
+            else
+                a ("<td>" + escape relText + "</td>")
         else
             a "<td></td>"
         a "</tr>"
