@@ -1,5 +1,0 @@
-name: project_status_core
-description: Core library for scanning git repo status
-version: 1.0.0
-environment:
-  sdk: ^3.0.0
