@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "project_status_cli"
+  ],
+  "packages": [
+    {
+      "name": "project_status_cli",
+      "version": "1.0.0",
+      "dependencies": [
+        "project_status_core"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "project_status_core",
+      "version": "1.0.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

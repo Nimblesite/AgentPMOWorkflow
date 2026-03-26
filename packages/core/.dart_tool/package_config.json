@@ -1,0 +1,16 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "project_status_core",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    }
+  ],
+  "generator": "pub",
+  "generatorVersion": "3.10.7",
+  "flutterRoot": "file:///opt/homebrew/Caskroom/flutter/3.27.2/flutter",
+  "flutterVersion": "3.38.6",
+  "pubCache": "file:///Users/christianfindlay/.pub-cache"
+}

@@ -1,0 +1,14 @@
+{
+  "roots": [
+    "project_status_core"
+  ],
+  "packages": [
+    {
+      "name": "project_status_core",
+      "version": "1.0.0",
+      "dependencies": [],
+      "devDependencies": []
+    }
+  ],
+  "configVersion": 1
+}
