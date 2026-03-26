@@ -87,7 +87,11 @@ The core of this project is an F# script (`repo-report.fsx`) that scans all git 
 ### How it works
 
 1. `repo-report.fsx` scans `~/Documents/Code/` for git repositories
-2. For each repo it collects: uncommitted file count, current branch, last commit date, push status (ahead/behind), open PRs (via `gh`), and CI status (via `gh`)
+2. For each repo it collects: uncommitted file count, current branch, last commit date, push status (ahead/behind), open PRs (via `gh`), CI status (via `gh`), and latest GitHub release
+
+### Critical: PR detection
+
+**Open PRs must always be shown.** The PR lookup first checks for a PR matching the current branch (`--head <branch>`). If none is found, it falls back to listing any open PR in the repo. This is critical because the local branch may differ from the PR branch (e.g., on `TestExplorer` locally while the PR is from `Stuff2`). The "PR Branch" column shows which branch the PR is actually from.
 3. Generates a self-contained HTML report at `repo-report.html`
 4. Logs stdout to `repo-report.log`, stderr (debug) to `repo-report-debug.log`
 

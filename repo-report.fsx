@@ -69,19 +69,30 @@ let getPushStatus dir =
     | "", _ -> "No upstream"
     | _ -> "Up to date"
 
+let parsePR (tsv: string) =
+    if String.IsNullOrWhiteSpace(tsv) then ("", "", "", "")
+    else
+        let parts = tsv.Split('\t')
+        if parts.Length >= 4 then
+            let clean (s: string) = if String.IsNullOrWhiteSpace(s) || s = "null" then "" else s.Trim()
+            (clean parts.[0], clean parts.[1], clean parts.[2], clean parts.[3])
+        else ("", "", "", "")
+
 let getOpenPR (dir: string) currentBranch =
     eprintfn "[PR] Looking for open PR with --head %s in %s" currentBranch (Path.GetFileName(dir))
-    let headArg = "--head " + currentBranch
-    let title = run "gh" ("pr list --state open " + headArg + " --json title --limit 1 --jq .[0].title") dir
-    let branch = run "gh" ("pr list --state open " + headArg + " --json headRefName --limit 1 --jq .[0].headRefName") dir
-    let number = run "gh" ("pr list --state open " + headArg + " --json number --limit 1 --jq .[0].number") dir
-    let url = run "gh" ("pr list --state open " + headArg + " --json url --limit 1 --jq .[0].url") dir
-    let t = if String.IsNullOrWhiteSpace(title) || title = "null" then "" else title
-    let b = if String.IsNullOrWhiteSpace(branch) || branch = "null" then "" else branch
-    let n = if String.IsNullOrWhiteSpace(number) || number = "null" then "" else number
-    let u = if String.IsNullOrWhiteSpace(url) || url = "null" then "" else url
-    eprintfn "[PR] Result: title='%s' branch='%s' number='%s' url='%s'" t b n u
-    (t, b, n, u)
+    let gh = resolveCmd "gh"
+    let jqExpr = "'[.[0].title, .[0].headRefName, (.[0].number|tostring), .[0].url] | @tsv'"
+    let headTsv = runShell (gh + " pr list --state open --head " + currentBranch + " --json title,headRefName,number,url --limit 1 --jq " + jqExpr) dir
+    let t, b, n, u = parsePR headTsv
+    if t <> "" then
+        eprintfn "[PR] Found PR on current branch: title='%s' branch='%s' number='%s' url='%s'" t b n u
+        (t, b, n, u)
+    else
+        eprintfn "[PR] No PR on current branch, checking all open PRs"
+        let anyTsv = runShell (gh + " pr list --state open --json title,headRefName,number,url --limit 1 --jq " + jqExpr) dir
+        let t2, b2, n2, u2 = parsePR anyTsv
+        eprintfn "[PR] Fallback result: title='%s' branch='%s' number='%s' url='%s'" t2 b2 n2 u2
+        (t2, b2, n2, u2)
 
 let getRepoSlug (dir: string) =
     let remote = run "git" "remote get-url origin" dir
