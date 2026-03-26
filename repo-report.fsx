@@ -9,11 +9,13 @@ let resolveCmd (cmd: string) =
     | Some p -> Path.Combine(p, cmd)
     | None -> cmd
 
-let run cmd args workDir =
-    let resolved = resolveCmd cmd
-    eprintfn "[CMD] %s %s (in %s)" resolved args workDir
+let runShell (cmdLine: string) workDir =
+    eprintfn "[CMD] %s (in %s)" cmdLine workDir
     try
-        let psi = ProcessStartInfo(fileName = resolved, arguments = (args: string))
+        // Write command to temp file to avoid shell escaping issues
+        let tmpFile = Path.GetTempFileName()
+        File.WriteAllText(tmpFile, cmdLine)
+        let psi = ProcessStartInfo(fileName = "/bin/sh", arguments = tmpFile)
         psi.WorkingDirectory <- workDir
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
@@ -22,15 +24,20 @@ let run cmd args workDir =
         let p = Process.Start(psi)
         let output = p.StandardOutput.ReadToEnd()
         let stderr = p.StandardError.ReadToEnd()
-        p.WaitForExit(15000) |> ignore
+        p.WaitForExit(30000) |> ignore
         let result = output.Trim()
-        eprintfn "[OUT] %s" (if result.Length > 200 then result.[0..199] + "..." else result)
+        try File.Delete(tmpFile) with _ -> ()
+        eprintfn "[OUT] %s" (if result.Length > 300 then result.[0..299] + "..." else result)
         if not (String.IsNullOrWhiteSpace(stderr)) then
             eprintfn "[ERR] %s" (stderr.Trim())
         result
     with ex ->
-        eprintfn "[EXCEPTION] %s: %s" cmd (ex.Message)
+        eprintfn "[EXCEPTION] %s" (ex.Message)
         ""
+
+let run cmd args workDir =
+    let resolved = resolveCmd cmd
+    runShell (resolved + " " + args) workDir
 
 let isGitRepo dir =
     Directory.Exists(Path.Combine(dir, ".git"))
@@ -72,93 +79,95 @@ let getOpenPR (dir: string) currentBranch =
     eprintfn "[PR] Result: title='%s' branch='%s' number='%s'" t b n
     (t, b, n)
 
+let getRepoSlug (dir: string) =
+    let remote = run "git" "remote get-url origin" dir
+    if String.IsNullOrWhiteSpace(remote) then ""
+    else
+        // Handle both HTTPS and SSH URLs
+        let cleaned = remote.Replace(".git", "").TrimEnd('/')
+        if cleaned.Contains("github.com") then
+            let parts = cleaned.Split('/')
+            if parts.Length >= 2 then parts.[parts.Length - 2] + "/" + parts.[parts.Length - 1]
+            else ""
+        else ""
+
 let getCIStatus (dir: string) (prNumber: string) =
     if prNumber = "" then
         eprintfn "[CI] Skipping CI for %s (no PR)" (Path.GetFileName(dir))
         ("", "", "", "")
     else
-        eprintfn "[CI] Checking PR #%s statusCheckRollup for %s" prNumber (Path.GetFileName(dir))
-        let prArg = prNumber
-        let allStates = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
-        let states =
-            if String.IsNullOrWhiteSpace(allStates) then [||]
-            else allStates.Split('\n') |> Array.map (fun s -> s.Trim().ToUpperInvariant()) |> Array.filter (fun s -> s <> "" && s <> "NULL")
-        let allStatuses = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].status") dir
-        let statuses =
-            if String.IsNullOrWhiteSpace(allStatuses) then [||]
-            else allStatuses.Split('\n') |> Array.map (fun s -> s.Trim().ToUpperInvariant()) |> Array.filter (fun s -> s <> "" && s <> "NULL")
-        let hasInProgress = statuses |> Array.exists (fun s -> s = "IN_PROGRESS" || s = "PENDING" || s = "QUEUED")
-        let aggregate =
-            if states |> Array.exists (fun s -> s = "FAILURE" || s = "ERROR" || s = "STARTUP_FAILURE") then "FAILURE"
-            elif states |> Array.exists (fun s -> s = "CANCELLED") then "CANCELLED"
-            elif hasInProgress then "IN_PROGRESS"
-            elif states |> Array.exists (fun s -> s = "SUCCESS") then "SUCCESS"
-            elif states.Length > 0 then states.[0]
-            else ""
-        let date = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[0].startedAt") dir
-        let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
-        // Get all check names and conclusions as paired lines: "name|||conclusion"
-        let allNames = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].name") dir
-        let allConcs = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
-        // jq omits null conclusions, so get the count to detect mismatches
-        let checkCount = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup|length") dir
-        let nameLines = if String.IsNullOrWhiteSpace(allNames) then [||] else allNames.Split('\n')
-        let concLines = if String.IsNullOrWhiteSpace(allConcs) then [||] else allConcs.Split('\n')
-        let expectedCount = match System.Int32.TryParse(checkCount.Trim()) with | true, n -> n | _ -> 0
-        eprintfn "[CI] Check count=%d names=%d conclusions=%d" expectedCount nameLines.Length concLines.Length
-        // If conclusions array is shorter than names, jq skipped nulls - fall back to per-check query
-        let failedCheckNames =
-            if nameLines.Length = concLines.Length && nameLines.Length > 0 then
-                Array.zip nameLines concLines
-                |> Array.choose (fun (n, c) ->
-                    let cu = c.Trim().ToUpperInvariant()
-                    if cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE" then Some (n.Trim())
-                    else None)
-                |> fun arr -> String.Join(" | ", arr)
-            elif nameLines.Length > 0 && concLines.Length <> nameLines.Length then
-                // Mismatch: query each check individually
-                eprintfn "[CI] Length mismatch - querying all conclusions from states array"
-                // Use the states array we already have (index matches names since both iterate the same array)
-                // states comes from .conclusion, allStates - but those also skip nulls
-                // Safest: just report all names where we know there's a failure from the aggregate
-                if aggregate = "FAILURE" || aggregate = "ERROR" then
-                    // Get names of failed checks by re-parsing the full rollup
-                    let fullRollup = run "gh" ("pr view " + prArg + " --json statusCheckRollup") dir
-                    // Parse manually: look for "name" and "conclusion" pairs
-                    let mutable currentName = ""
-                    let failed = System.Collections.Generic.List<string>()
-                    for line in fullRollup.Split('\n') do
-                        let trimmed = line.Trim().TrimEnd(',')
-                        if trimmed.StartsWith("\"name\":") then
-                            currentName <- trimmed.Replace("\"name\":", "").Trim().Trim('"')
-                        elif trimmed.StartsWith("\"conclusion\":") then
-                            let conc = trimmed.Replace("\"conclusion\":", "").Trim().Trim('"').ToUpperInvariant()
-                            if (conc = "FAILURE" || conc = "ERROR" || conc = "STARTUP_FAILURE") && currentName <> "" then
-                                failed.Add(currentName)
-                    String.Join(" | ", failed)
-                else ""
-            else ""
-        // Get full failed logs from the run
-        let detailsUrls = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].detailsUrl") dir
-        let runIds =
-            if String.IsNullOrWhiteSpace(detailsUrls) then [||]
+        eprintfn "[CI] Checking PR #%s for %s" prNumber (Path.GetFileName(dir))
+        let gh = resolveCmd "gh"
+        // Get all checks as TSV: name\tconclusion\tstatus\tdetailsUrl\tstartedAt
+        let tsvOutput = runShell (gh + " pr view " + prNumber + " --json statusCheckRollup --jq '.statusCheckRollup[] | [.name, (.conclusion // \"NONE\"), (.status // \"NONE\"), .detailsUrl, .startedAt] | @tsv'") dir
+        let checks =
+            if String.IsNullOrWhiteSpace(tsvOutput) then [||]
             else
-                detailsUrls.Split('\n')
-                |> Array.choose (fun url ->
-                    let parts = url.Split('/')
-                    let idx = parts |> Array.tryFindIndex (fun p -> p = "runs")
-                    match idx with
-                    | Some i when i + 1 < parts.Length -> Some parts.[i + 1]
-                    | _ -> None)
-                |> Array.distinct
+                tsvOutput.Split('\n')
+                |> Array.choose (fun line ->
+                    let parts = line.Split('\t')
+                    if parts.Length >= 5 then
+                        Some {| Name = parts.[0]; Conclusion = parts.[1].ToUpperInvariant(); Status = parts.[2].ToUpperInvariant(); DetailsUrl = parts.[3]; StartedAt = parts.[4] |}
+                    else None)
+        eprintfn "[CI] Found %d checks" checks.Length
+        for c in checks do
+            eprintfn "[CI]   %s: conclusion=%s status=%s" c.Name c.Conclusion c.Status
+
+        let hasFailure = checks |> Array.exists (fun c -> c.Conclusion = "FAILURE" || c.Conclusion = "ERROR" || c.Conclusion = "STARTUP_FAILURE")
+        let hasCancelled = checks |> Array.exists (fun c -> c.Conclusion = "CANCELLED")
+        let hasInProgress = checks |> Array.exists (fun c -> c.Status = "IN_PROGRESS" || c.Status = "PENDING" || c.Status = "QUEUED")
+        let hasSuccess = checks |> Array.exists (fun c -> c.Conclusion = "SUCCESS")
+        let aggregate =
+            if hasFailure then "FAILURE"
+            elif hasCancelled then "CANCELLED"
+            elif hasInProgress then "IN_PROGRESS"
+            elif hasSuccess then "SUCCESS"
+            elif checks.Length > 0 then checks.[0].Conclusion
+            else ""
+
+        let firstStarted = if checks.Length > 0 then checks.[0].StartedAt else ""
+        let dateShort = if firstStarted.Length >= 16 then firstStarted.[0..15].Replace("T", " ") else firstStarted
+
+        let failedCheckNames =
+            checks
+            |> Array.filter (fun c -> c.Conclusion = "FAILURE" || c.Conclusion = "ERROR" || c.Conclusion = "STARTUP_FAILURE")
+            |> Array.map (fun c -> c.Name)
+            |> fun arr -> String.Join(" | ", arr)
+
+        // Get failed job logs via API (works even when run is still in progress)
+        let repoSlug = getRepoSlug dir
         let failedLog =
-            runIds
-            |> Array.map (fun rid -> run "gh" ("run view " + rid + " --log-failed") dir)
-            |> Array.filter (fun s -> not (String.IsNullOrWhiteSpace(s)))
-            |> fun arr -> String.Join("\n", arr)
+            if repoSlug = "" || not hasFailure then ""
+            else
+                let runIds =
+                    checks
+                    |> Array.choose (fun c ->
+                        let parts = c.DetailsUrl.Split('/')
+                        let idx = parts |> Array.tryFindIndex (fun p -> p = "runs")
+                        match idx with
+                        | Some i when i + 1 < parts.Length -> Some parts.[i + 1]
+                        | _ -> None)
+                    |> Array.distinct
+                eprintfn "[CI] Run IDs: %s" (String.Join(", ", runIds))
+                let logs = System.Collections.Generic.List<string>()
+                for runId in runIds do
+                    // Get failed job IDs and names via API as TSV
+                    let jobsTsv = runShell (gh + " api repos/" + repoSlug + "/actions/runs/" + runId + "/jobs --jq '.jobs[] | select(.conclusion==\"failure\") | [(.id|tostring), .name] | @tsv'") dir
+                    if not (String.IsNullOrWhiteSpace(jobsTsv)) then
+                        for jobLine in jobsTsv.Split('\n') do
+                            let parts = jobLine.Split('\t')
+                            if parts.Length >= 2 then
+                                let jobId = parts.[0].Trim()
+                                let jobName = parts.[1].Trim()
+                                eprintfn "[CI] Fetching log for failed job %s (%s)" jobId jobName
+                                let jobLog = runShell (gh + " api repos/" + repoSlug + "/actions/jobs/" + jobId + "/logs") dir
+                                if not (String.IsNullOrWhiteSpace(jobLog)) then
+                                    logs.Add("=== " + jobName + " ===\n" + jobLog)
+                String.Join("\n\n", logs)
+
         let errorText = if String.IsNullOrWhiteSpace(failedCheckNames) then "" else failedCheckNames
         let fullLog = if String.IsNullOrWhiteSpace(failedLog) then "" else failedLog.Trim()
-        eprintfn "[CI] Result: aggregate='%s' from conclusions=[%s] statuses=[%s] date='%s' errors='%s' logLines=%d" aggregate (String.Join(", ", states)) (String.Join(", ", statuses)) dateShort errorText (fullLog.Split('\n').Length)
+        eprintfn "[CI] Result: aggregate='%s' date='%s' errors='%s' logLines=%d" aggregate dateShort errorText (if fullLog = "" then 0 else fullLog.Split('\n').Length)
         (aggregate, dateShort, errorText, fullLog)
 
 let escape (s: string) =
@@ -225,7 +234,7 @@ a "<!DOCTYPE html>"
 a "<html lang=\"en\">"
 a "<head>"
 a "<meta charset=\"UTF-8\">"
-a "<meta http-equiv=\"refresh\" content=\"5\">"
+// No meta refresh - handled by JS that pauses when modal is open
 a "<title>Repo Report</title>"
 a "<style>"
 a "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; background: #f0f4f8; color: #1a202c; }"
@@ -348,6 +357,7 @@ a "    setTimeout(() => btn.textContent = orig, 1500);"
 a "  });"
 a "}"
 a "document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); });"
+a "setInterval(() => { if (!document.querySelector('.modal-overlay.active')) location.reload(); }, 5000);"
 a "</script>"
 
 a "</body>"

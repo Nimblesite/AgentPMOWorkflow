@@ -54,46 +54,46 @@
 
 ## TODO
 
-- [ ] **Phase 1: Project Setup & Core Library**
-  - [ ] Initialize monorepo structure
-  - [ ] Set up core package
-  - [ ] Implement `LaunchdJob` model
-  - [ ] Implement `PlistService`
-  - [ ] Implement `LaunchdService` — listJobs + getJobDetail
-  - [ ] Implement `LaunchdService` — action methods + getLog
-  - [ ] Unit tests for core
-- [ ] **Phase 2: CLI**
-  - [ ] Set up cli package and entry point
-  - [ ] `list` command with table output and filters
-  - [ ] `info` command
-  - [ ] `log` command with follow mode
-  - [ ] Action commands (load/unload/start/stop/enable/disable)
-  - [ ] `edit` and `create` commands
-  - [ ] End-to-end CLI testing
-- [ ] **Phase 3: Flutter App — Scaffold & Theme**
-  - [ ] Set up app package with macOS target
-  - [ ] Dark theme implementation
-  - [ ] Sidebar widget
-  - [ ] Toolbar widget
-- [ ] **Phase 4: Flutter App — Job List**
-  - [ ] Custom sortable job table
-  - [ ] Status badge widget
-  - [ ] Filter and search wiring
-  - [ ] Auto-refresh
-  - [ ] Right-click context menu
-- [ ] **Phase 5: Flutter App — Detail Panel**
-  - [ ] Detail panel layout
-  - [ ] Log viewer widget
-  - [ ] Plist XML viewer
-  - [ ] Action buttons wired up
-  - [ ] Confirmation dialogs
-  - [ ] Read-only mode for system jobs
-- [ ] **Phase 6: Create & Edit**
-  - [ ] Create New Job dialog
-  - [ ] Inline plist editor
-  - [ ] Auto-load after creation
+- [x] **Phase 1: Project Setup & Core Library**
+  - [x] Initialize monorepo structure
+  - [x] Set up core package
+  - [x] Implement `LaunchdJob` model
+  - [x] Implement `PlistService`
+  - [x] Implement `LaunchdService` — listJobs + getJobDetail
+  - [x] Implement `LaunchdService` — action methods + getLog
+  - [x] Unit tests for core (19/19 passing)
+- [x] **Phase 2: CLI**
+  - [x] Set up cli package and entry point
+  - [x] `list` command with table output and filters
+  - [x] `info` command
+  - [x] `log` command with follow mode
+  - [x] Action commands (load/unload/start/stop/enable/disable)
+  - [x] `edit` and `create` commands
+  - [x] End-to-end CLI testing (compiled native binary, tested against real launchd)
+- [x] **Phase 3: Flutter App — Scaffold & Theme**
+  - [x] Set up app package with macOS target
+  - [x] Dark theme implementation
+  - [x] Sidebar widget
+  - [x] Toolbar widget
+- [x] **Phase 4: Flutter App — Job List**
+  - [x] Custom sortable job table
+  - [x] Status badge widget
+  - [x] Filter and search wiring
+  - [x] Auto-refresh (10s)
+  - [x] Right-click context menu
+- [x] **Phase 5: Flutter App — Detail Panel**
+  - [x] Detail panel layout
+  - [x] Log viewer widget (stdout/stderr tabs)
+  - [x] Plist XML viewer (collapsible)
+  - [x] Action buttons wired up
+  - [x] Confirmation dialogs
+  - [x] Read-only mode for system jobs
+- [x] **Phase 6: Create & Edit**
+  - [x] Create New Job dialog (with live XML preview)
+  - [x] Inline plist editor (with validate + save)
+  - [x] Auto-load after creation
 - [ ] **Phase 7: Polish & Release**
-  - [ ] Permissions handling (sudo, admin badges)
-  - [ ] Error handling and edge cases
+  - [x] Permissions handling (scope badges, system job read-only)
+  - [x] Error handling and edge cases
   - [ ] Signing / notarization
   - [ ] README and release packaging
