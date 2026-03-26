@@ -48,11 +48,13 @@ let getModifiedCount dir =
     else output.Split('\n') |> Array.filter (fun l -> l.Trim() <> "") |> Array.length
 
 let getLastEditDate dir =
+    // %ci gives local time like "2026-03-26 14:30:00 +1100"
     let output = run "git" "log -1 --format=%ci HEAD" dir
     if String.IsNullOrWhiteSpace(output) then "unknown"
     else
         let parts = output.Split(' ')
-        if parts.Length > 0 then parts.[0] else output
+        if parts.Length >= 2 then parts.[0] + " " + parts.[1].[0..4] // "2026-03-26 14:30"
+        else output
 
 let getBranch dir =
     let b = run "git" "rev-parse --abbrev-ref HEAD" dir
@@ -126,7 +128,13 @@ let getCIStatus (dir: string) (prNumber: string) =
             else ""
 
         let firstStarted = if checks.Length > 0 then checks.[0].StartedAt else ""
-        let dateShort = if firstStarted.Length >= 16 then firstStarted.[0..15].Replace("T", " ") else firstStarted
+        // Convert UTC ISO date to local time
+        let dateShort =
+            if String.IsNullOrWhiteSpace(firstStarted) then ""
+            else
+                match DateTime.TryParse(firstStarted, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind) with
+                | true, dt -> dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                | _ -> if firstStarted.Length >= 16 then firstStarted.[0..15].Replace("T", " ") else firstStarted
 
         let failedCheckNames =
             checks
