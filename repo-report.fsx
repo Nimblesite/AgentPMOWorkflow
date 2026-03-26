@@ -3,9 +3,15 @@ open System.IO
 open System.Diagnostics
 open System.Text
 
+let resolveCmd (cmd: string) =
+    let paths = [| "/opt/homebrew/bin"; "/usr/local/bin"; "/usr/bin"; "/bin" |]
+    match paths |> Array.tryFind (fun p -> File.Exists(Path.Combine(p, cmd))) with
+    | Some p -> Path.Combine(p, cmd)
+    | None -> cmd
+
 let run cmd args workDir =
     try
-        let psi = ProcessStartInfo(fileName = cmd, arguments = (args: string))
+        let psi = ProcessStartInfo(fileName = resolveCmd cmd, arguments = (args: string))
         psi.WorkingDirectory <- workDir
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
@@ -45,9 +51,13 @@ let getPushStatus dir =
     | "", _ -> "No upstream"
     | _ -> "Up to date"
 
-let getOpenPR dir =
-    let output = run "gh" "pr list --state open --json title --limit 1 --jq .[0].title" dir
-    if String.IsNullOrWhiteSpace(output) || output = "null" then "" else output
+let getOpenPR dir currentBranch =
+    let headArg = "--head " + currentBranch
+    let title = run "gh" ("pr list --state open " + headArg + " --json title --limit 1 --jq .[0].title") dir
+    let branch = run "gh" ("pr list --state open " + headArg + " --json headRefName --limit 1 --jq .[0].headRefName") dir
+    let t = if String.IsNullOrWhiteSpace(title) || title = "null" then "" else title
+    let b = if String.IsNullOrWhiteSpace(branch) || branch = "null" then "" else branch
+    (t, b)
 
 let getCIStatus dir (hasPR: bool) =
     if not hasPR then ("", "")
@@ -84,6 +94,7 @@ type RepoInfo = {
     ModifiedCount: int
     LastEdit: string
     Branch: string
+    PRBranch: string
     PushStatus: string
     OpenPR: string
     CIStatus: string
@@ -100,10 +111,10 @@ let repos =
         let lastEdit = getLastEditDate dir
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
-        let openPR = getOpenPR dir
+        let openPR, prBranch = getOpenPR dir branch
         let ciStatus, ciDate = getCIStatus dir (openPR <> "")
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
-          Branch = branch; PushStatus = pushStatus; OpenPR = openPR
+          Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
           CIStatus = ciStatus; CIDate = ciDate }
     )
     |> Array.sortByDescending (fun r -> r.FolderModified)
@@ -118,6 +129,7 @@ a "<!DOCTYPE html>"
 a "<html lang=\"en\">"
 a "<head>"
 a "<meta charset=\"UTF-8\">"
+a "<meta http-equiv=\"refresh\" content=\"5\">"
 a "<title>Repo Report</title>"
 a "<style>"
 a "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; background: #f0f4f8; color: #1a202c; }"
@@ -150,6 +162,7 @@ else
     a "<th>Uncommitted</th>"
     a "<th>Last Commit</th>"
     a "<th>Branch</th>"
+    a "<th>PR Branch</th>"
     a "<th>Push Status</th>"
     a "<th>Open PR</th>"
     a "<th>CI</th>"
@@ -172,6 +185,7 @@ else
         a ("<td class=\"count\">" + string r.ModifiedCount + "</td>")
         a ("<td>" + escape r.LastEdit + "</td>")
         a ("<td><span class=\"mono\">" + escape r.Branch + "</span></td>")
+        a ("<td><span class=\"mono\">" + escape r.PRBranch + "</span></td>")
         a ("<td class=\"" + pushClass + "\">" + escape r.PushStatus + "</td>")
         a ("<td>" + escape r.OpenPR + "</td>")
         a ("<td class=\"" + ciClass + "\">" + escape r.CIStatus + "</td>")
