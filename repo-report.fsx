@@ -75,7 +75,7 @@ let getOpenPR (dir: string) currentBranch =
 let getCIStatus (dir: string) (prNumber: string) =
     if prNumber = "" then
         eprintfn "[CI] Skipping CI for %s (no PR)" (Path.GetFileName(dir))
-        ("", "", "")
+        ("", "", "", "")
     else
         eprintfn "[CI] Checking PR #%s statusCheckRollup for %s" prNumber (Path.GetFileName(dir))
         let prArg = prNumber
@@ -97,19 +97,40 @@ let getCIStatus (dir: string) (prNumber: string) =
             else ""
         let date = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[0].startedAt") dir
         let dateShort = if date.Length >= 16 then date.[0..15].Replace("T", " ") else date
-        // Get failed check names (simple jq without shell quoting issues)
+        // Get failed check names
         let failedNames = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].name") dir
         let failedConclusions = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].conclusion") dir
         let names = if String.IsNullOrWhiteSpace(failedNames) then [||] else failedNames.Split('\n')
         let conclusions = if String.IsNullOrWhiteSpace(failedConclusions) then [||] else failedConclusions.Split('\n')
-        let failedDetails =
-            Array.zip names conclusions
-            |> Array.filter (fun (_, c) -> let cu = c.Trim().ToUpperInvariant() in cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE")
-            |> Array.map (fun (n, _) -> n.Trim())
+        let failedCheckNames =
+            if names.Length = conclusions.Length && names.Length > 0 then
+                Array.zip names conclusions
+                |> Array.filter (fun (_, c) -> let cu = c.Trim().ToUpperInvariant() in cu = "FAILURE" || cu = "ERROR" || cu = "STARTUP_FAILURE")
+                |> Array.map (fun (n, _) -> n.Trim())
+                |> fun arr -> String.Join(" | ", arr)
+            else ""
+        // Get full failed logs from the run
+        let detailsUrls = run "gh" ("pr view " + prArg + " --json statusCheckRollup --jq .statusCheckRollup.[].detailsUrl") dir
+        let runIds =
+            if String.IsNullOrWhiteSpace(detailsUrls) then [||]
+            else
+                detailsUrls.Split('\n')
+                |> Array.choose (fun url ->
+                    let parts = url.Split('/')
+                    let idx = parts |> Array.tryFindIndex (fun p -> p = "runs")
+                    match idx with
+                    | Some i when i + 1 < parts.Length -> Some parts.[i + 1]
+                    | _ -> None)
+                |> Array.distinct
+        let failedLog =
+            runIds
+            |> Array.map (fun rid -> run "gh" ("run view " + rid + " --log-failed") dir)
+            |> Array.filter (fun s -> not (String.IsNullOrWhiteSpace(s)))
             |> fun arr -> String.Join("\n", arr)
-        let errorText = if String.IsNullOrWhiteSpace(failedDetails) then "" else failedDetails.Trim()
-        eprintfn "[CI] Result: aggregate='%s' from conclusions=[%s] statuses=[%s] date='%s' errors='%s'" aggregate (String.Join(", ", states)) (String.Join(", ", statuses)) dateShort (errorText.Replace("\n", " | "))
-        (aggregate, dateShort, errorText)
+        let errorText = if String.IsNullOrWhiteSpace(failedCheckNames) then "" else failedCheckNames
+        let fullLog = if String.IsNullOrWhiteSpace(failedLog) then "" else failedLog.Trim()
+        eprintfn "[CI] Result: aggregate='%s' from conclusions=[%s] statuses=[%s] date='%s' errors='%s' logLines=%d" aggregate (String.Join(", ", states)) (String.Join(", ", statuses)) dateShort errorText (fullLog.Split('\n').Length)
+        (aggregate, dateShort, errorText, fullLog)
 
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
@@ -143,6 +164,7 @@ type RepoInfo = {
     CIStatus: string
     CIDate: string
     CIError: string
+    CILog: string
 }
 
 let repos =
@@ -157,10 +179,10 @@ let repos =
         let branch = getBranch dir
         let pushStatus = getPushStatus dir
         let openPR, prBranch, prNumber = getOpenPR dir branch
-        let ciStatus, ciDate, ciError = getCIStatus dir prNumber
+        let ciStatus, ciDate, ciError, ciLog = getCIStatus dir prNumber
         { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
           Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
-          CIStatus = ciStatus; CIDate = ciDate; CIError = ciError }
+          CIStatus = ciStatus; CIDate = ciDate; CIError = ciError; CILog = ciLog }
     )
     |> Array.sortByDescending (fun r -> r.FolderModified)
 
@@ -190,8 +212,20 @@ a ".ok { color: #38a169; }"
 a ".warn { color: #d69e2e; }"
 a ".err { color: #e53e3e; }"
 a ".mono { font-family: monospace; font-size: 0.8rem; background: #edf2f7; padding: 1px 5px; border-radius: 3px; }"
-a ".ci-err { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e53e3e; font-size: 0.8rem; cursor: help; }"
-a ".ci-err:hover { white-space: normal; overflow: visible; position: relative; z-index: 10; background: #fff5f5; padding: 6px 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 500px; }"
+a ".ci-err { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e53e3e; font-size: 0.8rem; cursor: pointer; }"
+a ".ci-err:hover { text-decoration: underline; }"
+a ".modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }"
+a ".modal-overlay.active { display: flex; }"
+a ".modal { background: white; border-radius: 12px; padding: 0; width: 80%; max-width: 900px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }"
+a ".modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }"
+a ".modal-header h3 { margin: 0; font-size: 0.95rem; color: #2d3748; }"
+a ".modal-actions { display: flex; gap: 8px; }"
+a ".modal-btn { padding: 6px 14px; border: 1px solid #cbd5e0; border-radius: 6px; background: white; cursor: pointer; font-size: 0.8rem; color: #4a5568; }"
+a ".modal-btn:hover { background: #f7fafc; }"
+a ".modal-btn.close { border: none; font-size: 1.2rem; padding: 4px 8px; color: #a0aec0; }"
+a ".modal-btn.close:hover { color: #2d3748; }"
+a ".modal-body { overflow-y: auto; padding: 16px 20px; flex: 1; }"
+a ".modal-body pre { margin: 0; font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Monaco, monospace; color: #2d3748; background: #f7fafc; padding: 12px; border-radius: 6px; }"
 a "</style>"
 a "</head>"
 a "<body>"
@@ -243,13 +277,49 @@ else
         a ("<td>" + escape r.CIDate + "</td>")
         let errDisplay = r.CIError.Replace("\n", " | ")
         if errDisplay <> "" then
-            a ("<td class=\"ci-err\" title=\"" + escape(r.CIError.Replace("\"", "'")) + "\">" + escape errDisplay + "</td>")
+            let modalId = "modal-" + r.Name.Replace(" ", "-").Replace(".", "-")
+            a ("<td class=\"ci-err\" onclick=\"document.getElementById('" + modalId + "').classList.add('active')\">" + escape errDisplay + "</td>")
         else
             a "<td></td>"
         a "</tr>"
 
     a "</tbody>"
     a "</table>"
+
+    // Render modals for repos with CI errors
+    for r in repos do
+        if r.CIError <> "" then
+            let modalId = "modal-" + r.Name.Replace(" ", "-").Replace(".", "-")
+            let logId = "log-" + r.Name.Replace(" ", "-").Replace(".", "-")
+            // Strip ANSI escape codes from the log
+            let cleanLog = System.Text.RegularExpressions.Regex.Replace(r.CILog, @"\x1B\[[0-9;]*m", "")
+            a ("<div class=\"modal-overlay\" id=\"" + modalId + "\" onclick=\"if(event.target===this)this.classList.remove('active')\">")
+            a "<div class=\"modal\">"
+            a "<div class=\"modal-header\">"
+            a ("<h3>CI Failure: " + escape r.Name + " — " + escape r.CIError + "</h3>")
+            a "<div class=\"modal-actions\">"
+            a ("<button class=\"modal-btn\" onclick=\"copyLog('" + logId + "')\">Copy Log</button>")
+            a ("<button class=\"modal-btn close\" onclick=\"document.getElementById('" + modalId + "').classList.remove('active')\">&times;</button>")
+            a "</div>"
+            a "</div>"
+            a "<div class=\"modal-body\">"
+            a ("<pre id=\"" + logId + "\">" + escape cleanLog + "</pre>")
+            a "</div>"
+            a "</div>"
+            a "</div>"
+
+a "<script>"
+a "function copyLog(id) {"
+a "  const el = document.getElementById(id);"
+a "  navigator.clipboard.writeText(el.textContent).then(() => {"
+a "    const btn = el.closest('.modal').querySelector('.modal-btn');"
+a "    const orig = btn.textContent;"
+a "    btn.textContent = 'Copied!';"
+a "    setTimeout(() => btn.textContent = orig, 1500);"
+a "  });"
+a "}"
+a "document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); });"
+a "</script>"
 
 a "</body>"
 a "</html>"

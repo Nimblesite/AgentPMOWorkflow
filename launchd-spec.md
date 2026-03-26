@@ -113,57 +113,49 @@ Label | Status | PID | Last Exit | Interval | Plist Path
 
 ### Layout
 
-```
-+--sidebar--+------------------main-area------------------+
-|           |  toolbar: search, filter, scope dropdown     |
-| Scopes    |----------------------------------------------|
-|  User (n) |                                              |
-|  Global(n)|  Job list table                              |
-|  System(n)|  - Label                                     |
-|           |  - Status (badge)                            |
-| --------- |  - PID                                       |
-| Filters   |  - Schedule (interval or calendar)           |
-|  All      |  - Last Exit (badge)                         |
-|  Loaded   |  - Plist path                                |
-|  Running  |                                              |
-|  Errored  |  Click row -> detail panel slides in         |
-|           |                                              |
-+-----------+----------------------------------------------+
+```mermaid
+block-beta
+  columns 5
+  block:sidebar:1
+    columns 1
+    A["Scopes"]
+    B["User (n)"]
+    C["Global (n)"]
+    D["System (n)"]
+    E["---"]
+    F["Filters"]
+    G["All"]
+    H["Loaded"]
+    I["Running"]
+    J["Errored"]
+  end
+  block:main:4
+    columns 1
+    K["Toolbar: search, filter, scope dropdown"]
+    block:table:1
+      columns 1
+      L["Job List Table"]
+      M["Label | Status | PID | Schedule | Last Exit | Path"]
+      N["Click row → detail panel slides in"]
+    end
+  end
 ```
 
 ### Detail Panel (slides in from right, replaces table or splits view)
 
-```
-+--detail-panel------------------------------------------+
-| [Back]  com.example.myjob                    [actions] |
-|                                                         |
-| Status: Loaded (idle)        PID: -                     |
-| Last Exit: 0                 Scope: User Agent          |
-|                                                         |
-| --- Schedule ---                                        |
-| StartInterval: 300 (every 5 min)                        |
-| RunAtLoad: true                                         |
-|                                                         |
-| --- Command ---                                         |
-| /usr/bin/python3 /path/to/script.py --flag              |
-|                                                         |
-| --- Paths ---                                           |
-| Working Dir: /Users/foo                                 |
-| Stdout: /tmp/myjob.log                                 |
-| Stderr: /tmp/myjob.err                                 |
-|                                                         |
-| --- Environment ---                                     |
-| PATH=/usr/bin:/usr/local/bin                            |
-| HOME=/Users/foo                                         |
-|                                                         |
-| --- Log Preview ---                                     |
-| [last 50 lines of stdout log, monospace, scrollable]    |
-|                                                         |
-| --- Raw Plist ---                                       |
-| [collapsible XML viewer with syntax highlighting]       |
-|                                                         |
-| [Load] [Unload] [Start] [Stop] [Edit] [Delete]         |
-+---------------------------------------------------------+
+```mermaid
+block-beta
+  columns 2
+  A["⬅ Back  com.example.myjob"]:2
+  B["Status: Loaded · idle"] C["PID: —"]
+  D["Last Exit: 0"] E["Scope: User Agent"]
+  F["Schedule\nStartInterval: 300 · every 5 min\nRunAtLoad: true"]:2
+  G["Command\n/usr/bin/python3 /path/to/script.py --flag"]:2
+  H["Paths\nWorking Dir: /Users/foo\nStdout: /tmp/myjob.log\nStderr: /tmp/myjob.err"]:2
+  I["Environment\nPATH=/usr/bin:/usr/local/bin\nHOME=/Users/foo"]:2
+  J["Log Preview\nlast 50 lines of stdout log"]:2
+  K["Raw Plist\ncollapsible XML viewer"]:2
+  L["Load | Unload | Start | Stop | Edit | Delete"]:2
 ```
 
 ### Actions (toolbar buttons in detail view)
