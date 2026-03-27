@@ -81,3 +81,8 @@ GeneratedPluginRegistrant.*
 # =============================================================================
 repo-report.html
 *.log
+
+# Node/Playwright
+node_modules/
+test-results/
+playwright-report/
