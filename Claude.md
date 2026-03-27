@@ -151,16 +151,16 @@ project_status/
 │   ├── cli/                       # CLI tool
 │   └── core/                      # Shared core library
 ├── enforce-repo-standards/        # Global Claude skill for standards enforcement
-│   └── SKILL.md
-├── templates/                     # Portfolio-wide repo templates
-│   ├── CLAUDE.md                  # Template for other repos
-│   ├── Makefile                   # Universal Makefile template
-│   ├── .github/                   # CI/CD workflow templates
-│   ├── devcontainer/              # Language-specific devcontainer configs
-│   ├── gitignore/                 # Language-specific gitignores
-│   ├── linting/                   # Language-specific linter configs
-│   ├── coverage/                  # Coverage config templates
-│   └── skills/                    # Standard skill templates
+│   ├── SKILL.md
+│   └── templates/                 # Portfolio-wide repo templates
+│       ├── CLAUDE.md              # Template for other repos
+│       ├── Makefile               # Universal Makefile template
+│       ├── .github/               # CI/CD workflow templates
+│       ├── devcontainer/          # Language-specific devcontainer configs
+│       ├── gitignore/             # Language-specific gitignores
+│       ├── linting/               # Language-specific linter configs
+│       ├── coverage/              # Coverage config templates
+│       └── skills/                # Standard skill templates
 ├── repo-report.fsx                # F# report generator script
 ├── repo-report-tests.fsx          # Tests for report logic
 ├── test-report.fsx                # Test runner

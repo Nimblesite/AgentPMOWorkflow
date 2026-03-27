@@ -53,32 +53,27 @@ ci: lint test build
 # SKILL MANAGEMENT
 # =============================================================================
 
-REPO_DIR := $(shell pwd)
-SKILL_NAME := enforce-repo-standards
-SKILL_SRC := $(REPO_DIR)/$(SKILL_NAME)
-SKILL_DST := $(HOME)/.claude/skills/$(SKILL_NAME)
-
 install-skill:
-	@echo "==> Installing skill '$(SKILL_NAME)' globally..."
-	@mkdir -p $(HOME)/.claude/skills
-	@if [ -L "$(SKILL_DST)" ]; then \
+	@echo "==> Installing enforce-repo-standards skill globally..."
+	@mkdir -p "$(HOME)/.claude/skills"
+	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
 		echo "    Removing existing symlink..."; \
-		rm "$(SKILL_DST)"; \
-	elif [ -d "$(SKILL_DST)" ]; then \
-		echo "ERROR: $(SKILL_DST) exists and is not a symlink. Remove it manually."; \
+		rm "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	elif [ -d "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
+		echo "ERROR: $(HOME)/.claude/skills/enforce-repo-standards exists and is not a symlink. Remove it manually."; \
 		exit 1; \
 	fi
-	@ln -s "$(SKILL_SRC)" "$(SKILL_DST)"
-	@echo "    $(SKILL_DST) -> $(SKILL_SRC)"
+	@ln -s "$$(pwd)/enforce-repo-standards" "$(HOME)/.claude/skills/enforce-repo-standards"
+	@echo "    $(HOME)/.claude/skills/enforce-repo-standards -> $$(pwd)/enforce-repo-standards"
 	@echo "==> Done. Skill available globally as /enforce-repo-standards"
 
 uninstall-skill:
-	@echo "==> Removing skill '$(SKILL_NAME)' from global skills..."
-	@if [ -L "$(SKILL_DST)" ]; then \
-		rm "$(SKILL_DST)"; \
-		echo "    Removed $(SKILL_DST)"; \
+	@echo "==> Removing enforce-repo-standards skill..."
+	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
+		rm "$(HOME)/.claude/skills/enforce-repo-standards"; \
+		echo "    Removed."; \
 	else \
-		echo "    Nothing to remove ($(SKILL_DST) not found or not a symlink)"; \
+		echo "    Nothing to remove."; \
 	fi
 	@echo "==> Done."
 

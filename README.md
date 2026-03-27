@@ -14,9 +14,9 @@ An F# script that scans a directory of git repos and generates a self-contained 
 - Latest GitHub release
 - Community PRs and issues across GitHub owners
 
-### Repo Standards Enforcement (`enforce-repo-standards/` + `templates/`)
+### Repo Standards Enforcement (`enforce-repo-standards/`)
 
-Portfolio-wide standards toolkit. Provides templates, linter configs, CI workflows, devcontainer definitions, and a Claude skill to apply consistent standards across all repos. Every repo gets the same build interface, same CI pipeline, same quality gates.
+Portfolio-wide standards toolkit. Contains the Claude skill, templates, linter configs, CI workflows, and devcontainer definitions to apply consistent standards across all repos. Every repo gets the same build interface, same CI pipeline, same quality gates.
 
 The authoritative spec is [REPO-STANDARDS-SPEC.md](REPO-STANDARDS-SPEC.md).
 
