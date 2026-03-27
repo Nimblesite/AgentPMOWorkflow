@@ -1,0 +1,38 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "."]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "D",       # pydocstring — handled separately
+  "COM812",  # trailing comma — conflicts with formatter
+  "ISC001",  # single-line implicit concat — conflicts with formatter
+  "ANN101",  # self type annotation
+  "ANN102",  # cls type annotation
+  "FIX002",  # todos in code — allowed
+  "TD",      # todo formatting — too strict
+]
+unfixable = ["ERA001"]  # never auto-remove commented code
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "ANN"]  # allow assert + skip annotations in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = true
+reportUnknownVariableType = true
+reportUnknownMemberType = true
+reportUnknownParameterType = true
+reportUnknownArgumentType = true
+reportUntypedFunctionDecorator = true
+useLibraryCodeForTypes = true

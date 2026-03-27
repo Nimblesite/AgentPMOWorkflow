@@ -1,0 +1,6 @@
+_site/
+.jekyll-cache/
+.jekyll-metadata
+vendor/
+Gemfile.lock   # remove if deploying to Heroku etc.
+.bundle/

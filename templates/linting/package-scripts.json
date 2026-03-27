@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "build": "...",
+    "test": "...",
+    "test:coverage": "...",
+    "lint": "eslint src --max-warnings 0",
+    "fmt": "prettier --write \"src/**/*.ts\"",
+    "fmt:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf out dist coverage"
+  }
+}

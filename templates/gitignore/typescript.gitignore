@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+build/
+*.vsix
+*.tgz
+.npm/
+.cache/
+.vscode-test/
+.vscode-test-web/
+.nyc_output/

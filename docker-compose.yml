@@ -1,0 +1,27 @@
+services:
+
+  # Scheduler: runs project_status F# report every 5 minutes via supercronic
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Mount this repo so the F# script and templates are always up to date
+      - .:/workspaces/project_status:ro
+      # Persist report output between container restarts
+      - report-output:/output
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_OWNERS=${GITHUB_OWNERS:-}
+      - REPOS_PATH=/workspaces
+      - REPORT_OUTPUT_PATH=/output/repo-report.html
+      - REPO_BOOTSTRAP_PATH=/workspaces/project_status
+      - REPO_SCAN_DIR=/workspaces
+      - TZ=${TZ:-UTC}
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+
+volumes:
+  report-output:

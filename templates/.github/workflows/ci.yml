@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- language setup (uncomment what applies) ----
+      # - uses: dtolnay/rust-toolchain@stable
+      #   with:
+      #     components: rustfmt, clippy
+
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'
+
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      #     cache: 'pip'
+
+      # - uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '9.0.x'
+
+      # - uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: '3.27.4'
+      #     channel: 'stable'
+      #     cache: true
+
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.23'
+      #     cache: true
+
+      # ---- install ----
+      # - run: npm ci
+      # - run: pip install -r requirements.txt
+      # - run: dotnet restore
+      # - run: dotnet tool restore
+      # - run: flutter pub get
+
+      - name: Lint
+        run: make lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- language setup (uncomment what applies) ----
+      # - uses: dtolnay/rust-toolchain@stable
+      #   with:
+      #     components: rustfmt, clippy
+
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'
+
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      #     cache: 'pip'
+
+      # - uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '9.0.x'
+
+      # - uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: '3.27.4'
+      #     channel: 'stable'
+      #     cache: true
+
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.23'
+      #     cache: true
+
+      # ---- install + coverage tools ----
+      # - run: npm ci
+      # - run: pip install -r requirements.txt pytest-cov
+      # - run: dotnet restore
+      # - run: dotnet tool restore
+      # - run: flutter pub get
+      # Rust: cargo install cargo-llvm-cov
+
+      - name: Test
+        run: make test
+
+      # Coverage thresholds come from GitHub repo variables (Settings → Variables → Actions)
+      # Per-project, monotonically increasing — never lower. Tanks if not set.
+      # The skill configures the env block here when applying to a specific repo.
+      - name: Coverage check
+        run: make coverage-check
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            lcov.info
+            coverage.out
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- language setup (uncomment what applies) ----
+      # - uses: dtolnay/rust-toolchain@stable
+
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'
+
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      #     cache: 'pip'
+
+      # - uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '9.0.x'
+
+      # - uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: '3.27.4'
+      #     channel: 'stable'
+      #     cache: true
+
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.23'
+      #     cache: true
+
+      # ---- install ----
+      # - run: npm ci
+      # - run: pip install -r requirements.txt
+      # - run: dotnet restore
+      # - run: flutter pub get
+
+      - name: Build
+        run: make build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            out/
+            target/release/
+          retention-days: 7

@@ -1,0 +1,206 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Update versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # ---- language setup (uncomment what applies) ----
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'
+
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+
+      # - uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '9.0.x'
+
+      # - uses: subosito/flutter-action@v2
+      #   with:
+      #     flutter-version: '3.27.4'
+      #     channel: 'stable'
+
+      # ---- update version in project files ----
+      # Uncomment per language. Each stamps the tag version into the project manifest.
+      # Rust:
+      # - run: sed -i "s/^version = .*/version = \"${{ steps.extract.outputs.version }}\"/" Cargo.toml
+      # TypeScript:
+      # - run: npm version ${{ steps.extract.outputs.version }} --no-git-tag-version
+      # Python:
+      # - run: sed -i "s/^version = .*/version = \"${{ steps.extract.outputs.version }}\"/" pyproject.toml
+      # C#/.NET:
+      # - run: sed -i "s/<Version>.*<\/Version>/<Version>${{ steps.extract.outputs.version }}<\/Version>/" Directory.Build.props
+      # Dart/Flutter:
+      # - run: sed -i "s/^version: .*/version: ${{ steps.extract.outputs.version }}/" pubspec.yaml
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.extract.outputs.version }}"
+          git push origin HEAD:main
+
+  build-cross-platform:
+    name: Build packages
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # ---- language setup (uncomment what applies) ----
+
+      - name: Build
+        run: make build
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/
+            out/
+
+  build-platform:
+    name: Build (${{ matrix.artifact_name }})
+    needs: version
+    strategy:
+      matrix:
+        include:
+          # Uncomment targets that apply
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: macos-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: macos-arm64
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   artifact_name: windows-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # ---- language setup (uncomment what applies) ----
+
+      - name: Build
+        run: make build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            dist/
+            target/release/
+
+  release:
+    name: Create release
+    needs: [build-cross-platform, build-platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+
+  publish:
+    name: Publish to registries
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      # ---- language setup (uncomment what applies) ----
+
+      # ---- publish to registries (uncomment per target) ----
+      # Requires secrets configured in repo Settings → Secrets → Actions.
+
+      # npm:
+      # - run: npm publish
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # NuGet:
+      # - run: dotnet nuget push "artifacts/packages/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      # PyPI:
+      # - run: pip install twine && twine upload artifacts/packages/*
+      #   env:
+      #     TWINE_USERNAME: __token__
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      # pub.dev:
+      # - run: dart pub publish --force
+      #   env:
+      #     PUB_TOKEN: ${{ secrets.PUB_DEV_TOKEN }}
+
+      # VS Code Marketplace:
+      # - run: npx @vscode/vsce publish --packagePath artifacts/packages/*.vsix
+      #   env:
+      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # crates.io:
+      # - run: cargo publish
+      #   env:
+      #     CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+
+  deploy-pages:
+    name: Trigger website deploy
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger deploy-pages workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              ref: 'main',
+            });

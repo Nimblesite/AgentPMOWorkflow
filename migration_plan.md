@@ -151,21 +151,22 @@ project_status/                         # Root (rename conceptually to Agent PMO
 
 ## TODO
 
-- [ ] Move AGENT-PMO-WORKFLOW.md to project_status root
-- [ ] Move REPO-STANDARDS-SPEC.md to project_status root
-- [ ] Move .env.example to project_status root
-- [ ] Move enforce-repo-standards/ to project_status
-- [ ] Move templates/ to project_status
-- [ ] Move Dockerfile to project_status root
-- [ ] Move docker-compose.yml to project_status root
-- [ ] Merge Makefile (add install-skill/uninstall-skill targets)
-- [ ] Merge CLAUDE.md (add templates/enforce-repo-standards sections, update architecture)
-- [ ] Rewrite README.md as unified Agent PMO Workflow README
-- [ ] Update enforce-repo-standards/SKILL.md path references (repo_bootstrap → project_status)
-- [ ] Update AGENT-PMO-WORKFLOW.md repo links/references
-- [ ] Update REPO-STANDARDS-SPEC.md template path references
-- [ ] Update docker-compose.yml volume paths
-- [ ] Verify: all files landed correctly
-- [ ] Verify: `make help` works
-- [ ] Verify: repo_bootstrap only has .git/ left
+- [x] Move AGENT-PMO-WORKFLOW.md to project_status root
+- [x] Move REPO-STANDARDS-SPEC.md to project_status root
+- [x] Move .env.example to project_status root
+- [x] Move enforce-repo-standards/ to project_status
+- [x] Move templates/ to project_status
+- [x] Move Dockerfile to project_status root
+- [x] Move docker-compose.yml to project_status root
+- [x] Merge Makefile (add install-skill/uninstall-skill targets)
+- [x] Merge CLAUDE.md (add templates/enforce-repo-standards sections, update architecture)
+- [x] Rewrite README.md as unified Agent PMO Workflow README
+- [x] Update enforce-repo-standards/SKILL.md path references (repo_bootstrap → project_status)
+- [x] Update AGENT-PMO-WORKFLOW.md repo links/references
+- [x] Update REPO-STANDARDS-SPEC.md template path references (none needed — no repo_bootstrap refs)
+- [x] Update docker-compose.yml volume paths
+- [x] Update Dockerfile path references
+- [x] Verify: all files landed correctly
+- [x] Verify: `make help` works
+- [x] Verify: repo_bootstrap only has .git/, .gitignore, Makefile, README left
 - [ ] Verify: tests still pass

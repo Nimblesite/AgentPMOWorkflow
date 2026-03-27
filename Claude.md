@@ -1,11 +1,16 @@
-# project_status — Claude Instructions
+# Agent PMO Workflow — Claude Instructions
 
 > Read this entire file before writing any code.
 > These rules are NON-NEGOTIABLE. Violations will be rejected in review.
 
 ## Project Overview
 
-Project status dashboard — a Flutter application for tracking and displaying project status across multiple repositories.
+Agent PMO Workflow — a unified system for running 20+ AI agents across multiple projects simultaneously. Two components in one repo:
+
+1. **PMO Dashboard** (`repo-report.fsx`) — F# script that scans repos and generates an HTML status dashboard
+2. **Repo Standards Enforcement** (`enforce-repo-standards/` + `templates/`) — portfolio-wide templates, linter configs, CI workflows, and a Claude skill to apply consistent standards to any repo
+
+See `AGENT-PMO-WORKFLOW.md` for the full vision.
 
 **Primary language(s):** Dart/Flutter, F#
 **Build command:** `make ci`
@@ -68,16 +73,18 @@ https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-C
 ## Build Commands (exact)
 
 ```bash
-make build          # compile everything
-make test           # run tests with coverage
-make lint           # run all linters
-make fmt            # format all code
-make fmt-check      # check formatting (CI uses this)
-make clean          # remove build artifacts
-make check          # lint + test (pre-commit)
-make ci             # lint + test + build (full CI simulation)
-make coverage       # generate and open coverage report
-make coverage-check # assert coverage thresholds
+make build            # compile everything
+make test             # run tests with coverage
+make lint             # run all linters
+make fmt              # format all code
+make fmt-check        # check formatting (CI uses this)
+make clean            # remove build artifacts
+make check            # lint + test (pre-commit)
+make ci               # lint + test + build (full CI simulation)
+make coverage         # generate and open coverage report
+make coverage-check   # assert coverage thresholds
+make install-skill    # symlink enforce-repo-standards into ~/.claude/skills/
+make uninstall-skill  # remove the global skill symlink
 ```
 
 ## Repo Report Dashboard
@@ -132,23 +139,35 @@ dotnet fsi repo-report.fsx
 ```
 project_status/
 ├── .claude/
-│   └── skills/
+│   └── skills/                    # Project-specific Claude skills
 ├── .devcontainer/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml
 │   │   └── release.yml
 │   └── pull_request_template.md
-├── project_status_ui/   # Flutter app (WIP)
-│   ├── app/             # Flutter app scaffold
-│   ├── cli/             # CLI tool
-│   └── core/            # Shared core library
-├── repo-report.fsx      # F# report generator script
-├── repo-report-tests.fsx # Tests for report logic
-├── test-report.fsx      # Test runner
-├── repo-report.html     # Generated HTML dashboard (output)
-├── repo-report.log      # Stdout log from launchd runs
-├── repo-report-debug.log # Stderr/debug log from launchd runs
+├── project_status_ui/             # Flutter app (WIP)
+│   ├── app/                       # Flutter app scaffold
+│   ├── cli/                       # CLI tool
+│   └── core/                      # Shared core library
+├── enforce-repo-standards/        # Global Claude skill for standards enforcement
+│   └── SKILL.md
+├── templates/                     # Portfolio-wide repo templates
+│   ├── CLAUDE.md                  # Template for other repos
+│   ├── Makefile                   # Universal Makefile template
+│   ├── .github/                   # CI/CD workflow templates
+│   ├── devcontainer/              # Language-specific devcontainer configs
+│   ├── gitignore/                 # Language-specific gitignores
+│   ├── linting/                   # Language-specific linter configs
+│   ├── coverage/                  # Coverage config templates
+│   └── skills/                    # Standard skill templates
+├── repo-report.fsx                # F# report generator script
+├── repo-report-tests.fsx          # Tests for report logic
+├── test-report.fsx                # Test runner
+├── AGENT-PMO-WORKFLOW.md          # Vision doc
+├── REPO-STANDARDS-SPEC.md         # Authoritative standards spec
+├── Dockerfile                     # Docker dev environment
+├── docker-compose.yml
 ├── .editorconfig
 ├── .gitignore
 ├── CLAUDE.md

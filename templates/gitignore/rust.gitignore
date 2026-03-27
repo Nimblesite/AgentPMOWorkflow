@@ -1,0 +1,2 @@
+/target/
+Cargo.lock        # remove this line for binaries (keep for libraries)
