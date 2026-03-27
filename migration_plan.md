@@ -148,3 +148,24 @@ project_status/                         # Root (rename conceptually to Agent PMO
 3. Check enforce-repo-standards/SKILL.md path resolution still works
 4. Confirm repo_bootstrap/ only has .git/ left
 5. Run `make test` or `dotnet fsi test-report.fsx` to verify nothing broke
+
+## TODO
+
+- [ ] Move AGENT-PMO-WORKFLOW.md to project_status root
+- [ ] Move REPO-STANDARDS-SPEC.md to project_status root
+- [ ] Move .env.example to project_status root
+- [ ] Move enforce-repo-standards/ to project_status
+- [ ] Move templates/ to project_status
+- [ ] Move Dockerfile to project_status root
+- [ ] Move docker-compose.yml to project_status root
+- [ ] Merge Makefile (add install-skill/uninstall-skill targets)
+- [ ] Merge CLAUDE.md (add templates/enforce-repo-standards sections, update architecture)
+- [ ] Rewrite README.md as unified Agent PMO Workflow README
+- [ ] Update enforce-repo-standards/SKILL.md path references (repo_bootstrap → project_status)
+- [ ] Update AGENT-PMO-WORKFLOW.md repo links/references
+- [ ] Update REPO-STANDARDS-SPEC.md template path references
+- [ ] Update docker-compose.yml volume paths
+- [ ] Verify: all files landed correctly
+- [ ] Verify: `make help` works
+- [ ] Verify: repo_bootstrap only has .git/ left
+- [ ] Verify: tests still pass
