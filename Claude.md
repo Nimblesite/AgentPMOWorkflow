@@ -60,7 +60,9 @@ Follow these carefully
 ```bash
 make build            # generate the HTML dashboard report
 make test             # run all tests (F# + Playwright E2E)
-make test-fsharp      # run F# unit/integration tests only
+make test-fsharp      # run F# tests (alias for test-mock)
+make test-mock        # run F# mock fixture tests (generates report for E2E)
+make test-local       # run F# tests against local repos
 make test-e2e         # run Playwright E2E tests only
 make lint             # validate Playwright test configuration
 make fmt              # format code (no-op for F# scripts)

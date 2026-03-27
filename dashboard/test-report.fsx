@@ -1,4 +1,5 @@
-// Tests for repo-report.fsx logic
+// Tests for repo-report.fsx — deterministic fixture-based tests
+// Creates mock git repos, generates the report, validates the HTML.
 // Run: dotnet fsi test-report.fsx
 
 open System
@@ -53,187 +54,193 @@ let runShell (cmdLine: string) workDir =
         psi.CreateNoWindow <- true
         let p = Process.Start(psi)
         let output = p.StandardOutput.ReadToEnd()
+        let stderr = p.StandardError.ReadToEnd()
         p.WaitForExit(30000) |> ignore
         try File.Delete(tmpFile) with _ -> ()
+        if p.ExitCode <> 0 && stderr <> "" then
+            eprintfn "    [stderr] %s" (stderr.Trim())
         output.Trim()
-    with _ -> ""
+    with ex ->
+        eprintfn "    [EXCEPTION] %s" ex.Message
+        ""
 
 let run cmd args workDir =
     runShell (resolveCmd cmd + " " + args) workDir
 
-let gh = resolveCmd "gh"
-let codeDir = "/Users/christianfindlay/Documents/Code"
+let scriptDir = __SOURCE_DIRECTORY__
+let reportOutputPath = Path.Combine(scriptDir, "repo-report.html")
 
 // ============================================================
-printfn "\n=== TEST: runShell executes commands correctly ==="
-let echoResult = runShell "echo hello" codeDir
-assert_eq "echo returns hello" "hello" echoResult
+// CREATE MOCK GIT REPOS IN A TEMP DIRECTORY
+// ============================================================
+printfn "\n=== SETUP: Creating mock git repos ==="
 
-let pwdResult = runShell "pwd" codeDir
-assert_eq "pwd returns code dir" codeDir pwdResult
+let fixturesDir = Path.Combine(Path.GetTempPath(), "repo-report-test-" + Guid.NewGuid().ToString("N").[0..7])
+Directory.CreateDirectory(fixturesDir) |> ignore
+printfn "    Fixtures dir: %s" fixturesDir
+
+let git = resolveCmd "git"
+
+let createMockRepo (name: string) (branch: string) (uncommittedFiles: int) (aheadCount: int) =
+    let repoDir = Path.Combine(fixturesDir, name)
+    Directory.CreateDirectory(repoDir) |> ignore
+    // Init and configure
+    runShell (git + " init") repoDir |> ignore
+    runShell (git + " config user.email test@test.com") repoDir |> ignore
+    runShell (git + " config user.name TestUser") repoDir |> ignore
+    // Create initial commit
+    File.WriteAllText(Path.Combine(repoDir, "README.md"), "# " + name)
+    runShell (git + " add .") repoDir |> ignore
+    runShell (git + " commit -m 'initial commit'") repoDir |> ignore
+    // Switch to branch if not main
+    if branch <> "main" then
+        runShell (git + " checkout -b " + branch) repoDir |> ignore
+        File.WriteAllText(Path.Combine(repoDir, "feature.txt"), "feature work")
+        runShell (git + " add .") repoDir |> ignore
+        runShell (git + " commit -m 'feature work'") repoDir |> ignore
+    // Add uncommitted files
+    for i in 1..uncommittedFiles do
+        File.WriteAllText(Path.Combine(repoDir, sprintf "dirty-%d.txt" i), "uncommitted change " + string i)
+    printfn "    Created: %s (branch=%s, dirty=%d)" name branch uncommittedFiles
+
+// Create repos with various states
+createMockRepo "alpha-service" "main" 0 0        // clean, on main
+createMockRepo "beta-api" "feature/auth" 3 0      // dirty, on feature branch
+createMockRepo "gamma-client" "main" 1 0          // 1 uncommitted file
+createMockRepo "delta-lib" "fix/bug-42" 0 0       // clean, on fix branch
+createMockRepo "epsilon-tool" "main" 5 0          // very dirty
+
+printfn "    Created 5 mock repos in %s" fixturesDir
 
 // ============================================================
-printfn "\n=== TEST: git commands work ==="
-let branch = run "git" "rev-parse --abbrev-ref HEAD" (codeDir + "/project_status")
-assert_true "branch is not empty" (branch <> "")
-assert_eq "project_status is on main" "main" branch
-
-let modCount = run "git" "status --porcelain" (codeDir + "/project_status")
-assert_true "status --porcelain returns something (we have changes)" true  // may or may not have changes
-
+// GENERATE THE REPORT
 // ============================================================
-printfn "\n=== TEST: jq TSV query works for PR checks ==="
-// Test with CommandTree which has a known PR
-let ctPrNum = run "gh" "pr list --state open --head cleanup --json number --limit 1 --jq .[0].number" (codeDir + "/CommandTree")
-assert_true "CommandTree PR number is not empty" (ctPrNum <> "" && ctPrNum <> "null")
-printfn "    CommandTree PR#: %s" ctPrNum
+printfn "\n=== GENERATING REPORT ==="
 
-if ctPrNum <> "" && ctPrNum <> "null" then
-    let tsvOutput = runShell (gh + " pr view " + ctPrNum + " --json statusCheckRollup --jq '.statusCheckRollup[] | [.name, (.conclusion // \"NONE\"), (.status // \"NONE\"), .detailsUrl, .startedAt] | @tsv'") (codeDir + "/CommandTree")
-    assert_true "TSV output is not empty" (tsvOutput <> "")
-    let lines = tsvOutput.Split('\n')
-    assert_true "TSV has at least 1 check" (lines.Length >= 1)
-    for line in lines do
-        let parts = line.Split('\t')
-        assert_true ("TSV line has 5 columns: " + parts.[0]) (parts.Length >= 5)
-        assert_true ("name is not empty: " + parts.[0]) (parts.[0] <> "")
-        assert_true ("conclusion is not empty: " + parts.[0]) (parts.[1] <> "")
-        assert_true ("status is not empty: " + parts.[0]) (parts.[2] <> "")
-    // Check that we see a FAILURE conclusion
-    let hasFailure = lines |> Array.exists (fun l -> l.Contains("FAILURE"))
-    assert_true "CommandTree has at least one FAILURE check" hasFailure
+let reportScript = Path.Combine(scriptDir, "repo-report.fsx")
+let genPsi = ProcessStartInfo(fileName = "dotnet", Arguments = "fsi " + reportScript)
+genPsi.WorkingDirectory <- scriptDir
+genPsi.RedirectStandardOutput <- true
+genPsi.RedirectStandardError <- true
+genPsi.UseShellExecute <- false
+genPsi.CreateNoWindow <- true
+// Point at fixtures, not real repos
+genPsi.EnvironmentVariables.["REPO_SCAN_DIR"] <- fixturesDir
+genPsi.EnvironmentVariables.["REPORT_OUTPUT_PATH"] <- reportOutputPath
+genPsi.EnvironmentVariables.["MAX_REPOS"] <- "20"
+genPsi.EnvironmentVariables.["GITHUB_OWNERS"] <- "test-fixture-no-such-owner-xxx"
+let genProc = Process.Start(genPsi)
+let genStdout = genProc.StandardOutput.ReadToEnd()
+let genStderr = genProc.StandardError.ReadToEnd()
+genProc.WaitForExit(120000) |> ignore
 
-// ============================================================
-printfn "\n=== TEST: forge PR checks (the null conclusion bug) ==="
-let forgePrNum = run "gh" "pr list --state open --head stuff --json number --limit 1 --jq .[0].number" (codeDir + "/forge")
-if forgePrNum <> "" && forgePrNum <> "null" then
-    printfn "    forge PR#: %s" forgePrNum
-    let tsvOutput = runShell (gh + " pr view " + forgePrNum + " --json statusCheckRollup --jq '.statusCheckRollup[] | [.name, (.conclusion // \"NONE\"), (.status // \"NONE\"), .detailsUrl, .startedAt] | @tsv'") (codeDir + "/forge")
-    let lines = tsvOutput.Split('\n')
-    assert_true "forge TSV has checks" (lines.Length >= 1)
-    // Every line should have 5 tab-separated columns, even if conclusion was null
-    for line in lines do
-        let parts = line.Split('\t')
-        assert_true ("forge TSV line has 5 cols: " + parts.[0]) (parts.Length >= 5)
-        // conclusion should never be empty - it should be NONE if null
-        assert_true ("forge conclusion not empty: " + parts.[0]) (parts.[1] <> "")
-    // Find the .NET failure
-    let dotnetFailure = lines |> Array.exists (fun l -> l.Contains(".NET") && l.Contains("FAILURE"))
-    assert_true "forge .NET check shows FAILURE" dotnetFailure
-    // Find cancelled check (Test) - should show CANCELLED or NONE, NOT be missing
-    let testCheck = lines |> Array.exists (fun l -> l.StartsWith("Test\t"))
-    assert_true "forge Test check is present (not omitted)" testCheck
+printfn "    Exit code: %d" genProc.ExitCode
+if genStdout.Length > 0 then
+    printfn "    STDOUT:\n%s" genStdout
+if genStderr.Length > 0 then
+    printfn "    STDERR (verbose):\n%s" genStderr
+
+if genProc.ExitCode <> 0 then
+    printfn "    FATAL: Report generation failed with exit code %d" genProc.ExitCode
+    failed <- failed + 1
 else
-    printfn "    SKIP: forge has no open PR on 'stuff'"
+    passed <- passed + 1
+    printfn "    Report generation succeeded"
 
 // ============================================================
-printfn "\n=== TEST: Basilisk multiple failures ==="
-let basiliskPrNum = run "gh" "pr list --state open --head Stuff2 --json number --limit 1 --jq .[0].number" (codeDir + "/Basilisk")
-if basiliskPrNum <> "" && basiliskPrNum <> "null" then
-    printfn "    Basilisk PR#: %s" basiliskPrNum
-    let tsvOutput = runShell (gh + " pr view " + basiliskPrNum + " --json statusCheckRollup --jq '.statusCheckRollup[] | [.name, (.conclusion // \"NONE\"), (.status // \"NONE\"), .detailsUrl, .startedAt] | @tsv'") (codeDir + "/Basilisk")
-    let lines = tsvOutput.Split('\n')
-    let failedChecks = lines |> Array.filter (fun l -> l.Contains("FAILURE"))
-    printfn "    Failed checks: %d" failedChecks.Length
-    for f in failedChecks do
-        printfn "      %s" (f.Split('\t').[0])
-    // Basilisk should have failures
-    assert_true "Basilisk has at least 1 failure" (failedChecks.Length >= 1)
-else
-    printfn "    SKIP: Basilisk has no open PR on 'Stuff2'"
+printfn "\n=== TEST: HTML report file exists ==="
+assert_true "repo-report.html exists" (File.Exists reportOutputPath)
+if not (File.Exists reportOutputPath) then
+    printfn "    FATAL: No report at %s — cannot continue" reportOutputPath
+    // Cleanup
+    try Directory.Delete(fixturesDir, true) with _ -> ()
+    printfn "\n\n=========================================="
+    printfn "Results: %d passed, %d failed" passed failed
+    printfn "=========================================="
+    printfn "SOME TESTS FAILED!"
+    exit 1
+
+let html = File.ReadAllText(reportOutputPath)
 
 // ============================================================
-printfn "\n=== TEST: Napper failures ==="
-let napperPrNum = run "gh" "pr list --state open --head AgentSwarmBigBang --json number --limit 1 --jq .[0].number" (codeDir + "/Napper")
-if napperPrNum <> "" && napperPrNum <> "null" then
-    printfn "    Napper PR#: %s" napperPrNum
-    let tsvOutput = runShell (gh + " pr view " + napperPrNum + " --json statusCheckRollup --jq '.statusCheckRollup[] | [.name, (.conclusion // \"NONE\"), (.status // \"NONE\"), .detailsUrl, .startedAt] | @tsv'") (codeDir + "/Napper")
-    let lines = tsvOutput.Split('\n')
-    let failedChecks = lines |> Array.filter (fun l -> l.Contains("FAILURE"))
-    assert_true "Napper has at least 1 failure" (failedChecks.Length >= 1)
-    for f in failedChecks do
-        printfn "      Failed: %s" (f.Split('\t').[0])
-else
-    printfn "    SKIP: Napper has no open PR"
-
-// ============================================================
-printfn "\n=== TEST: Failed job logs via API ==="
-if forgePrNum <> "" && forgePrNum <> "null" then
-    // Get repo slug
-    let remote = run "git" "remote get-url origin" (codeDir + "/forge")
-    let cleaned = remote.Replace(".git", "").TrimEnd('/')
-    let parts = cleaned.Split('/')
-    let slug = parts.[parts.Length - 2] + "/" + parts.[parts.Length - 1]
-    printfn "    Repo slug: %s" slug
-
-    // Get run ID from detailsUrl
-    let detailsUrl = runShell (gh + " pr view " + forgePrNum + " --json statusCheckRollup --jq '.statusCheckRollup[0].detailsUrl'") (codeDir + "/forge")
-    assert_true "detailsUrl is not empty" (detailsUrl <> "")
-    let urlParts = detailsUrl.Split('/')
-    let runIdx = urlParts |> Array.tryFindIndex (fun p -> p = "runs")
-    match runIdx with
-    | Some i ->
-        let runId = urlParts.[i + 1]
-        printfn "    Run ID: %s" runId
-
-        // Get failed jobs via API
-        let failedJobsTsv = runShell (gh + " api repos/" + slug + "/actions/runs/" + runId + "/jobs --jq '.jobs[] | select(.conclusion==\"failure\") | [(.id|tostring), .name] | @tsv'") (codeDir + "/forge")
-        assert_true "failed jobs TSV is not empty" (failedJobsTsv <> "")
-        let jobLines = failedJobsTsv.Split('\n')
-        assert_true "at least 1 failed job" (jobLines.Length >= 1)
-        for jl in jobLines do
-            let jp = jl.Split('\t')
-            assert_true ("job line has id and name: " + jl) (jp.Length >= 2)
-            printfn "      Failed job: %s (ID: %s)" jp.[1] jp.[0]
-
-        // Get actual log for first failed job
-        if jobLines.Length > 0 then
-            let firstJobId = jobLines.[0].Split('\t').[0].Trim()
-            let jobLog = runShell (gh + " api repos/" + slug + "/actions/jobs/" + firstJobId + "/logs") (codeDir + "/forge")
-            assert_true "job log is not empty" (jobLog <> "")
-            assert_true "job log has multiple lines" (jobLog.Split('\n').Length > 5)
-            printfn "      Log lines: %d" (jobLog.Split('\n').Length)
-    | None ->
-        failed <- failed + 1
-        printfn "  FAIL: could not extract run ID from detailsUrl"
-
-// ============================================================
-printfn "\n=== TEST: HTML report was generated ==="
-let reportPath = codeDir + "/project_status/repo-report.html"
-assert_true "repo-report.html exists" (File.Exists(reportPath))
-let html = File.ReadAllText(reportPath)
+printfn "\n=== TEST: HTML structure ==="
 assert_true "HTML is not empty" (html.Length > 100)
-assert_contains "HTML has table" html "<table>"
-assert_contains "HTML has CI Error column" html "CI Error"
-
-// Check CI failures appear in HTML
-assert_contains "HTML contains FAILURE status" html "FAILURE"
-// Check that failed check names appear
-assert_contains "HTML has forge .NET error" html ".NET"
-// Check modals exist
-assert_contains "HTML has modal-overlay divs" html "modal-overlay"
-assert_contains "HTML has Copy Log button" html "Copy Log"
-// Check auto-refresh JS exists (not meta refresh)
-assert_true "No meta http-equiv refresh" (not (html.Contains("http-equiv=\"refresh\"")))
-assert_contains "JS-based auto refresh with modal check" html "modal-overlay.active"
-assert_contains "Has setInterval for refresh" html "setInterval"
-// Check modal has pre tag with log content
-assert_contains "Modal has pre tag for logs" html "<pre id="
-// Check that the log content is not empty in the pre tags
-let preCount = html.Split([|"<pre id="|], StringSplitOptions.None).Length - 1
-assert_true ("HTML has " + string preCount + " log pre tags (should be >= 3)") (preCount >= 3)
-
-// Check color classes
-assert_contains "HTML has ok class (green)" html "class=\"ok\""
-assert_contains "HTML has err class (red)" html "class=\"err\""
-assert_contains "HTML has warn class (yellow)" html "class=\"warn\""
+assert_contains "has DOCTYPE" html "<!DOCTYPE html>"
+assert_contains "has table" html "<table>"
+assert_contains "has h1 title" html "<h1>Repo Report</h1>"
+assert_contains "has meta generation line" html "Generated:"
+assert_contains "has Repos scanned count" html "Repos scanned:"
 
 // ============================================================
-printfn "\n=== TEST: repos without PR should have empty CI ==="
-// project_status is on main with no PR
-let psPrNum = run "gh" "pr list --state open --head main --json number --limit 1 --jq .[0].number" (codeDir + "/project_status")
-let hasNoPR = psPrNum = "" || psPrNum = "null"
-assert_true "project_status has no open PR on main" hasNoPR
+printfn "\n=== TEST: expected columns ==="
+assert_contains "has Repository column" html "Repository"
+assert_contains "has Uncommitted column" html "Uncommitted"
+assert_contains "has Last Commit column" html "Last Commit"
+assert_contains "has Branch column" html "Branch"
+assert_contains "has PR Branch column" html "PR Branch"
+assert_contains "has Push Status column" html "Push Status"
+assert_contains "has Open PR column" html "Open PR"
+assert_contains "has CI column" html ">CI<"
+assert_contains "has CI Date column" html "CI Date"
+assert_contains "has CI Error column" html "CI Error"
+assert_contains "has Release column" html "Release"
+
+// ============================================================
+printfn "\n=== TEST: mock repos appear in report ==="
+assert_contains "alpha-service in report" html "alpha-service"
+assert_contains "beta-api in report" html "beta-api"
+assert_contains "gamma-client in report" html "gamma-client"
+assert_contains "delta-lib in report" html "delta-lib"
+assert_contains "epsilon-tool in report" html "epsilon-tool"
+
+// ============================================================
+printfn "\n=== TEST: branches shown correctly ==="
+assert_contains "main branch shown" html "main"
+assert_contains "feature/auth branch shown" html "feature/auth"
+assert_contains "fix/bug-42 branch shown" html "fix/bug-42"
+
+// ============================================================
+printfn "\n=== TEST: uncommitted counts ==="
+// beta-api has 3 dirty files, epsilon-tool has 5
+// These should show as red (err class) since they're > 0
+assert_contains "has err class for dirty repos" html "class=\"err\""
+// alpha-service and delta-lib are clean (0) — should show ok class
+assert_contains "has ok class for clean repos" html "class=\"ok\""
+
+// ============================================================
+printfn "\n=== TEST: tabs ==="
+assert_contains "has Repo Status tab" html "Repo Status"
+assert_contains "has Community PRs tab" html "Community PRs"
+assert_contains "has Community Issues tab" html "Community Issues"
+assert_contains "has tab-repos div" html "id=\"tab-repos\""
+assert_contains "has tab-prs div" html "id=\"tab-prs\""
+assert_contains "has tab-issues div" html "id=\"tab-issues\""
+
+// ============================================================
+printfn "\n=== TEST: JavaScript functionality ==="
+assert_contains "has showTab function" html "showTab"
+assert_contains "has setInterval for auto-refresh" html "setInterval"
+assert_contains "has modal-overlay CSS" html "modal-overlay"
+assert_contains "has copyLog function" html "copyLog"
+assert_contains "has Escape key handler" html "Escape"
+assert_true "no meta http-equiv refresh" (not (html.Contains("http-equiv=\"refresh\"")))
+assert_contains "JS auto refresh checks for open modal" html "modal-overlay.active"
+
+// ============================================================
+printfn "\n=== TEST: community sections handle empty state ==="
+// We passed empty GITHUB_OWNERS so no community items
+assert_contains "no community PRs message" html "No community PRs found"
+assert_contains "no community issues message" html "No community issues found"
+
+// ============================================================
+// CLEANUP
+// ============================================================
+printfn "\n=== CLEANUP ==="
+try
+    Directory.Delete(fixturesDir, true)
+    printfn "    Deleted fixtures dir"
+with ex ->
+    printfn "    Warning: could not delete fixtures: %s" ex.Message
 
 // ============================================================
 printfn "\n\n=========================================="

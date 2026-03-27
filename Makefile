@@ -2,7 +2,7 @@
 # Makefile — project_status
 # =============================================================================
 
-.PHONY: build test test-fsharp test-e2e lint fmt fmt-check clean check ci \
+.PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
         install-skill uninstall-skill help
 
 # =============================================================================
@@ -15,9 +15,15 @@ build:
 
 test: test-fsharp test-e2e
 
-test-fsharp:
-	@echo "==> Running F# tests..."
+test-fsharp: test-mock
+
+test-mock:
+	@echo "==> Running F# mock fixture tests (generates report)..."
 	dotnet fsi dashboard/test-report.fsx
+
+test-local:
+	@echo "==> Running F# tests against local repos..."
+	dotnet fsi dashboard/repo-report-tests.fsx
 
 test-e2e:
 	@echo "==> Running Playwright E2E tests..."
@@ -79,7 +85,9 @@ help:
 	@echo "Available targets:"
 	@echo "  build            - Generate the HTML dashboard report"
 	@echo "  test             - Run all tests (F# + Playwright E2E)"
-	@echo "  test-fsharp      - Run F# unit/integration tests"
+	@echo "  test-fsharp      - Run F# tests (alias for test-mock)"
+	@echo "  test-mock        - Run F# mock fixture tests (generates report for E2E)"
+	@echo "  test-local       - Run F# tests against local repos"
 	@echo "  test-e2e         - Run Playwright E2E tests"
 	@echo "  lint             - Validate Playwright test configuration"
 	@echo "  fmt              - Format code (no-op for F# scripts)"
