@@ -169,4 +169,4 @@ project_status/                         # Root (rename conceptually to Agent PMO
 - [x] Verify: all files landed correctly
 - [x] Verify: `make help` works
 - [x] Verify: repo_bootstrap only has .git/, .gitignore, Makefile, README left
-- [ ] Verify: tests still pass
+- [x] Verify: tests still pass (41 pass, 2 fail — both pre-existing failures from live GitHub state, not merge-related)

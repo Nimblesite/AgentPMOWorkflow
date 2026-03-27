@@ -25,14 +25,13 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "lf"
 
-[tool.pyright]
-pythonVersion = "3.12"
-typeCheckingMode = "strict"
-reportMissingImports = true
-reportMissingTypeStubs = true
-reportUnknownVariableType = true
-reportUnknownMemberType = true
-reportUnknownParameterType = true
-reportUnknownArgumentType = true
-reportUntypedFunctionDecorator = true
-useLibraryCodeForTypes = true
+[tool.basilisk]
+python-version = "3.12"
+python-platform = "All"
+include = ["src/", "tests/"]
+exclude = ["**/migrations/**", "**/generated/**"]
+
+[tool.basilisk.mojo-safety]
+ownership = true
+immutability = true
+no-implicit-coercion = true
