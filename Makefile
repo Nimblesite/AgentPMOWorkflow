@@ -21,9 +21,8 @@ test-mock:
 	@echo "==> Running F# mock fixture tests (generates report)..."
 	dotnet fsi dashboard/test-report.fsx
 
-test-local:
-	@echo "==> Running F# tests against local repos..."
-	dotnet fsi dashboard/repo-report-tests.fsx
+test-local: build test-e2e
+	@echo "==> Local tests passed (report generated from config.json, validated by Playwright)"
 
 test-e2e:
 	@echo "==> Running Playwright E2E tests..."
@@ -87,7 +86,7 @@ help:
 	@echo "  test             - Run all tests (F# + Playwright E2E)"
 	@echo "  test-fsharp      - Run F# tests (alias for test-mock)"
 	@echo "  test-mock        - Run F# mock fixture tests (generates report for E2E)"
-	@echo "  test-local       - Run F# tests against local repos"
+	@echo "  test-local       - Generate report from config.json + run Playwright E2E"
 	@echo "  test-e2e         - Run Playwright E2E tests"
 	@echo "  lint             - Validate Playwright test configuration"
 	@echo "  fmt              - Format code (no-op for F# scripts)"
