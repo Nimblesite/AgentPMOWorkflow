@@ -139,7 +139,6 @@ dotnet fsi repo-report.fsx
 ```
 project_status/
 ├── .claude/
-│   └── skills/                    # Project-specific Claude skills
 ├── .devcontainer/
 ├── .github/
 │   ├── workflows/
