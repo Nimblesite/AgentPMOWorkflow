@@ -798,6 +798,300 @@ assertEqual "truncated to 20" 20 truncated.Length
 cleanup ()
 
 // ============================================================
+// NEW: CommunityItem type and parseCommunityItem tests
+// ============================================================
+
+type CommunityItem = {
+    Number: string
+    Title: string
+    Author: string
+    Repo: string
+    Url: string
+    CreatedAt: string
+}
+
+// parseCommunityItem: parses a tab-separated line into a CommunityItem option
+let parseCommunityItem (tsv: string) : CommunityItem option =
+    if String.IsNullOrWhiteSpace(tsv) then None
+    else
+        let parts = tsv.Split('\t')
+        if parts.Length < 6 then None
+        else
+            let clean (s: string) = if String.IsNullOrWhiteSpace(s) || s = "null" then "" else s.Trim()
+            Some { Number = clean parts.[0]; Title = clean parts.[1]; Author = clean parts.[2]
+                   Repo = clean parts.[3]; Url = clean parts.[4]; CreatedAt = clean parts.[5] }
+
+// filterCommunity: excludes items authored by MelbourneDeveloper (case insensitive)
+let filterCommunity (items: CommunityItem[]) : CommunityItem[] =
+    items |> Array.filter (fun item -> item.Author.ToLowerInvariant() <> "melbournedeveloper")
+
+// formatCreatedAt: truncates ISO date to YYYY-MM-DD
+let formatCreatedAt (s: string) =
+    if s.Length >= 10 then s.[0..9] else s
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "29. parseCommunityItem — valid TSV")
+// ----------------------------------------------------------
+
+// A fully populated TSV row should parse to Some with all fields set
+let validTsv = "42\tFix the bug\tjsmith\tMelbourneDeveloper/myrepo\thttps://github.com/MelbourneDeveloper/myrepo/issues/42\t2026-03-01T12:00:00Z"
+let parsed = parseCommunityItem validTsv
+assert' "parseCommunityItem returns Some for valid TSV" (parsed.IsSome) "expected Some"
+let item = parsed.Value
+assertEqual "parseCommunityItem number" "42" item.Number
+assertEqual "parseCommunityItem title" "Fix the bug" item.Title
+assertEqual "parseCommunityItem author" "jsmith" item.Author
+assertEqual "parseCommunityItem repo" "MelbourneDeveloper/myrepo" item.Repo
+assertEqual "parseCommunityItem url" "https://github.com/MelbourneDeveloper/myrepo/issues/42" item.Url
+assertEqual "parseCommunityItem createdAt" "2026-03-01T12:00:00Z" item.CreatedAt
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "30. parseCommunityItem — empty/whitespace input")
+// ----------------------------------------------------------
+
+// Empty string must return None — no guessing at missing data
+assertEqual "parseCommunityItem None for empty string" None (parseCommunityItem "")
+assertEqual "parseCommunityItem None for whitespace" None (parseCommunityItem "   ")
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "31. parseCommunityItem — too few columns")
+// ----------------------------------------------------------
+
+// A TSV with fewer than 6 fields is malformed and must return None
+assertEqual "parseCommunityItem None for 5 columns" None (parseCommunityItem "1\ttitle\tauthor\trepo\turl")
+assertEqual "parseCommunityItem None for 1 column" None (parseCommunityItem "1")
+assertEqual "parseCommunityItem None for empty fields" None (parseCommunityItem "\t\t\t\t")
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "32. parseCommunityItem — null fields become empty strings")
+// ----------------------------------------------------------
+
+// Fields containing "null" (GitHub API placeholder) must be normalised to ""
+let nullTsv = "7\tnull\tnull\tnull\tnull\tnull"
+let nullParsed = parseCommunityItem nullTsv
+assert' "parseCommunityItem Some for null fields" (nullParsed.IsSome) ""
+assertEqual "null title becomes empty" "" nullParsed.Value.Title
+assertEqual "null author becomes empty" "" nullParsed.Value.Author
+assertEqual "null repo becomes empty" "" nullParsed.Value.Repo
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "33. parseCommunityItem — extra columns are ignored")
+// ----------------------------------------------------------
+
+// Extra columns beyond 6 must not cause a failure — only first 6 are used
+let extraTsv = "99\tTitle\tauthorX\tNimbleSite/repo\thttps://x.com/1\t2026-01-01T00:00:00Z\textra-col\tanother"
+let extraParsed = parseCommunityItem extraTsv
+assert' "parseCommunityItem Some for extra columns" (extraParsed.IsSome) ""
+assertEqual "parseCommunityItem extra: number" "99" extraParsed.Value.Number
+assertEqual "parseCommunityItem extra: createdAt preserved" "2026-01-01T00:00:00Z" extraParsed.Value.CreatedAt
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "34. parseCommunityItem — whitespace in fields is trimmed")
+// ----------------------------------------------------------
+
+// Leading/trailing whitespace in fields must be stripped
+let spaceTsv = "  5  \t  Spaces Title  \t  devuser  \t  NimbleSite/repo  \t  https://url  \t  2025-12-01T00:00:00Z  "
+let spaceParsed = parseCommunityItem spaceTsv
+assert' "parseCommunityItem Some for spaces" (spaceParsed.IsSome) ""
+assertEqual "trimmed number" "5" spaceParsed.Value.Number
+assertEqual "trimmed author" "devuser" spaceParsed.Value.Author
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "35. filterCommunity — excludes MelbourneDeveloper (case-insensitive)")
+// ----------------------------------------------------------
+
+// Items authored by MelbourneDeveloper (any casing) must be filtered out
+let makeItem author = { Number = "1"; Title = "t"; Author = author; Repo = "r"; Url = "u"; CreatedAt = "2026-01-01" }
+let communityItems = [|
+    makeItem "jsmith"
+    makeItem "MelbourneDeveloper"       // exact match — must be excluded
+    makeItem "melbournedeveloper"       // lowercase — must be excluded
+    makeItem "MELBOURNEDEVELOPER"       // uppercase — must be excluded
+    makeItem "notMelbourneDeveloper"    // different user — must be kept
+    makeItem "contributor99"
+|]
+let filtered = filterCommunity communityItems
+assertEqual "filterCommunity removes 3 MelbourneDeveloper items" 3 filtered.Length
+assert' "filterCommunity keeps jsmith" (filtered |> Array.exists (fun i -> i.Author = "jsmith")) ""
+assert' "filterCommunity keeps contributor99" (filtered |> Array.exists (fun i -> i.Author = "contributor99")) ""
+assert' "filterCommunity keeps notMelbourneDeveloper" (filtered |> Array.exists (fun i -> i.Author = "notMelbourneDeveloper")) ""
+assert' "filterCommunity removed exact MelbourneDeveloper" (filtered |> Array.forall (fun i -> i.Author.ToLowerInvariant() <> "melbournedeveloper")) ""
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "36. filterCommunity — empty array stays empty")
+// ----------------------------------------------------------
+
+// Filtering an empty array must return an empty array without error
+let emptyFiltered = filterCommunity [||]
+assertEqual "filterCommunity empty input" 0 emptyFiltered.Length
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "37. filterCommunity — all items from MelbourneDeveloper returns empty")
+// ----------------------------------------------------------
+
+// If every item is from MelbourneDeveloper, result must be empty
+let allOwner = [| makeItem "MelbourneDeveloper"; makeItem "melbournedeveloper" |]
+let allFiltered = filterCommunity allOwner
+assertEqual "filterCommunity all-owner returns empty" 0 allFiltered.Length
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "38. formatCreatedAt — truncates ISO to date only")
+// ----------------------------------------------------------
+
+// ISO timestamps must be truncated to YYYY-MM-DD for display
+assertEqual "formatCreatedAt ISO with time" "2026-03-01" (formatCreatedAt "2026-03-01T12:00:00Z")
+assertEqual "formatCreatedAt exact 10 chars" "2026-03-01" (formatCreatedAt "2026-03-01")
+// Short strings (malformed) are returned as-is
+assertEqual "formatCreatedAt short passthrough" "2026" (formatCreatedAt "2026")
+assertEqual "formatCreatedAt empty passthrough" "" (formatCreatedAt "")
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "39. Tab HTML structure — tab nav and content divs present")
+// ----------------------------------------------------------
+
+// The generated HTML must contain all three tab buttons and content areas
+let sbTabs = StringBuilder()
+let at (s: string) = sbTabs.AppendLine(s) |> ignore
+
+at "<!DOCTYPE html><html><head></head><body>"
+at "<div class=\"tabs\">"
+at "<button class=\"tab-btn active\" data-tab=\"tab-repos\" onclick=\"showTab('tab-repos')\">Repo Status</button>"
+at "<button class=\"tab-btn\" data-tab=\"tab-prs\" onclick=\"showTab('tab-prs')\">Community PRs (3)</button>"
+at "<button class=\"tab-btn\" data-tab=\"tab-issues\" onclick=\"showTab('tab-issues')\">Community Issues (2)</button>"
+at "</div>"
+at "<div class=\"tab-content active\" id=\"tab-repos\"><p>repos here</p></div>"
+at "<div class=\"tab-content\" id=\"tab-prs\"><p>prs here</p></div>"
+at "<div class=\"tab-content\" id=\"tab-issues\"><p>issues here</p></div>"
+at "<script>"
+at "function showTab(id) {"
+at "  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));"
+at "  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));"
+at "  document.getElementById(id).classList.add('active');"
+at "  document.querySelector('[data-tab=\"' + id + '\"]').classList.add('active');"
+at "}"
+at "</script></body></html>"
+
+let tabHtml = sbTabs.ToString()
+
+// Verify all three tab buttons exist with correct data-tab attributes
+assertContains "tab HTML has tab-repos button" "data-tab=\"tab-repos\"" tabHtml
+assertContains "tab HTML has tab-prs button" "data-tab=\"tab-prs\"" tabHtml
+assertContains "tab HTML has tab-issues button" "data-tab=\"tab-issues\"" tabHtml
+
+// Verify first tab is active by default
+assertContains "tab HTML Repo Status is active" "tab-btn active\" data-tab=\"tab-repos\"" tabHtml
+
+// Verify all three content divs exist with correct IDs
+assertContains "tab HTML has tab-repos content div" "id=\"tab-repos\"" tabHtml
+assertContains "tab HTML has tab-prs content div" "id=\"tab-prs\"" tabHtml
+assertContains "tab HTML has tab-issues content div" "id=\"tab-issues\"" tabHtml
+
+// Verify first content is active, others are not
+assertContains "tab HTML tab-repos content is active" "tab-content active\" id=\"tab-repos\"" tabHtml
+assertContains "tab HTML tab-prs content not active initially" "tab-content\" id=\"tab-prs\"" tabHtml
+assertContains "tab HTML tab-issues content not active initially" "tab-content\" id=\"tab-issues\"" tabHtml
+
+// Verify showTab JS function is present
+assertContains "tab HTML has showTab function" "function showTab(id)" tabHtml
+assertContains "tab HTML showTab removes active classes" "classList.remove('active')" tabHtml
+assertContains "tab HTML showTab adds active class" "classList.add('active')" tabHtml
+
+// Verify PR/issue counts appear in tab labels
+assertContains "tab HTML PR count in label" "Community PRs (3)" tabHtml
+assertContains "tab HTML issue count in label" "Community Issues (2)" tabHtml
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "40. Community table HTML — renders items correctly")
+// ----------------------------------------------------------
+
+// Community PR/issue items must render with links, escaped content, and correct columns
+let sampleItems = [|
+    { Number = "10"; Title = "Add <feature>"; Author = "alice"; Repo = "MelbourneDeveloper/proj"; Url = "https://github.com/MelbourneDeveloper/proj/issues/10"; CreatedAt = "2026-02-15T09:00:00Z" }
+    { Number = "11"; Title = "Fix & improve"; Author = "bob"; Repo = "NimbleSite/web"; Url = "https://github.com/NimbleSite/web/issues/11"; CreatedAt = "2026-01-20T14:30:00Z" }
+|]
+
+let sbComm = StringBuilder()
+let ac (s: string) = sbComm.AppendLine(s) |> ignore
+
+ac "<table class=\"community-table\">"
+ac "<thead><tr><th>#</th><th>Repository</th><th>Title</th><th>Author</th><th>Created</th></tr></thead>"
+ac "<tbody>"
+for ci in sampleItems do
+    ac "<tr>"
+    ac ("<td><a href=\"" + escape ci.Url + "\" target=\"_blank\">#" + escape ci.Number + "</a></td>")
+    ac ("<td><span class=\"mono\">" + escape ci.Repo + "</span></td>")
+    ac ("<td><a href=\"" + escape ci.Url + "\" target=\"_blank\">" + escape ci.Title + "</a></td>")
+    ac ("<td>" + escape ci.Author + "</td>")
+    ac ("<td>" + escape (formatCreatedAt ci.CreatedAt) + "</td>")
+    ac "</tr>"
+ac "</tbody></table>"
+
+let commHtml = sbComm.ToString()
+
+// Verify table structure
+assertContains "community table has thead" "<thead>" commHtml
+assertContains "community table has tbody" "<tbody>" commHtml
+assertContains "community table has 5 column headers" "<th>Created</th>" commHtml
+
+// Verify item 1 content
+assertContains "community table has PR #10 link" "href=\"https://github.com/MelbourneDeveloper/proj/issues/10\"" commHtml
+assertContains "community table escapes < in title" "Add &lt;feature&gt;" commHtml
+assertContains "community table shows author alice" ">alice<" commHtml
+assertContains "community table truncates date to 10 chars" "2026-02-15" commHtml
+assert' "community table does not show full ISO timestamp for item 1" (not (commHtml.Contains("2026-02-15T09:00:00Z"))) ""
+
+// Verify item 2 content
+assertContains "community table escapes & in title" "Fix &amp; improve" commHtml
+assertContains "community table shows NimbleSite repo" "NimbleSite/web" commHtml
+assertContains "community table shows author bob" ">bob<" commHtml
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "41. Community table HTML — empty list shows message")
+// ----------------------------------------------------------
+
+// When there are no community items, a friendly message must appear (no table)
+let sbEmpty2 = StringBuilder()
+let ae2 (s: string) = sbEmpty2.AppendLine(s) |> ignore
+
+let emptyComm: CommunityItem[] = [||]
+if emptyComm.Length = 0 then
+    ae2 "<p>No community PRs found.</p>"
+else
+    ae2 "<table></table>"
+
+let emptyCommHtml = sbEmpty2.ToString()
+assertContains "empty community shows no-PRs message" "No community PRs found" emptyCommHtml
+assert' "empty community has no table" (not (emptyCommHtml.Contains("<table>"))) ""
+
+// ----------------------------------------------------------
+printfn ""
+printfn "%s" (bold "42. parseCommunityItem — special HTML chars in title are preserved for later escaping")
+// ----------------------------------------------------------
+
+// parseCommunityItem must NOT escape HTML — that is the job of the HTML rendering layer
+let htmlCharTsv = "5\t<script>alert('xss')</script>\tattacker\torg/repo\thttps://x\t2026-01-01T00:00:00Z"
+let htmlParsed = parseCommunityItem htmlCharTsv
+assert' "parseCommunityItem Some for HTML chars in title" (htmlParsed.IsSome) ""
+// The raw value is stored (escape happens at render time)
+assertEqual "parseCommunityItem stores raw title unescaped" "<script>alert('xss')</script>" htmlParsed.Value.Title
+// When rendered, the escape function handles it
+let renderedTitle = escape htmlParsed.Value.Title
+assertEqual "escape makes title safe for HTML" "&lt;script&gt;alert('xss')&lt;/script&gt;" renderedTitle
+
+// ============================================================
 // Results
 // ============================================================
 

@@ -223,6 +223,47 @@ let getLatestRelease (dir: string) =
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
 
+type CommunityItem = {
+    Number: string
+    Title: string
+    Author: string
+    Repo: string
+    Url: string
+    CreatedAt: string
+}
+
+let parseCommunityItem (tsv: string) : CommunityItem option =
+    if String.IsNullOrWhiteSpace(tsv) then None
+    else
+        let parts = tsv.Split('\t')
+        if parts.Length < 6 then None
+        else
+            let clean (s: string) = if String.IsNullOrWhiteSpace(s) || s = "null" then "" else s.Trim()
+            Some { Number = clean parts.[0]; Title = clean parts.[1]; Author = clean parts.[2]
+                   Repo = clean parts.[3]; Url = clean parts.[4]; CreatedAt = clean parts.[5] }
+
+let searchCommunityItems (itemType: string) (owner: string) : CommunityItem[] =
+    eprintfn "[COMMUNITY] Searching %s for owner=%s" itemType owner
+    let gh = resolveCmd "gh"
+    let jq = "'.[] | [(.number|tostring), .title, .author.login, .repository.nameWithOwner, .url, .createdAt] | @tsv'"
+    let tsvOutput = runShell (gh + " search " + itemType + " --owner " + owner + " --state open --json number,title,author,repository,url,createdAt --limit 50 --jq " + jq) "/"
+    if String.IsNullOrWhiteSpace(tsvOutput) then [||]
+    else
+        tsvOutput.Split('\n')
+        |> Array.choose parseCommunityItem
+        |> Array.filter (fun item ->
+            let author = item.Author.ToLowerInvariant()
+            let repo = item.Repo.ToLowerInvariant()
+            author <> "melbournedeveloper"
+            && not (author.Contains("dependabot"))
+            && not (author.Contains("[bot]"))
+            && not (repo.Contains("device.net")))
+
+let getCommunityItems (itemType: string) : CommunityItem[] =
+    [| "MelbourneDeveloper"; "NimbleSite" |]
+    |> Array.collect (searchCommunityItems itemType)
+    |> Array.sortByDescending (fun item -> item.CreatedAt)
+
 let scriptDir =
     let s = __SOURCE_DIRECTORY__
     if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
@@ -284,6 +325,14 @@ let repos =
 
 printfn "\nBuilding report for %d repos..." repos.Length
 
+printfn "Fetching community PRs..."
+let communityPRs = getCommunityItems "prs"
+printfn "Found %d community PRs" communityPRs.Length
+
+printfn "Fetching community issues..."
+let communityIssues = getCommunityItems "issues"
+printfn "Found %d community issues" communityIssues.Length
+
 let sb = StringBuilder()
 
 let a (s: string) = sb.AppendLine(s) |> ignore
@@ -324,13 +373,28 @@ a ".modal-btn.close { border: none; font-size: 1.2rem; padding: 4px 8px; color: 
 a ".modal-btn.close:hover { color: #2d3748; }"
 a ".modal-body { overflow-y: auto; padding: 16px 20px; flex: 1; }"
 a ".modal-body pre { margin: 0; font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; font-family: 'SF Mono', Monaco, monospace; color: #2d3748; background: #f7fafc; padding: 12px; border-radius: 6px; }"
+a ".tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }"
+a ".tab-btn { padding: 10px 24px; border: none; background: none; cursor: pointer; font-size: 0.9rem; color: #718096; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s; }"
+a ".tab-btn:hover { color: #2d3748; }"
+a ".tab-btn.active { color: #2b6cb0; font-weight: 600; border-bottom: 3px solid #2b6cb0; }"
+a ".tab-content { display: none; }"
+a ".tab-content.active { display: block; }"
+a ".community-table td a { color: #2b6cb0; }"
 a "</style>"
 a "</head>"
 a "<body>"
 a "<h1>Repo Report</h1>"
 
-let metaLine = "<p class=\"meta\">Generated: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " &nbsp;|&nbsp; Repos with changes: " + string repos.Length + "</p>"
+let metaLine = "<p class=\"meta\">Generated: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " &nbsp;|&nbsp; Repos scanned: " + string repos.Length + "</p>"
 a metaLine
+
+a "<div class=\"tabs\">"
+a "<button class=\"tab-btn active\" data-tab=\"tab-repos\" onclick=\"showTab('tab-repos')\">Repo Status</button>"
+a ("<button class=\"tab-btn\" data-tab=\"tab-prs\" onclick=\"showTab('tab-prs')\">Community PRs (" + string communityPRs.Length + ")</button>")
+a ("<button class=\"tab-btn\" data-tab=\"tab-issues\" onclick=\"showTab('tab-issues')\">Community Issues (" + string communityIssues.Length + ")</button>")
+a "</div>"
+
+a "<div class=\"tab-content active\" id=\"tab-repos\">"
 
 if repos.Length = 0 then
     a "<p>No repos with uncommitted changes found.</p>"
@@ -421,6 +485,46 @@ else
             a "</div>"
             a "</div>"
 
+a "</div>" // end tab-repos
+
+// Tab 2: Community PRs
+a "<div class=\"tab-content\" id=\"tab-prs\">"
+if communityPRs.Length = 0 then
+    a "<p>No community PRs found.</p>"
+else
+    a "<table class=\"community-table\">"
+    a "<thead><tr><th>#</th><th>Repository</th><th>Title</th><th>Author</th><th>Created</th></tr></thead>"
+    a "<tbody>"
+    for item in communityPRs do
+        a "<tr>"
+        a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">#" + escape item.Number + "</a></td>")
+        a ("<td><span class=\"mono\">" + escape item.Repo + "</span></td>")
+        a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">" + escape item.Title + "</a></td>")
+        a ("<td>" + escape item.Author + "</td>")
+        a ("<td>" + escape (if item.CreatedAt.Length >= 10 then item.CreatedAt.[0..9] else item.CreatedAt) + "</td>")
+        a "</tr>"
+    a "</tbody></table>"
+a "</div>"
+
+// Tab 3: Community Issues
+a "<div class=\"tab-content\" id=\"tab-issues\">"
+if communityIssues.Length = 0 then
+    a "<p>No community issues found.</p>"
+else
+    a "<table class=\"community-table\">"
+    a "<thead><tr><th>#</th><th>Repository</th><th>Title</th><th>Author</th><th>Created</th></tr></thead>"
+    a "<tbody>"
+    for item in communityIssues do
+        a "<tr>"
+        a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">#" + escape item.Number + "</a></td>")
+        a ("<td><span class=\"mono\">" + escape item.Repo + "</span></td>")
+        a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">" + escape item.Title + "</a></td>")
+        a ("<td>" + escape item.Author + "</td>")
+        a ("<td>" + escape (if item.CreatedAt.Length >= 10 then item.CreatedAt.[0..9] else item.CreatedAt) + "</td>")
+        a "</tr>"
+    a "</tbody></table>"
+a "</div>"
+
 a "<script>"
 a "function copyLog(id) {"
 a "  const el = document.getElementById(id);"
@@ -431,6 +535,17 @@ a "    btn.textContent = 'Copied!';"
 a "    setTimeout(() => btn.textContent = orig, 1500);"
 a "  });"
 a "}"
+a "function showTab(id) {"
+a "  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));"
+a "  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));"
+a "  document.getElementById(id).classList.add('active');"
+a "  document.querySelector('[data-tab=\"' + id + '\"]').classList.add('active');"
+a "  location.hash = id;"
+a "}"
+a "(function() {"
+a "  var saved = location.hash.replace('#', '');"
+a "  if (saved && document.getElementById(saved)) showTab(saved);"
+a "})();"
 a "document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active')); });"
 a "setInterval(() => { if (!document.querySelector('.modal-overlay.active')) location.reload(); }, 5000);"
 a "</script>"
