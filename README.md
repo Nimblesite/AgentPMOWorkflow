@@ -55,7 +55,7 @@ This isn't cosmetic. It's what makes twenty projects manageable instead of twent
 - **Agent instructions** — a single source of truth that every AI coding tool reads from
 - **Dev environment** — containerized setup so onboarding is one command
 
-The full specification lives in the [repo standards spec](REPO-STANDARDS-SPEC.md). The [enforcement skill](enforce-repo-standards/SKILL.md) applies it automatically.
+The full specification lives in the [repo standards spec](docs/specs/REPO-STANDARDS-SPEC.md). The [enforcement skill](enforce-repo-standards/SKILL.md) applies it automatically.
 
 ### The PMO Dashboard (`repo-report.fsx`)
 
@@ -71,7 +71,7 @@ You're not polling agents. You're not context-switching into each repo to figure
 
 Run the enforcement skill against each repo. It detects the languages present, audits what already exists, and fills in anything missing — build targets, CI pipelines, linting configs, coverage thresholds, agent instructions. Existing configs are merged, not overwritten. Nothing is committed automatically; you review first.
 
-New repos get minted from scratch. Existing repos get remediated incrementally. Either way, the result is the same: a repo that conforms to the [standard spec](REPO-STANDARDS-SPEC.md).
+New repos get minted from scratch. Existing repos get remediated incrementally. Either way, the result is the same: a repo that conforms to the [standard spec](docs/specs/REPO-STANDARDS-SPEC.md).
 
 ### Step 2 — Agents work autonomously
 

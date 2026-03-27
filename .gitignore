@@ -61,22 +61,6 @@ temp/
 scratch/
 
 # =============================================================================
-# DART/FLUTTER
-# =============================================================================
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
-build/
-ephemeral/
-*.iml
-local.properties
-.gradle/
-GeneratedPluginRegistrant.*
-
-# =============================================================================
 # PROJECT-SPECIFIC
 # =============================================================================
 repo-report.html

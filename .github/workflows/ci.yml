@@ -10,93 +10,55 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  COVERAGE_THRESHOLD: "80"
-
 jobs:
-  lint:
-    name: Lint
+  test-fsharp:
+    name: F# Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-dotnet@v4
         with:
-          flutter-version: '3.27.4'
-          channel: 'stable'
-          cache: true
+          dotnet-version: '8.0.x'
 
-      - run: flutter pub get
-        working-directory: app
-      - run: flutter pub get
-        working-directory: cli
-      - run: flutter pub get
-        working-directory: core
+      - name: Run F# tests
+        run: make test-fsharp
 
-      - name: Lint
-        run: make lint
-
-  test:
-    name: Test
+  test-e2e:
+    name: Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint
+    needs: test-fsharp
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-dotnet@v4
         with:
-          flutter-version: '3.27.4'
-          channel: 'stable'
-          cache: true
+          dotnet-version: '8.0.x'
 
-      - run: flutter pub get
-        working-directory: app
-      - run: flutter pub get
-        working-directory: cli
-      - run: flutter pub get
-        working-directory: core
-
-      - name: Test
-        run: make test
-
-      - name: Coverage check
-        run: make coverage-check
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
+      - uses: actions/setup-node@v4
         with:
-          name: coverage-report
-          path: |
-            coverage/
-            lcov.info
-          retention-days: 7
+          node-version: 'lts/*'
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
 
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.27.4'
-          channel: 'stable'
-          cache: true
+      - name: Install Playwright browsers
+        working-directory: dashboard
+        run: npx playwright install --with-deps chromium
 
-      - run: flutter pub get
-        working-directory: app
-
-      - name: Build
+      - name: Generate report
         run: make build
 
-      - name: Upload artifacts
+      - name: Run Playwright tests
+        run: make test-e2e
+
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: failure()
         with:
-          name: build-artifacts
-          path: app/build/
+          name: playwright-report
+          path: dashboard/playwright-report/
           retention-days: 7

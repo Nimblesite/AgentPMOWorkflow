@@ -51,7 +51,7 @@ If the TMC server is available:
 
 Follow these carefully
 
-[https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview()
+[https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
 
 [https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)
 
@@ -60,12 +60,17 @@ Follow these carefully
 ```bash
 make build            # generate the HTML dashboard report
 make test             # run all tests (F# + Playwright E2E)
+make test-fsharp      # run F# unit/integration tests only
+make test-e2e         # run Playwright E2E tests only
 make lint             # validate Playwright test configuration
+make fmt              # format code (no-op for F# scripts)
+make fmt-check        # check formatting (no-op for F# scripts)
 make clean            # remove test artifacts
 make check            # lint + test
 make ci               # lint + test + build
 make install-skill    # symlink enforce-repo-standards into ~/.claude/skills/
 make uninstall-skill  # remove the global skill symlink
+make help             # list all available targets
 ```
 
 ## PMO Dashboard (`dashboard/`)
@@ -99,12 +104,20 @@ dotnet fsi dashboard/repo-report.fsx             # run manually
 
 ```
 project_status/
+├── .devcontainer/                 # Dev container config
+├── .github/
+│   ├── pull_request_template.md
+│   └── workflows/
+│       ├── ci.yml                 # CI pipeline (F# tests + Playwright E2E)
+│       └── release.yml            # Tag-triggered releases
 ├── dashboard/                     # PMO Dashboard
 │   ├── repo-report.fsx            # F# report generator
 │   ├── repo-report-tests.fsx      # F# tests
 │   ├── test-report.fsx            # F# test runner
+│   ├── config.example.json        # Config template
 │   ├── package.json               # Playwright deps
 │   ├── playwright.config.js
+│   ├── README.md
 │   └── tests/
 │       └── repo-report.spec.js    # Playwright E2E tests
 ├── enforce-repo-standards/        # Claude skill for standards enforcement
@@ -112,7 +125,12 @@ project_status/
 │   └── templates/                 # Portfolio-wide templates
 │       ├── CLAUDE.md              # CLAUDE.md template (coding standards live here)
 │       ├── Makefile
-│       ├── .github/workflows/     # CI/CD templates
+│       ├── AGENTS.md
+│       ├── .github/
+│       │   ├── common-repo-settings.md
+│       │   ├── copilot-instructions.md
+│       │   ├── pull_request_template.md
+│       │   └── workflows/         # CI/CD templates
 │       ├── linting/               # Linter configs per language
 │       ├── coverage/              # Coverage configs
 │       ├── devcontainer/          # Devcontainer configs per language
@@ -122,7 +140,12 @@ project_status/
 │   ├── plans/
 │   └── specs/
 │       └── REPO-STANDARDS-SPEC.md # Authoritative standards spec
+├── .editorconfig
+├── .env.example
 ├── AGENT-PMO-WORKFLOW.md          # Vision doc
 ├── CLAUDE.md                      # THIS FILE
-└── Makefile
+├── Dockerfile                     # Container for scheduled report runs
+├── docker-compose.yml             # Orchestrates the scheduler service
+├── Makefile
+└── README.md
 ```
