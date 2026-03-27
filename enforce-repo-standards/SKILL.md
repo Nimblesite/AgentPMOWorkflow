@@ -27,16 +27,23 @@ Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file from the projec
 
 Before creating anything, **inventory what already exists** so you never create duplicates.
 
-#### 2a. CI workflows
+#### 2a. Documentation folder structure
+- Check if a `docs/` directory exists with `specs/` and `plans/` subdirectories.
+- Check for non-standard documentation folders: `doco/`, `documentation/`, `doc/`, `documents/`. These are common variants that agents and humans create instead of the standard `docs/`.
+- If a non-standard folder exists and `docs/` does not, it must be **renamed** to `docs/` in Step 3.
+- If a non-standard folder exists AND `docs/` also exists, the contents must be **merged** into `docs/` and the non-standard folder deleted.
+- Check whether existing docs are properly organised into `specs/` (documents that specify system behavior) and `plans/` (documents that specify how to achieve goals, with TODO checklists). Markdown files sitting loose in the docs root should be classified and moved into the correct subdirectory.
+
+#### 2b. CI workflows
 - List ALL files in `.github/workflows/`. Look for existing CI workflows under any name (e.g., `build.yml`, `ci-build.yml`, `test.yml`, `checks.yml`, `main.yml`, `pull_request.yml`, `pr.yml`).
 - Read each workflow file. If a workflow already does what `ci.yml` should do (lint/test/build on PRs), that IS the CI workflow — **rename it** to `ci.yml` and update it in place. Do NOT create a new `ci.yml` alongside it.
 - Same for release workflows (`publish.yml`, `deploy.yml`, `build-release.yml` → `release.yml`) and pages workflows (`gh-pages.yml`, `pages.yml` → `deploy-pages.yml`).
 
-#### 2b. Makefile
+#### 2c. Makefile
 - If a `Makefile` exists, read it. Merge spec-required targets into the existing file. Preserve any extra custom targets the repo has. Do NOT create a second Makefile or overwrite custom targets.
 - If the repo uses a different build file instead (e.g., `justfile`, `Taskfile.yml`), keep it for reference but create the standard `Makefile` that delegates or replaces it — ask the user if unsure.
 
-#### 2c. Linter configs
+#### 2d. Linter configs
 - Check for equivalent configs under alternate names or locations:
   - ESLint: `.eslintrc.js`, `.eslintrc.cjs`, `.eslintrc.yaml`, `.eslintrc.json` → standardise to `eslint.config.mjs` (ESLint v9+ flat config)
   - Prettier: `.prettierrc`, `.prettierrc.js`, `.prettierrc.yaml`, `prettier.config.js` → standardise to `.prettierrc.json`
@@ -45,20 +52,20 @@ Before creating anything, **inventory what already exists** so you never create 
   - C#: .editorconfig and build props
 - When migrating, **delete the old file** after confirming the new one covers everything. Do NOT leave both.
 
-#### 2d. Formatter configs
+#### 2e. Formatter configs
 - Check for existing formatter setups: CSharpier (`.csharpierrc.json`, `dotnet-tools.json`), Fantomas (`.fantomasrc`, `dotnet-tools.json`), Prettier (`.prettierrc`, `.prettierrc.json`, `.prettierrc.js`, etc.), rustfmt (`rustfmt.toml`), ruff format (`pyproject.toml [tool.ruff.format]`). If `[tool.black]` exists in pyproject.toml, migrate to `[tool.ruff.format]` and remove it.
 - If an equivalent formatter config exists under a non-standard name, migrate it. Do NOT leave duplicates.
 - For Python repos, verify Basilisk is set up as the primary linter (work in progress — configure what's available locally). The formatter is ruff format.
 
-#### 2e. Coverage configs
+#### 2f. Coverage configs
 - Check for existing coverage scripts (`scripts/check_coverage.sh`, `tools/coverage.sh`, etc.). If found, the Makefile `_coverage_check` target replaces them — **delete the old script** after migrating any custom logic.
 - Check for `.coveragerc` vs `pyproject.toml` `[tool.coverage]` — don't have both.
 
-#### 2f. Editor config / gitignore
+#### 2g. Editor config / gitignore
 - If `.editorconfig` exists, merge spec sections into it rather than replacing. Preserve any project-specific overrides that don't conflict.
 - If `.gitignore` exists, merge spec patterns into it rather than replacing. Do NOT duplicate patterns already present.
 
-#### 2g. GitHub repository settings
+#### 2h. GitHub repository settings
 - If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
 - Compare against the standard in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above).
 - If settings already match, leave them alone. Only apply changes for settings that differ.
@@ -85,14 +92,24 @@ This applies especially to:
 
 For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)** if an equivalent exists under the wrong name or with wrong content, rename/update it in place; **(3)** only create from scratch if nothing equivalent exists.
 
-#### 3a. Makefile
+#### 3a. Documentation folder structure
+- If a non-standard doc folder exists (`doco/`, `documentation/`, `doc/`, `documents/`) and no `docs/` exists, **rename it** to `docs/`.
+- If both a non-standard folder and `docs/` exist, **merge** the contents into `docs/` and delete the non-standard folder.
+- Create `docs/specs/` and `docs/plans/` subdirectories if they don't exist.
+- Classify and move any loose markdown files in `docs/` into the correct subdirectory:
+  - Files that specify system behavior, requirements, or standards → `docs/specs/`
+  - Files that describe how to achieve goals or have TODO checklists → `docs/plans/`
+  - Non-markdown files (images, assets, etc.) may remain in `docs/` or a `docs/assets/` subdirectory.
+- Update any internal references (README links, CLAUDE.md paths, etc.) that pointed to the old folder name.
+
+#### 3b. Makefile
 - Merge spec-required targets into existing `Makefile`, or create one if none exists.
 - Uncomment language-specific implementation targets for each detected language.
 - For multi-language repos, chain implementations as described in the spec.
 - Preserve any extra custom targets the repo already has.
 
-#### 3b. GitHub Actions workflows
-- Update/rename the identified existing workflow (from Step 2a), or create `ci.yml` only if no equivalent exists.
+#### 3c. GitHub Actions workflows
+- Update/rename the identified existing workflow (from Step 2b), or create `ci.yml` only if no equivalent exists.
 - Same for `release.yml` and `deploy-pages.yml`.
 - Uncomment the language setup sections that apply.
 - **CRITICAL: Every job in every workflow MUST have `timeout-minutes: 10`** unless there is a documented reason it genuinely needs longer. If a job needs longer than 10 minutes, keep `timeout-minutes` at the required value and add a comment directly above it explaining WHY it must exceed 10 minutes. Example:
@@ -101,7 +118,7 @@ For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)**
   timeout-minutes: 15
   ```
 
-#### 3c. Coverage
+#### 3d. Coverage
 - The `_coverage_check` Makefile target handles coverage enforcement directly — no shell scripts. The coverage check logic is inline in the Makefile per the spec.
 - Each project in the repo has its own coverage threshold stored as a GitHub repo variable (Settings → Variables → Actions). Configure the `coverage-check` CI step with an `env` block that passes the repo variable (e.g., `COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD_PYTHON }}`). **No hardcoded defaults in ci.yml** — the Makefile default (90%) is the fallback for local runs only.
 - Thresholds are **monotonically increasing** (ratchet) — they never go down.
@@ -109,7 +126,7 @@ For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)**
 - For .NET repos, create/update `coverlet.runsettings` per the spec.
 - Delete any old coverage shell scripts that the Makefile target replaces.
 
-#### 3d. Linter configs
+#### 3e. Linter configs
 Apply the exact linter configuration from the spec for each detected language. **Merge into existing files; delete superseded files:**
 - Rust: `Cargo.toml` workspace lints, `rustfmt.toml`
 - TypeScript: `eslint.config.mjs` (flat config), `.prettierrc.json`, `tsconfig.json` strict baseline — merge with existing tsconfig if present, don't clobber project-specific fields like `outDir`, `rootDir`, `include`. Delete old-format equivalents (`.eslintrc.json`, `.eslintrc.js`, `.prettierrc.yaml`, etc.) after migration.
@@ -119,7 +136,7 @@ Apply the exact linter configuration from the spec for each detected language. *
 - C#: `.editorconfig` C# section
 - F#: `.editorconfig` F# section
 
-#### 3e. Formatting
+#### 3f. Formatting
 **Formatting is mandatory.** CI must check formatting and **fail hard** on any formatting violation. The Makefile `fmt` target formats all code in-place; the `fmt-check` target checks formatting without modifying files (used in CI — must exit non-zero on any diff).
 
 Apply the correct formatter for each detected language:
@@ -133,10 +150,10 @@ Apply the correct formatter for each detected language:
 
 For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain all applicable formatters so a single `make fmt-check` validates everything. CI runs `make fmt-check` in the `lint` job and the pipeline **tanks hard on failure** — no warnings, no soft fails.
 
-#### 3f. Editor config
+#### 3g. Editor config
 - Merge spec sections into existing `.editorconfig`, or create one if none exists.
 
-#### 3g. GitHub repository settings
+#### 3h. GitHub repository settings
 Apply the standard GitHub repo settings defined in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
 
 Use the `gh` CLI to configure:
@@ -159,8 +176,9 @@ After all changes, run this checklist to catch any bloat introduced:
 3. **Coverage configs:** Verify no duplicate coverage configs (e.g., both `.coveragerc` and `pyproject.toml [tool.coverage]`). Verify no leftover coverage shell scripts.
 4. **Formatter configs:** For each language, verify only ONE formatter config exists per tool (e.g., not both `.prettierrc` and `.prettierrc.json`; not both `[tool.black]` and `[tool.ruff.format]` in pyproject.toml).
 5. **Build files:** Verify there aren't competing build systems doing the same thing (e.g., both `Makefile` and `Taskfile.yml` with identical targets).
-6. **Skills:** Check `.claude/skills/` — don't create duplicates of skills that already exist under the correct name.
-7. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
+6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
+7. **Skills:** Check `.claude/skills/` — don't create duplicates of skills that already exist under the correct name.
+8. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
 
 In some cases, multiple files may merge into one file. This is optimal as it reduces clutter. **This case overrides the no delete rule**.
 

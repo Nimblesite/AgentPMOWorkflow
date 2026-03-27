@@ -14,7 +14,7 @@ Agent PMO Workflow — a system for running 20+ AI agents across multiple projec
 - **Docs and specs** — markdown files defining the system (`AGENT-PMO-WORKFLOW.md`, `docs/specs/REPO-STANDARDS-SPEC.md`)
 - **One F# script** — `dashboard/repo-report.fsx` generates the HTML dashboard
 - **Playwright E2E tests** — `dashboard/tests/repo-report.spec.js` tests the generated HTML
-- **F# tests** — `dashboard/repo-report-tests.fsx` tests report generation logic
+- **F# tests** — `dashboard/test-report.fsx` unit tests + integration test (generates report from mock repos)
 - **A Claude skill** — `enforce-repo-standards/SKILL.md` applies standards to other repos
 - **Templates** — `enforce-repo-standards/templates/` contains configs, workflows, and CLAUDE.md for target repos
 
@@ -114,8 +114,7 @@ project_status/
 │       └── release.yml            # Tag-triggered releases
 ├── dashboard/                     # PMO Dashboard
 │   ├── repo-report.fsx            # F# report generator
-│   ├── repo-report-tests.fsx      # F# tests
-│   ├── test-report.fsx            # F# test runner
+│   ├── test-report.fsx            # F# unit + integration tests
 │   ├── config.example.json        # Config template
 │   ├── package.json               # Playwright deps
 │   ├── playwright.config.js

@@ -454,6 +454,10 @@ A skill assessing a repo runs through this checklist. Each item is either PRESEN
 
 ```
 STRUCTURE
+[ ] docs/ directory exists (not doco/, documentation/, doc/, etc.)
+[ ] docs/specs/ subdirectory exists
+[ ] docs/plans/ subdirectory exists
+[ ] Non-standard doc folders normalised (doco/, documentation/, doc/ → docs/)
 [ ] .github/workflows/ci.yml
 [ ] .github/workflows/release.yml          (if distributable artifact)
 [ ] .github/workflows/deploy-pages.yml     (if static site)
