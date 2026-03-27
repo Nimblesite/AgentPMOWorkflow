@@ -9,9 +9,9 @@ disable-model-invocation: true
 Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file from the project_status directory. Works on both new and existing repos.
 
 **Finding the spec:** Locate `REPO-STANDARDS-SPEC.md` by checking in order:
-1. `$REPO_BOOTSTRAP_PATH/REPO-STANDARDS-SPEC.md` (if env var is set)
-2. `/workspaces/project_status/REPO-STANDARDS-SPEC.md` (Docker/container)
-3. `~/Documents/Code/project_status/REPO-STANDARDS-SPEC.md` (local dev fallback)
+1. `$REPO_BOOTSTRAP_PATH/docs/specs/REPO-STANDARDS-SPEC.md` (if env var is set)
+2. `/workspaces/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (Docker/container)
+3. `~/Documents/Code/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (local dev fallback)
 
 **NEVER run `git commit`, `git push`, or any git write command.** Read-only git commands (status, log, diff) are fine.
 
@@ -60,7 +60,7 @@ Before creating anything, **inventory what already exists** so you never create 
 
 #### 2g. GitHub repository settings
 - If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
-- Compare against the standard in `<project_status>/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above).
+- Compare against the standard in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above).
 - If settings already match, leave them alone. Only apply changes for settings that differ.
 
 ### CRITICAL — Template Customization Rule
@@ -137,7 +137,7 @@ For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain 
 - Merge spec sections into existing `.editorconfig`, or create one if none exists.
 
 #### 3g. GitHub repository settings
-Apply the standard GitHub repo settings defined in `<project_status>/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
+Apply the standard GitHub repo settings defined in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
 
 Use the `gh` CLI to configure:
 - **Merge settings:** Squash merge only (disable merge commit and rebase merge), auto merge enabled, delete branch on merge enabled, squash commit title = PR_TITLE, message = PR_BODY.
