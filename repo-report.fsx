@@ -223,6 +223,37 @@ let getLatestRelease (dir: string) =
 let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
 
+// ── Configuration ─────────────────────────────────────────────────────────────
+// All values can be overridden via environment variables for Docker / CI use.
+let private envStr (key: string) =
+    let v = Environment.GetEnvironmentVariable(key)
+    if String.IsNullOrWhiteSpace(v) then "" else v.Trim()
+
+let scanDir =
+    let fromEnv = envStr "REPO_SCAN_DIR"
+    if fromEnv <> "" && Directory.Exists(fromEnv) then fromEnv
+    else
+        let s = __SOURCE_DIRECTORY__
+        let d = if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
+        Directory.GetParent(d).FullName
+
+let reportOutputPath =
+    let fromEnv = envStr "REPORT_OUTPUT_PATH"
+    if fromEnv <> "" then fromEnv
+    else
+        let s = __SOURCE_DIRECTORY__
+        let d = if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
+        Path.Combine(d, "repo-report.html")
+
+let githubOwners =
+    let fromEnv = envStr "GITHUB_OWNERS"
+    if fromEnv = "" then [||]
+    else fromEnv.Split(',') |> Array.map (fun s -> s.Trim()) |> Array.filter (fun s -> s <> "")
+
+let excludeAuthor = (envStr "GITHUB_EXCLUDE_AUTHOR").ToLowerInvariant()
+let excludeRepoDomain = (envStr "GITHUB_EXCLUDE_REPO_DOMAIN").ToLowerInvariant()
+// ──────────────────────────────────────────────────────────────────────────────
+
 type CommunityItem = {
     Number: string
     Title: string
@@ -254,24 +285,19 @@ let searchCommunityItems (itemType: string) (owner: string) : CommunityItem[] =
         |> Array.filter (fun item ->
             let author = item.Author.ToLowerInvariant()
             let repo = item.Repo.ToLowerInvariant()
-            author <> "melbournedeveloper"
+            (excludeAuthor = "" || author <> excludeAuthor)
             && not (author.Contains("dependabot"))
             && not (author.Contains("[bot]"))
-            && not (repo.Contains("device.net")))
+            && (excludeRepoDomain = "" || not (repo.Contains(excludeRepoDomain))))
 
 let getCommunityItems (itemType: string) : CommunityItem[] =
-    [| "MelbourneDeveloper"; "NimbleSite" |]
+    githubOwners
     |> Array.collect (searchCommunityItems itemType)
     |> Array.sortByDescending (fun item -> item.CreatedAt)
 
-let scriptDir =
-    let s = __SOURCE_DIRECTORY__
-    if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
-let parentDir = Directory.GetParent(scriptDir).FullName
+printfn "Scanning repos in %s..." scanDir
 
-printfn "Scanning repos in %s..." parentDir
-
-let allDirs = Directory.GetDirectories(parentDir) |> Array.filter isGitRepo
+let allDirs = Directory.GetDirectories(scanDir) |> Array.filter isGitRepo
 
 printfn "Found %d git repos" allDirs.Length
 
@@ -553,6 +579,5 @@ a "</script>"
 a "</body>"
 a "</html>"
 
-let outputPath = Path.Combine(scriptDir, "repo-report.html")
-File.WriteAllText(outputPath, sb.ToString())
-printfn "Report written to %s" outputPath
+File.WriteAllText(reportOutputPath, sb.ToString())
+printfn "Report written to %s" reportOutputPath
