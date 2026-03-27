@@ -350,10 +350,12 @@ let searchCommunityItems (itemType: string) (owner: string) : CommunityItem[] =
         |> Array.filter (fun item ->
             let author = item.Author.ToLowerInvariant()
             let repo = item.Repo.ToLowerInvariant()
+            let repoName = if repo.Contains("/") then repo.Split('/').[1] else repo
             (excludeAuthor = "" || author <> excludeAuthor)
             && not (author.Contains("dependabot"))
             && not (author.Contains("[bot]"))
-            && (excludeRepoDomain = "" || not (repo.Contains(excludeRepoDomain))))
+            && (excludeRepoDomain = "" || not (repo.Contains(excludeRepoDomain)))
+            && not (excludeRepos.Contains(repoName)))
 
 let getCommunityItems (itemType: string) : CommunityItem[] =
     githubOwners

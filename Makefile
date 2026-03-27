@@ -2,48 +2,43 @@
 # Makefile — project_status
 # =============================================================================
 
-.PHONY: build test lint fmt fmt-check clean check ci install-skill uninstall-skill
+.PHONY: build test test-fsharp test-e2e lint fmt fmt-check clean check ci \
+        install-skill uninstall-skill help
 
 # =============================================================================
 # PRIMARY TARGETS
 # =============================================================================
 
 build:
-	@echo "==> Building..."
-	cd app && flutter build apk --debug
+	@echo "==> Building dashboard report..."
+	dotnet fsi dashboard/repo-report.fsx
 
-test:
-	@echo "==> Testing..."
-	cd app && flutter test --coverage
-	@COVERAGE_FILE=app/coverage/lcov.info; \
-	LH=$$(grep '^LH:' "$$COVERAGE_FILE" | awk -F: '{sum+=$$2} END{print sum}'); \
-	LF=$$(grep '^LF:' "$$COVERAGE_FILE" | awk -F: '{sum+=$$2} END{print sum}'); \
-	if [ -z "$$LF" ] || [ "$$LF" -eq 0 ]; then echo "No coverage data found"; exit 1; fi; \
-	PCT=$$(echo "scale=1; $$LH * 100 / $$LF" | bc); \
-	echo "Coverage: $${PCT}% (threshold: 80%)"; \
-	PCT_INT=$$(echo "$$PCT" | awk '{printf "%d", $$1}'); \
-	if [ "$$PCT_INT" -lt 80 ]; then echo "COVERAGE FAILURE: $${PCT}% is below 80%"; exit 1; fi; \
-	echo "COVERAGE OK: $${PCT}% meets 80% threshold"
+test: test-fsharp test-e2e
+
+test-fsharp:
+	@echo "==> Running F# tests..."
+	dotnet fsi dashboard/test-report.fsx
+
+test-e2e:
+	@echo "==> Running Playwright E2E tests..."
+	cd dashboard && npx playwright test
 
 lint:
 	@echo "==> Linting..."
-	dart format --set-exit-if-changed .
-	cd app && flutter analyze --fatal-infos
-	cd cli && dart analyze --fatal-infos
-	cd core && dart analyze --fatal-infos
+	cd dashboard && npx playwright test --list
 
 fmt:
 	@echo "==> Formatting..."
-	dart format .
+	@echo "    No auto-formatter configured for F# scripts."
 
 fmt-check:
 	@echo "==> Checking format..."
-	dart format --set-exit-if-changed .
+	@echo "    No format check configured for F# scripts."
 
 clean:
 	@echo "==> Cleaning..."
-	cd app && flutter clean
-	rm -rf coverage/
+	rm -rf dashboard/test-results/
+	rm -rf dashboard/playwright-report/
 
 check: lint test
 
@@ -54,7 +49,7 @@ ci: lint test build
 # =============================================================================
 
 install-skill:
-	@echo "==> Installing enforce-repo-standards skill globally..."
+	@echo "==> Install Claude Code Skill Globally..."
 	@mkdir -p "$(HOME)/.claude/skills"
 	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
 		echo "    Removing existing symlink..."; \
@@ -82,13 +77,15 @@ uninstall-skill:
 # =============================================================================
 help:
 	@echo "Available targets:"
-	@echo "  build            - Compile/assemble all artifacts"
-	@echo "  test             - Run full test suite with coverage"
-	@echo "  lint             - Run all linters (errors mode)"
-	@echo "  fmt              - Format all code in-place"
-	@echo "  fmt-check        - Check formatting (no modification)"
-	@echo "  clean            - Remove build artifacts"
+	@echo "  build            - Generate the HTML dashboard report"
+	@echo "  test             - Run all tests (F# + Playwright E2E)"
+	@echo "  test-fsharp      - Run F# unit/integration tests"
+	@echo "  test-e2e         - Run Playwright E2E tests"
+	@echo "  lint             - Validate Playwright test configuration"
+	@echo "  fmt              - Format code (no-op for F# scripts)"
+	@echo "  fmt-check        - Check formatting (no-op for F# scripts)"
+	@echo "  clean            - Remove test artifacts"
 	@echo "  check            - lint + test (pre-commit)"
 	@echo "  ci               - lint + test + build (full CI)"
-	@echo "  install-skill    - Symlink enforce-repo-standards skill into ~/.claude/skills/"
+	@echo "  install-skill    - Install Claude Code Skill Globally"
 	@echo "  uninstall-skill  - Remove the global skill symlink"
