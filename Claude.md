@@ -7,8 +7,8 @@
 
 Agent PMO Workflow — a unified system for running 20+ AI agents across multiple projects simultaneously. Two components in one repo:
 
-1. **PMO Dashboard** (`repo-report.fsx`) — F# script that scans repos and generates an HTML status dashboard
-2. **Repo Standards Enforcement** (`enforce-repo-standards/` + `templates/`) — portfolio-wide templates, linter configs, CI workflows, and a Claude skill to apply consistent standards to any repo
+1. **PMO Dashboard** (`dashboard/`) — F# script that scans repos and generates an HTML status dashboard
+2. **Repo Standards Enforcement** (`enforce-repo-standards/`) — portfolio-wide templates, linter configs, CI workflows, and a Claude skill to apply consistent standards to any repo
 
 See `AGENT-PMO-WORKFLOW.md` for the full vision.
 
@@ -87,31 +87,31 @@ make install-skill    # symlink enforce-repo-standards into ~/.claude/skills/
 make uninstall-skill  # remove the global skill symlink
 ```
 
-## Repo Report Dashboard
+## PMO Dashboard (`dashboard/`)
 
-The core of this project is an F# script (`repo-report.fsx`) that scans all git repos under `~/Documents/Code/`, gathers status info (uncommitted changes, branch, push status, open PRs, CI status), and generates an HTML dashboard (`repo-report.html`).
+The dashboard is an F# script (`dashboard/repo-report.fsx`) that scans all git repos under `~/Documents/Code/`, gathers status info (uncommitted changes, branch, push status, open PRs, CI status), and generates a self-contained HTML dashboard (`dashboard/repo-report.html`).
 
 ### How it works
 
-1. `repo-report.fsx` scans `~/Documents/Code/` for git repositories
+1. `dashboard/repo-report.fsx` scans `~/Documents/Code/` for git repositories
 2. For each repo it collects: uncommitted file count, current branch, last commit date, push status (ahead/behind), open PRs (via `gh`), CI status (via `gh`), and latest GitHub release
+3. Generates a self-contained HTML report at `dashboard/repo-report.html`
+4. Logs stdout to `dashboard/repo-report.log`, stderr (debug) to `dashboard/repo-report-debug.log`
 
 ### Critical: PR detection
 
 **Open PRs must always be shown.** The PR lookup first checks for a PR matching the current branch (`--head <branch>`). If none is found, it falls back to listing any open PR in the repo. This is critical because the local branch may differ from the PR branch (e.g., on `TestExplorer` locally while the PR is from `Stuff2`). The "PR Branch" column shows which branch the PR is actually from.
-3. Generates a self-contained HTML report at `repo-report.html`
-4. Logs stdout to `repo-report.log`, stderr (debug) to `repo-report-debug.log`
 
 ### launchd polling (runs every 3 minutes)
 
 A macOS launchd agent polls the report on a 180-second interval:
 
 - **Plist:** `~/Library/LaunchAgents/com.christianfindlay.repo-report.plist`
-- **Command:** `dotnet fsi repo-report.fsx`
+- **Command:** `dotnet fsi dashboard/repo-report.fsx`
 - **Interval:** 180 seconds (3 minutes)
 - **RunAtLoad:** true (starts on login)
-- **Stdout log:** `repo-report.log`
-- **Stderr log:** `repo-report-debug.log`
+- **Stdout log:** `dashboard/repo-report.log`
+- **Stderr log:** `dashboard/repo-report-debug.log`
 
 ### launchd management commands
 
@@ -126,13 +126,14 @@ launchctl unload ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
 launchctl load ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
 
 # Run manually
-dotnet fsi repo-report.fsx
+dotnet fsi dashboard/repo-report.fsx
 ```
 
 ### Test files
 
-- `repo-report-tests.fsx` — tests for the report generation logic
-- `test-report.fsx` — test runner script
+- `dashboard/repo-report-tests.fsx` — F# tests for the report generation logic
+- `dashboard/test-report.fsx` — F# test runner script
+- `dashboard/tests/repo-report.spec.js` — Playwright E2E tests for the HTML report
 
 ## Architecture
 
@@ -145,10 +146,14 @@ project_status/
 │   │   ├── ci.yml
 │   │   └── release.yml
 │   └── pull_request_template.md
-├── project_status_ui/             # Flutter app (WIP)
-│   ├── app/                       # Flutter app scaffold
-│   ├── cli/                       # CLI tool
-│   └── core/                      # Shared core library
+├── dashboard/                     # PMO Dashboard (F# + Playwright tests)
+│   ├── repo-report.fsx            # F# report generator script
+│   ├── repo-report-tests.fsx      # F# tests for report logic
+│   ├── test-report.fsx            # F# test runner
+│   ├── package.json               # Playwright dependencies
+│   ├── playwright.config.js       # Playwright config
+│   └── tests/
+│       └── repo-report.spec.js    # Playwright E2E tests
 ├── enforce-repo-standards/        # Global Claude skill for standards enforcement
 │   ├── SKILL.md
 │   └── templates/                 # Portfolio-wide repo templates
@@ -160,11 +165,11 @@ project_status/
 │       ├── linting/               # Language-specific linter configs
 │       ├── coverage/              # Coverage config templates
 │       └── skills/                # Standard skill templates
-├── repo-report.fsx                # F# report generator script
-├── repo-report-tests.fsx          # Tests for report logic
-├── test-report.fsx                # Test runner
+├── docs/
+│   ├── plans/                     # Planning documents
+│   └── specs/
+│       └── REPO-STANDARDS-SPEC.md # Authoritative standards spec
 ├── AGENT-PMO-WORKFLOW.md          # Vision doc
-├── REPO-STANDARDS-SPEC.md         # Authoritative standards spec
 ├── Dockerfile                     # Docker dev environment
 ├── docker-compose.yml
 ├── .editorconfig

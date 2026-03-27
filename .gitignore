@@ -81,6 +81,7 @@ GeneratedPluginRegistrant.*
 # =============================================================================
 repo-report.html
 *.log
+dashboard/config.json
 
 # Node/Playwright
 node_modules/

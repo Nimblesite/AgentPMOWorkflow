@@ -45,7 +45,7 @@ COPY . /workspaces/project_status
 RUN mkdir -p /output
 
 # Create the crontab: run project_status every 5 minutes
-RUN echo '*/5 * * * * dotnet fsi /workspaces/project_status/repo-report.fsx >> /output/repo-report.log 2>> /output/repo-report-debug.log' \
+RUN echo '*/5 * * * * dotnet fsi /workspaces/project_status/dashboard/repo-report.fsx >> /output/repo-report.log 2>> /output/repo-report-debug.log' \
     > /etc/supercronic-crontab
 
 # Environment variables (all overridable at runtime via docker-compose / .env)

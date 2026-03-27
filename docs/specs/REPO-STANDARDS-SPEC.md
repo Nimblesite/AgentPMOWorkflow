@@ -12,9 +12,7 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
 
 ## 0. Design Principles
 
-1. **Uniformity over flexibility.** Makefile targets, CI job names, and coverage commands are
-   identical regardless of language. A developer switching repos should never have to guess
-   what to type.
+1. **Docs are the source of truth.** The specs folder holds docs that SPECIFY the behavior of the system. The plans folder holds docs that specify how to achieve some goal. All plan docs MUST have a TODO list with checkboxes at the bottom of the document. We use these instead of inbuilt agent TODO lists because it allows us to track TODOs across agents and sessions
 2. **Templates are starting points, not copy-paste targets.** Every config file required by this spec
    has a template in [`templates/`](templates/). The skill uses these as a baseline but MUST customize
    them for the target repo — stripping irrelevant language sections, filling placeholders, and

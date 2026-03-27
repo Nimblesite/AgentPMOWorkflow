@@ -224,34 +224,85 @@ let escape (s: string) =
     s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
 
 // ── Configuration ─────────────────────────────────────────────────────────────
-// All values can be overridden via environment variables for Docker / CI use.
+// Priority: environment variable > config.json > built-in default.
+// See config.example.json for the schema.
+
 let private envStr (key: string) =
     let v = Environment.GetEnvironmentVariable(key)
     if String.IsNullOrWhiteSpace(v) then "" else v.Trim()
 
+let private scriptDir =
+    let s = __SOURCE_DIRECTORY__
+    if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
+
+let private configPath = Path.Combine(scriptDir, "config.json")
+
+// Minimal JSON value parser — handles only the flat object we need.
+// Avoids a NuGet dependency for a five-field config file.
+let private configValues =
+    if File.Exists(configPath) then
+        eprintfn "[CONFIG] Loading %s" configPath
+        let lines = File.ReadAllText(configPath)
+        lines.Split('\n')
+        |> Array.choose (fun line ->
+            let t = line.Trim().TrimEnd(',')
+            if t.StartsWith("\"") then
+                let colonIdx = t.IndexOf(':')
+                if colonIdx > 0 then
+                    let key = t.[1 .. colonIdx - 1].Trim().TrimEnd('"')
+                    let raw = t.[colonIdx + 1 ..].Trim()
+                    let value =
+                        if raw.StartsWith("\"") && raw.EndsWith("\"") then raw.[1 .. raw.Length - 2]
+                        else raw
+                    Some (key, value)
+                else None
+            else None)
+        |> Map.ofArray
+    else
+        eprintfn "[CONFIG] No config.json found at %s — using defaults + env vars" scriptDir
+        Map.empty
+
+let private cfgStr (key: string) =
+    match configValues |> Map.tryFind key with
+    | Some v when not (String.IsNullOrWhiteSpace(v)) -> v
+    | _ -> ""
+
+let private cfgArr (key: string) =
+    let v = cfgStr key
+    if v = "" then [||]
+    else v.Split(',') |> Array.map (fun s -> s.Trim()) |> Array.filter (fun s -> s <> "")
+
+// Resolve each setting: env var wins, then config.json, then default.
 let scanDir =
     let fromEnv = envStr "REPO_SCAN_DIR"
     if fromEnv <> "" && Directory.Exists(fromEnv) then fromEnv
     else
-        let s = __SOURCE_DIRECTORY__
-        let d = if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
-        Directory.GetParent(d).FullName
+        let fromCfg = cfgStr "scanDir"
+        if fromCfg <> "" && Directory.Exists(fromCfg) then fromCfg
+        else Directory.GetParent(scriptDir).FullName
 
 let reportOutputPath =
     let fromEnv = envStr "REPORT_OUTPUT_PATH"
     if fromEnv <> "" then fromEnv
     else
-        let s = __SOURCE_DIRECTORY__
-        let d = if String.IsNullOrWhiteSpace(s) then Directory.GetCurrentDirectory() else s
-        Path.Combine(d, "repo-report.html")
+        let fromCfg = cfgStr "reportOutputPath"
+        if fromCfg <> "" then fromCfg
+        else Path.Combine(scriptDir, "repo-report.html")
 
 let githubOwners =
     let fromEnv = envStr "GITHUB_OWNERS"
-    if fromEnv = "" then [||]
-    else fromEnv.Split(',') |> Array.map (fun s -> s.Trim()) |> Array.filter (fun s -> s <> "")
+    if fromEnv <> "" then fromEnv.Split(',') |> Array.map (fun s -> s.Trim()) |> Array.filter (fun s -> s <> "")
+    else cfgArr "githubOwners"
 
-let excludeAuthor = (envStr "GITHUB_EXCLUDE_AUTHOR").ToLowerInvariant()
-let excludeRepoDomain = (envStr "GITHUB_EXCLUDE_REPO_DOMAIN").ToLowerInvariant()
+let excludeAuthor =
+    let fromEnv = envStr "GITHUB_EXCLUDE_AUTHOR"
+    (if fromEnv <> "" then fromEnv else cfgStr "excludeAuthor").ToLowerInvariant()
+
+let excludeRepoDomain =
+    let fromEnv = envStr "GITHUB_EXCLUDE_REPO_DOMAIN"
+    (if fromEnv <> "" then fromEnv else cfgStr "excludeRepoDomain").ToLowerInvariant()
+
+eprintfn "[CONFIG] scanDir=%s  reportOutputPath=%s  githubOwners=%s" scanDir reportOutputPath (String.Join(",", githubOwners))
 // ──────────────────────────────────────────────────────────────────────────────
 
 type CommunityItem = {
