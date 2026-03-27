@@ -42,7 +42,7 @@ gh auth status         # confirm you are logged in
 | `excludeAuthor` | no | GitHub username to exclude from community results (e.g. bot accounts) |
 | `excludeRepoDomain` | no | Domain substring to exclude repos from community results |
 
-Environment variables (`REPO_SCAN_DIR`, `GITHUB_OWNERS`, etc.) override config.json values. See the Docker setup in the root `docker-compose.yml` for the full env var list.
+Environment variables (`REPO_SCAN_DIR`, `GITHUB_OWNERS`, etc.) override config.json values. See the Docker setup in the root `compose.yaml` for the full env var list.
 
 `config.json` is gitignored — it contains machine-specific paths.
 

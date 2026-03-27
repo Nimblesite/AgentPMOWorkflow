@@ -1,5 +1,5 @@
-# Dev environment container: runs the F# report on a cron schedule
-# using supercronic. Templates and enforce-repo-standards skill included.
+# Dev environment container for project_status.
+# Includes dotnet SDK, gh CLI, Node.js, and supercronic for scheduled report runs.
 #
 # Build context: project_status root
 
