@@ -1,6 +1,8 @@
 {
   "scanDir": "/Users/you/Documents/Code",
   "githubOwners": "your-github-username",
+  "maxRepos": "20",
+  "excludeRepos": "",
   "excludeAuthor": "",
   "excludeRepoDomain": ""
 }

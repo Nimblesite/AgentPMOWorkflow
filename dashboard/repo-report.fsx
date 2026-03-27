@@ -302,7 +302,21 @@ let excludeRepoDomain =
     let fromEnv = envStr "GITHUB_EXCLUDE_REPO_DOMAIN"
     (if fromEnv <> "" then fromEnv else cfgStr "excludeRepoDomain").ToLowerInvariant()
 
-eprintfn "[CONFIG] scanDir=%s  reportOutputPath=%s  githubOwners=%s" scanDir reportOutputPath (String.Join(",", githubOwners))
+let maxRepos =
+    let fromEnv = envStr "MAX_REPOS"
+    let fromCfg = cfgStr "maxRepos"
+    let raw = if fromEnv <> "" then fromEnv elif fromCfg <> "" then fromCfg else "20"
+    match System.Int32.TryParse(raw) with
+    | true, n when n > 0 -> n
+    | _ -> 20
+
+let excludeRepos =
+    let fromEnv = envStr "EXCLUDE_REPOS"
+    let raw = if fromEnv <> "" then fromEnv else cfgStr "excludeRepos"
+    if raw = "" then Set.empty
+    else raw.Split(',') |> Array.map (fun s -> s.Trim().ToLowerInvariant()) |> Array.filter (fun s -> s <> "") |> Set.ofArray
+
+eprintfn "[CONFIG] scanDir=%s  reportOutputPath=%s  githubOwners=%s  maxRepos=%d  excludeRepos=%s" scanDir reportOutputPath (String.Join(",", githubOwners)) maxRepos (String.Join(",", excludeRepos))
 // ──────────────────────────────────────────────────────────────────────────────
 
 type CommunityItem = {
@@ -348,15 +362,31 @@ let getCommunityItems (itemType: string) : CommunityItem[] =
 
 printfn "Scanning repos in %s..." scanDir
 
-let allDirs = Directory.GetDirectories(scanDir) |> Array.filter isGitRepo
+let allDirs =
+    Directory.GetDirectories(scanDir)
+    |> Array.filter isGitRepo
+    |> Array.filter (fun dir -> not (excludeRepos.Contains(Path.GetFileName(dir).ToLowerInvariant())))
 
-printfn "Found %d git repos" allDirs.Length
+printfn "Found %d git repos (after exclusions)" allDirs.Length
 
-// Pick top 20 by filesystem last write time, then scan only those
-let dirs =
+// First pass: sort by folder modified date (cheap, no git calls)
+let candidateDirs =
     allDirs
     |> Array.sortByDescending (fun dir -> Directory.GetLastWriteTimeUtc(dir))
-    |> Array.truncate 20
+
+// Second pass: get last commit date for each candidate, pick top N
+printfn "Getting commit dates for %d repos..." candidateDirs.Length
+let dirs =
+    candidateDirs
+    |> Array.map (fun dir ->
+        let commitDate = getLastEditDate dir
+        eprintfn "[SORT] %s  commit=%s" (Path.GetFileName(dir)) commitDate
+        (dir, commitDate))
+    |> Array.sortByDescending snd
+    |> Array.truncate maxRepos
+    |> Array.map fst
+
+printfn "Selected top %d repos by last commit date" dirs.Length
 
 type RepoInfo = {
     Name: string
@@ -398,7 +428,7 @@ let repos =
           CILog = ciLog; CIUrl = ciUrl
           ReleaseTag = relTag; ReleaseDate = relDate; ReleaseUrl = relUrl }
     )
-    |> Array.sortByDescending (fun r -> r.FolderModified)
+    |> Array.sortByDescending (fun r -> r.LastEdit)
 
 printfn "\nBuilding report for %d repos..." repos.Length
 
@@ -457,6 +487,9 @@ a ".tab-btn.active { color: #2b6cb0; font-weight: 600; border-bottom: 3px solid 
 a ".tab-content { display: none; }"
 a ".tab-content.active { display: block; }"
 a ".community-table td a { color: #2b6cb0; }"
+a ".filter-bar { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #4a5568; }"
+a ".filter-bar input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }"
+a ".filter-bar label { cursor: pointer; user-select: none; }"
 a "</style>"
 a "</head>"
 a "<body>"
@@ -564,16 +597,23 @@ else
 
 a "</div>" // end tab-repos
 
+// Owners list embedded in HTML for JS filtering
+let ownersJson = "[" + (githubOwners |> Array.map (fun o -> "\"" + escape (o.ToLowerInvariant()) + "\"") |> fun arr -> String.Join(",", arr)) + "]"
+
 // Tab 2: Community PRs
 a "<div class=\"tab-content\" id=\"tab-prs\">"
 if communityPRs.Length = 0 then
     a "<p>No community PRs found.</p>"
 else
+    a "<div class=\"filter-bar\">"
+    a "<input type=\"checkbox\" id=\"exclude-owner-prs\" onchange=\"applyOwnerFilter('tab-prs', this.checked)\">"
+    a "<label for=\"exclude-owner-prs\">Hide owner PRs</label>"
+    a "</div>"
     a "<table class=\"community-table\">"
     a "<thead><tr><th>#</th><th>Repository</th><th>Title</th><th>Author</th><th>Created</th></tr></thead>"
     a "<tbody>"
     for item in communityPRs do
-        a "<tr>"
+        a ("<tr data-author=\"" + escape (item.Author.ToLowerInvariant()) + "\">")
         a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">#" + escape item.Number + "</a></td>")
         a ("<td><span class=\"mono\">" + escape item.Repo + "</span></td>")
         a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">" + escape item.Title + "</a></td>")
@@ -588,11 +628,15 @@ a "<div class=\"tab-content\" id=\"tab-issues\">"
 if communityIssues.Length = 0 then
     a "<p>No community issues found.</p>"
 else
+    a "<div class=\"filter-bar\">"
+    a "<input type=\"checkbox\" id=\"exclude-owner-issues\" onchange=\"applyOwnerFilter('tab-issues', this.checked)\">"
+    a "<label for=\"exclude-owner-issues\">Hide owner issues</label>"
+    a "</div>"
     a "<table class=\"community-table\">"
     a "<thead><tr><th>#</th><th>Repository</th><th>Title</th><th>Author</th><th>Created</th></tr></thead>"
     a "<tbody>"
     for item in communityIssues do
-        a "<tr>"
+        a ("<tr data-author=\"" + escape (item.Author.ToLowerInvariant()) + "\">")
         a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">#" + escape item.Number + "</a></td>")
         a ("<td><span class=\"mono\">" + escape item.Repo + "</span></td>")
         a ("<td><a href=\"" + escape item.Url + "\" target=\"_blank\">" + escape item.Title + "</a></td>")
@@ -602,7 +646,25 @@ else
     a "</tbody></table>"
 a "</div>"
 
-a "<script>"
+a ("<script>var owners = " + ownersJson + ";")
+a "function applyOwnerFilter(tabId, hide) {"
+a "  localStorage.setItem('hideOwner_' + tabId, hide ? '1' : '0');"
+a "  var rows = document.querySelectorAll('#' + tabId + ' tbody tr');"
+a "  rows.forEach(function(row) {"
+a "    var author = row.getAttribute('data-author');"
+a "    row.style.display = (hide && owners.indexOf(author) !== -1) ? 'none' : '';"
+a "  });"
+a "}"
+a "(function() {"
+a "  ['tab-prs', 'tab-issues'].forEach(function(tabId) {"
+a "    var key = 'hideOwner_' + tabId;"
+a "    var stored = localStorage.getItem(key);"
+a "    var hide = stored === null ? true : stored === '1';"
+a "    var suffix = tabId === 'tab-prs' ? 'prs' : 'issues';"
+a "    var cb = document.getElementById('exclude-owner-' + suffix);"
+a "    if (cb) { cb.checked = hide; applyOwnerFilter(tabId, hide); }"
+a "  });"
+a "})();"
 a "function copyLog(id) {"
 a "  const el = document.getElementById(id);"
 a "  navigator.clipboard.writeText(el.textContent).then(() => {"
