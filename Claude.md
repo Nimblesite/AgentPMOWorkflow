@@ -145,8 +145,8 @@ project_status/
 ├── .env.example
 ├── AGENT-PMO-WORKFLOW.md          # Vision doc
 ├── CLAUDE.md                      # THIS FILE
-├── Dockerfile                     # Container for scheduled report runs
-├── docker-compose.yml             # Orchestrates the scheduler service
+├── Dockerfile.dev                 # Dev environment container
+├── compose.yaml                   # Dev environment orchestration
 ├── Makefile
 └── README.md
 ```
