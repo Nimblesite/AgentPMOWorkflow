@@ -2,6 +2,32 @@
 
 F# script that scans git repos and generates an HTML status report.
 
+## Prerequisites
+
+You need all of the following installed and working before the script will do anything useful:
+
+| Prerequisite | Why | Install |
+|---|---|---|
+| **.NET SDK** (6.0+) | Runs the F# script (`dotnet fsi`) | [dotnet.microsoft.com](https://dotnet.microsoft.com/download) |
+| **Git** | Reads repo status (branch, commits, push state) | `brew install git` or [git-scm.com](https://git-scm.com) |
+| **GitHub CLI (`gh`)** | Fetches open PRs, CI status, releases, and community issues | `brew install gh` |
+
+### GitHub CLI authentication (required)
+
+The script calls `gh pr list`, `gh release view`, `gh search`, and other commands that **require an authenticated session**. If you skip this step, every PR/CI/release column will be blank.
+
+```bash
+gh auth login          # follow the prompts — browser OAuth is easiest
+gh auth status         # confirm you are logged in
+```
+
+### For running E2E tests (optional)
+
+| Prerequisite | Why | Install |
+|---|---|---|
+| **Node.js** (18+) | Runs Playwright tests | [nodejs.org](https://nodejs.org) |
+| **Playwright browsers** | Headless browser for E2E tests | `npx playwright install` (after `npm install`) |
+
 ## Setup
 
 1. Copy `config.example.json` to `config.json` and fill in your values.
