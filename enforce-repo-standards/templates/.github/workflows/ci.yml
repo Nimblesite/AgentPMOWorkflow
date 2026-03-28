@@ -107,10 +107,19 @@ jobs:
       - name: Test
         run: make test
 
-      # Coverage thresholds come from GitHub repo variables (Settings → Variables → Actions)
-      # Per-project, monotonically increasing — never lower. Tanks if not set.
-      # The skill configures the env block here when applying to a specific repo.
+      # Coverage thresholds from GitHub repo variables (Settings → Variables → Actions).
+      # Per-project, monotonically increasing — never lower. Tanks if below threshold.
+      # The skill configures the env block when applying to a specific repo.
+      # Uncomment the COVERAGE_THRESHOLD lines for each language in the repo:
       - name: Coverage check
+        env:
+          COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD || '90' }}
+          # COVERAGE_THRESHOLD_PYTHON: ${{ vars.COVERAGE_THRESHOLD_PYTHON }}
+          # COVERAGE_THRESHOLD_RUST: ${{ vars.COVERAGE_THRESHOLD_RUST }}
+          # COVERAGE_THRESHOLD_TYPESCRIPT: ${{ vars.COVERAGE_THRESHOLD_TYPESCRIPT }}
+          # COVERAGE_THRESHOLD_DOTNET: ${{ vars.COVERAGE_THRESHOLD_DOTNET }}
+          # COVERAGE_THRESHOLD_GO: ${{ vars.COVERAGE_THRESHOLD_GO }}
+          # COVERAGE_THRESHOLD_DART: ${{ vars.COVERAGE_THRESHOLD_DART }}
         run: make coverage-check
 
       - name: Upload coverage
@@ -120,8 +129,11 @@ jobs:
           name: coverage-report
           path: |
             coverage/
+            htmlcov/
             lcov.info
             coverage.out
+            TestResults/**/coverage.*
+            target/llvm-cov/
           retention-days: 7
 
   build:
