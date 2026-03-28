@@ -75,11 +75,14 @@ setup:
 # =============================================================================
 
 # --- RUST ---
+# Prerequisites: cargo install cargo-llvm-cov && rustup component add llvm-tools-preview
+#
 # _build:
 # 	cargo build --release
 #
 # _test:
-# 	cargo llvm-cov --all-features --lcov --output-path lcov.info
+# 	rustup component add llvm-tools-preview 2>/dev/null || true
+# 	cargo llvm-cov --workspace --all-targets --lcov --output-path lcov.info
 # 	$(MAKE) coverage-check
 #
 # _lint:
@@ -96,12 +99,28 @@ setup:
 # 	cargo clean
 #
 # _coverage:
-# 	cargo llvm-cov --all-features --html --open
+# 	cargo llvm-cov report --html --output-dir target/llvm-cov/html
+# 	@echo "==> HTML report: target/llvm-cov/html/index.html"
 #
 # _coverage_check:
-# 	@awk -F'[,:]' '/^DA:/{total++; if($$3>0) hit++} END{pct=(total>0)?hit/total*100:0; printf "Line coverage: %.1f%%\n",pct; if(pct<$(COVERAGE_THRESHOLD)){printf "FAIL: %.1f%% < %d%%\n",pct,$(COVERAGE_THRESHOLD); exit 1} else {printf "OK: %.1f%% >= %d%%\n",pct,$(COVERAGE_THRESHOLD)}}' lcov.info
+# 	@LH=$$(grep '^LH:' lcov.info | awk -F: '{sum+=$$2} END{print sum+0}'); \
+# 	LF=$$(grep '^LF:' lcov.info | awk -F: '{sum+=$$2} END{print sum+0}'); \
+# 	if [ "$$LF" -eq 0 ]; then echo "FAIL: No lines in lcov.info"; exit 1; fi; \
+# 	PCT=$$(awk "BEGIN{printf \"%.1f\", $$LH/$$LF*100}"); \
+# 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $$LH/$$LF*100}"); \
+# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
+# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
+# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	else \
+# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	fi
+#
+# _setup:
+# 	cargo install cargo-llvm-cov cargo-watch
 
 # --- TYPESCRIPT/NODE ---
+# Prerequisites: npm install; jest.coverage.config.js in repo root
+#
 # _build:
 # 	npm run build
 #
@@ -123,12 +142,18 @@ setup:
 # 	rm -rf out dist coverage .vscode-test
 #
 # _coverage:
+# 	@echo "==> HTML report: coverage/index.html"
 # 	open coverage/index.html || xdg-open coverage/index.html
 #
 # _coverage_check:
-# 	@npx c8 check-coverage --lines $(COVERAGE_THRESHOLD)
+# 	npx c8 check-coverage --lines $(COVERAGE_THRESHOLD)
+#
+# _setup:
+# 	npm ci
 
 # --- PYTHON ---
+# Prerequisites: pip install pytest pytest-cov
+#
 # _build:
 # 	python -m build
 #
@@ -154,12 +179,18 @@ setup:
 # 	rm -rf dist build *.egg-info htmlcov .coverage coverage.xml lcov.info
 #
 # _coverage:
-# 	python -m pytest tests/ --cov=. --cov-report=html && open htmlcov/index.html
+# 	python -m pytest tests/ --cov=. --cov-report=html --cov-config=.coveragerc
+# 	@echo "==> HTML report: htmlcov/index.html"
 #
 # _coverage_check:
-# 	@python -m coverage report --fail-under=$(COVERAGE_THRESHOLD)
+# 	python -m coverage report --fail-under=$(COVERAGE_THRESHOLD)
+#
+# _setup:
+# 	pip install -r requirements.txt
 
 # --- DART/FLUTTER ---
+# Prerequisites: brew install lcov (for genhtml)
+#
 # _build:
 # 	flutter build apk --debug || dart compile exe lib/main.dart
 #
@@ -181,19 +212,42 @@ setup:
 # 	flutter clean || rm -rf build
 #
 # _coverage:
-# 	genhtml coverage/lcov.info -o coverage/html && open coverage/html/index.html
+# 	genhtml coverage/lcov.info -o coverage/html
+# 	@echo "==> HTML report: coverage/html/index.html"
 #
 # _coverage_check:
-# 	@awk -F'[,:]' '/^DA:/{total++; if($$3>0) hit++} END{pct=(total>0)?hit/total*100:0; printf "Line coverage: %.1f%%\n",pct; if(pct<$(COVERAGE_THRESHOLD)){printf "FAIL: %.1f%% < %d%%\n",pct,$(COVERAGE_THRESHOLD); exit 1} else {printf "OK: %.1f%% >= %d%%\n",pct,$(COVERAGE_THRESHOLD)}}' coverage/lcov.info
+# 	@LCOV_FILE="coverage/lcov.info"; \
+# 	if [ ! -f "$$LCOV_FILE" ]; then echo "FAIL: $$LCOV_FILE not found"; exit 1; fi; \
+# 	LH=$$(grep '^LH:' "$$LCOV_FILE" | awk -F: '{sum+=$$2} END{print sum+0}'); \
+# 	LF=$$(grep '^LF:' "$$LCOV_FILE" | awk -F: '{sum+=$$2} END{print sum+0}'); \
+# 	if [ "$$LF" -eq 0 ]; then echo "FAIL: No lines in lcov.info"; exit 1; fi; \
+# 	PCT=$$(awk "BEGIN{printf \"%.1f\", $$LH/$$LF*100}"); \
+# 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $$LH/$$LF*100}"); \
+# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
+# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
+# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	else \
+# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	fi
+#
+# _setup:
+# 	flutter pub get
 
 # --- C#/.NET ---
+# Prerequisites: dotnet tool install -g dotnet-reportgenerator-globaltool
+# Config: coverlet.runsettings must be in repo root
+#
 # _build:
 # 	dotnet build --configuration Release
 #
 # _test:
-# 	dotnet test --configuration Release --collect:"XPlat Code Coverage" \
-# 	  --results-directory TestResults -- DataCollectionRunSettings.DataCollectors\
-# 	  .DataCollector.Configuration.Format=lcov
+# 	rm -rf TestResults
+# 	dotnet test $$(find . -maxdepth 1 -name '*.sln' | head -1) \
+# 	  --configuration Release \
+# 	  --settings coverlet.runsettings \
+# 	  --collect:"XPlat Code Coverage" \
+# 	  --results-directory TestResults \
+# 	  --verbosity normal
 # 	$(MAKE) coverage-check
 #
 # _lint:
@@ -210,15 +264,28 @@ setup:
 # 	find . -type d -name bin -o -type d -name obj | xargs rm -rf
 #
 # _coverage:
-# 	reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:coverage/html \
-# 	  -reporttypes:Html && open coverage/html/index.html
+# 	reportgenerator \
+# 	  -reports:"TestResults/**/coverage.cobertura.xml" \
+# 	  -targetdir:coverage/html \
+# 	  -reporttypes:Html
+# 	@echo "==> HTML report: coverage/html/index.html"
 #
 # _coverage_check:
-# 	@TOTAL_LINE=$$(dotnet test --collect:"XPlat Code Coverage" --results-directory TestResults 2>/dev/null; \
-# 	  find TestResults -name 'coverage.cobertura.xml' -exec grep -oP 'line-rate="\K[^"]+' {} \; | head -1); \
-# 	  PCT=$$(awk "BEGIN{printf \"%.1f\", $${TOTAL_LINE:-0}*100}"); \
-# 	  echo "Line coverage: $${PCT}%"; \
-# 	  awk "BEGIN{if($${PCT}+0<$(COVERAGE_THRESHOLD)+0){print \"FAIL: \" $${PCT} \"%% < $(COVERAGE_THRESHOLD)%%\"; exit 1} else {print \"OK\"}}"
+# 	@COBERTURA=$$(find TestResults -name 'coverage.cobertura.xml' | head -1); \
+# 	if [ -z "$$COBERTURA" ]; then echo "FAIL: No coverage.cobertura.xml found"; exit 1; fi; \
+# 	LINE_RATE=$$(grep -oP 'line-rate="\K[^"]+' "$$COBERTURA" | head -1); \
+# 	PCT=$$(awk "BEGIN{printf \"%.1f\", $${LINE_RATE:-0}*100}"); \
+# 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $${LINE_RATE:-0}*100}"); \
+# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
+# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
+# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	else \
+# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	fi
+#
+# _setup:
+# 	dotnet restore
+# 	dotnet tool restore
 
 # --- F# ---
 # Same as C#/.NET above; add Fantomas for formatting:
@@ -228,6 +295,7 @@ setup:
 # 	dotnet fantomas . --check
 
 # --- GO ---
+#
 # _build:
 # 	go build ./...
 #
@@ -252,60 +320,22 @@ setup:
 # 	rm -f coverage.out coverage.html
 #
 # _coverage:
-# 	go tool cover -html=coverage.out -o coverage.html && open coverage.html
+# 	go tool cover -html=coverage.out -o coverage.html
+# 	@echo "==> HTML report: coverage.html"
 #
 # _coverage_check:
-# 	@go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,"",$$3); if($$3+0<$(COVERAGE_THRESHOLD)+0){printf "FAIL: %s%% < %d%%\n",$$3,$(COVERAGE_THRESHOLD); exit 1} else {printf "OK: %s%% >= %d%%\n",$$3,$(COVERAGE_THRESHOLD)}}'
-
-# --- SETUP (devcontainer post-create) ---
-# Uncomment the block(s) matching your language(s).
-
-# _setup:  # Rust
-# 	cargo install cargo-llvm-cov cargo-watch
-
-# _setup:  # Node
-# 	npm ci
-
-# _setup:  # Python
-# 	pip install -r requirements.txt
-
-# _setup:  # Dart/Flutter
-# 	flutter pub get
-
-# _setup:  # C#/.NET
-# 	dotnet restore
-# 	dotnet tool restore
-
-# _setup:  # Go
+# 	@PCT=$$(go tool cover -func=coverage.out | awk '/^total:/{print $$3}' | tr -d '%'); \
+# 	PCT_INT=$$(echo "$$PCT" | awk '{printf "%d", $$1}'); \
+# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
+# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
+# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	else \
+# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	fi
+#
+# _setup:
 # 	go mod download
 # 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
-
-# --- UNIVERSAL COVERAGE CHECK (auto-detect) ---
-# If you prefer a single auto-detecting target instead of per-language ones,
-# uncomment this block (and leave the per-language _coverage_check commented):
-#
-# _coverage_check:
-# 	@THRESHOLD=$(COVERAGE_THRESHOLD); \
-# 	if [ -f "lcov.info" ] || [ -f "coverage/lcov.info" ]; then \
-# 	  FILE=$$([ -f "lcov.info" ] && echo "lcov.info" || echo "coverage/lcov.info"); \
-# 	  LH=$$(grep '^LH:' "$$FILE" | awk -F: '{sum+=$$2} END{print sum}'); \
-# 	  LF=$$(grep '^LF:' "$$FILE" | awk -F: '{sum+=$$2} END{print sum}'); \
-# 	  [ -z "$$LF" ] || [ "$$LF" -eq 0 ] && { echo "FAIL: No lines in lcov.info"; exit 1; }; \
-# 	  PCT=$$(echo "scale=1; $$LH * 100 / $$LF" | bc); \
-# 	elif [ -f "coverage.out" ]; then \
-# 	  PCT=$$(go tool cover -func=coverage.out | awk '/^total:/{print $$3}' | tr -d '%'); \
-# 	elif [ -f "coverage/coverage-summary.json" ]; then \
-# 	  PCT=$$(jq '.total.lines.pct' coverage/coverage-summary.json); \
-# 	else \
-# 	  echo "FAIL: No coverage file found"; exit 1; \
-# 	fi; \
-# 	PCT_INT=$$(echo "$$PCT" | awk '{printf "%d", $$1}'); \
-# 	echo "Coverage: $${PCT}% (threshold: $${THRESHOLD}%)"; \
-# 	if [ "$$PCT_INT" -lt "$$THRESHOLD" ]; then \
-# 	  echo "FAIL: $${PCT}% < $${THRESHOLD}%"; exit 1; \
-# 	else \
-# 	  echo "OK: $${PCT}% >= $${THRESHOLD}%"; \
-# 	fi
 
 # =============================================================================
 # HELP
