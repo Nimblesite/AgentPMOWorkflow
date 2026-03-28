@@ -1161,8 +1161,8 @@ pre {
 }
 
 .footer-nimble-logo img {
-  max-width: 120px;
-  height: auto;
+  width: 32px;
+  height: 32px;
   display: block;
 }
 
