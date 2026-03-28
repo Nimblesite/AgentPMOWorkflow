@@ -1,0 +1,25 @@
+graph TD
+    YOU["<b>You</b><br/><i>PMO Director</i><br/>checks dashboard every ~3 min"]
+    DASH["<b>PMO Dashboard</b><br/>F# script &middot; launchd poll<br/>CI &middot; PRs &middot; branch &middot; push"]
+    A["<b>Agent A</b><br/>feature"]
+    B["<b>Agent B</b><br/>CI fix"]
+    C["<b>Agent C</b><br/>coverage"]
+    REPOS["<b>Standardised Repos</b><br/><i>enforce-repo-standards</i><br/>same make targets &middot; same CI &middot; same lint"]
+
+    YOU -->|"monitors"| DASH
+    DASH -->|"dispatch"| A
+    DASH -->|"dispatch"| B
+    DASH -->|"dispatch"| C
+    A --> REPOS
+    B --> REPOS
+    C --> REPOS
+
+    classDef director fill:#0d1a14,stroke:#19d078,stroke-width:2px,color:#e8f5ee,font-family:Segoe UI
+    classDef dashboard fill:#0d1a14,stroke:#a78bfa,stroke-width:2px,color:#e8f5ee,font-family:Segoe UI
+    classDef agent fill:#0d1a14,stroke:#19d078,stroke-width:1.5px,color:#c8d8cf,font-family:Segoe UI
+    classDef repos fill:#0d1a14,stroke:#19d078,stroke-width:2px,color:#e8f5ee,font-family:Segoe UI
+
+    class YOU director
+    class DASH dashboard
+    class A,B,C agent
+    class REPOS repos

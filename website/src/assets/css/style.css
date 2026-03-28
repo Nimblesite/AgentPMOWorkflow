@@ -1149,10 +1149,27 @@ pre {
 
 .footer-section a:hover { color: var(--color-primary); }
 
+.footer-nimble-logo {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  opacity: 0.7;
+  transition: opacity var(--transition);
+}
+
+.footer-nimble-logo:hover {
+  opacity: 1;
+}
+
+.footer-nimble-logo img {
+  max-width: 120px;
+  height: auto;
+  display: block;
+}
+
 .footer-nimble-desc {
   font-size: 0.8rem;
   color: var(--color-muted);
-  margin: 0.75rem 0 0;
+  margin: 0 0 0.75rem;
   line-height: 1.5;
 }
 
@@ -1390,6 +1407,18 @@ pre {
   line-height: 1.8;
   white-space: pre;
   overflow-x: auto;
+}
+
+.diagram.diagram-img {
+  white-space: normal;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.diagram.diagram-img img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
 }
 
 /* ─────────────────────────────────────────────

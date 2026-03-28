@@ -71,3 +71,9 @@ dashboard/config.json
 node_modules/
 test-results/
 playwright-report/
+
+
+_site/
+
+# Downloaded assets (copied on build)
+website/src/assets/images/nimblesite-logo.png

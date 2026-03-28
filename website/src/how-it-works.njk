@@ -28,29 +28,8 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
     </div>
 
     <div class="diagram-wrap fade-in delay-1">
-      <div class="diagram" role="img" aria-label="System architecture diagram">
-┌─────────────────────────────────────────────────────────────┐
-│                        You (PMO Director)                    │
-│                    checks dashboard every ~3 min            │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-              ┌─────────────▼──────────────┐
-              │       PMO Dashboard         │
-              │  F# script · launchd poll  │
-              │  CI · PRs · branch · push  │
-              └─────────────┬──────────────┘
-                            │ dispatch
-          ┌─────────────────┼─────────────────┐
-          │                 │                 │
-    ┌─────▼─────┐    ┌──────▼──────┐   ┌──────▼──────┐
-    │  Agent A  │    │   Agent B   │   │   Agent C   │
-    │ feature   │    │  CI fix     │   │  coverage   │
-    └─────┬─────┘    └──────┬──────┘   └──────┬──────┘
-          │                 │                 │
-    ┌─────▼─────────────────▼─────────────────▼──────┐
-    │          Standardised Repos (enforce-repo-std)  │
-    │  same make targets · same CI · same lint cmds   │
-    └────────────────────────────────────────────────┘
+      <div class="diagram diagram-img" role="img" aria-label="System architecture diagram">
+        <img src="/assets/images/architecture.svg" alt="Agent PMO architecture: You (PMO Director) monitors the PMO Dashboard, which dispatches Agents A, B, and C into Standardised Repos" width="700" height="auto" loading="lazy" />
       </div>
     </div>
   </div>
