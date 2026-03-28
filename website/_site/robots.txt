@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nimblesite.co/agent-pmo/sitemap.xml

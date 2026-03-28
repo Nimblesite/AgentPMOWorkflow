@@ -1,0 +1,428 @@
+---
+layout: base.njk
+title: "Features"
+description: "Agent PMO features: real-time PMO dashboard, repo standards enforcement, quality gates, git worktrees, TMC orchestration, and flexible involvement levels."
+---
+
+<section class="page-hero" aria-label="Page header">
+  <div class="page-hero-inner">
+    <div class="hero-badge">What's Inside</div>
+    <h1>Every feature exists for<br>one reason: fewer blockers.</h1>
+    <p class="tagline">
+      Agent PMO is two components — the PMO Dashboard and Repo Standards Enforcement —
+      that together let one developer manage an organisation's worth of output.
+    </p>
+  </div>
+</section>
+
+<!-- ── Feature Details ────────────────────────── -->
+<section class="section" aria-label="Feature details">
+  <div class="section-inner">
+
+    <!-- PMO Dashboard -->
+    <div class="feature-detail fade-in" id="dashboard">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">📡</div>
+        <span class="feature-card-tag">Component 1</span>
+        <h3>PMO Dashboard</h3>
+        <p>
+          Your control panel. An F# script scans every repo under <code>~/Documents/Code/</code>,
+          gathers status from the git index and GitHub API, and generates a self-contained
+          HTML report — refreshed every 3 minutes via launchd. No server. No login. No cloud.
+        </p>
+        <p>Per-repo it collects:</p>
+        <ul>
+          <li>Uncommitted file count</li>
+          <li>Current branch name and push/pull status</li>
+          <li>Last commit date and message</li>
+          <li>Open PRs — with a fallback to any open PR if branch differs</li>
+          <li>CI status via <code>gh</code> CLI</li>
+          <li>Latest GitHub release tag</li>
+        </ul>
+        <p>
+          You're not context-switching into each repo to figure out what's happening.
+          The dashboard tells you. You decide where to direct attention. That's minimal cognitive load.
+        </p>
+        <div class="callout">
+          <strong>PR detection is robust:</strong> the lookup first checks for a PR matching the current branch.
+          If none is found, it falls back to any open PR in the repo. The "PR Branch" column shows which branch the PR is actually from.
+        </div>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ repo-report.html</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-ok">✓</span> app-backend
+  branch: main
+  PR #47 · CI <span class="terminal-ok">green</span>
+  last: 2h ago
+
+<span class="terminal-warn">⚠</span> data-pipeline
+  branch: feat/ingest
+  PR #12 · CI <span class="terminal-warn">running</span>
+  3 uncommitted
+
+<span class="terminal-ok">✓</span> mobile-client
+  branch: feat/auth
+  PR #8 · CI <span class="terminal-ok">green</span>
+  awaiting review
+
+<span class="terminal-dim">↻</span> api-gateway
+  branch: main
+  no PR · CI <span class="terminal-dim">pending</span>
+  agent: linting</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repo Standards -->
+    <div class="feature-detail fade-in" id="standards">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">📐</div>
+        <span class="feature-card-tag">Component 2</span>
+        <h3>Repo Standards Enforcement</h3>
+        <p>
+          Agents can't navigate chaos. If every project has a different structure, different scripts,
+          different CI config — every project requires hand-holding. That hand-holding is what keeps you serialised.
+        </p>
+        <p>
+          <strong>Consistency solves this.</strong> The enforcement skill applies portfolio-wide templates to any repo:
+        </p>
+        <ul>
+          <li>Standardised <code>Makefile</code> with identical targets across all repos</li>
+          <li>Unified CI pipeline templates (GitHub Actions)</li>
+          <li>Linter configs for every supported language</li>
+          <li>Coverage config with monotonically-increasing thresholds</li>
+          <li>Dev container configs for consistent environments</li>
+          <li>Language-specific <code>.gitignore</code> templates</li>
+          <li><code>CLAUDE.md</code> injected into every repo so agents know the rules</li>
+        </ul>
+        <p>
+          Drop an agent into any project and it already knows how to run, test, and ship — no setup, no babysitting.
+          That's what makes twenty projects manageable instead of twenty separate headaches.
+        </p>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ make (any repo)</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-dim"># Same targets, every repo:</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make build</span>   <span class="terminal-dim"># compile</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># test + coverage</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + typecheck</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make check</span>   <span class="terminal-dim"># lint + test</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># full CI pipeline</span>
+
+<span class="terminal-ok">✓ Agent knows how to work in any repo</span>
+<span class="terminal-ok">✓ Zero project-specific setup</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates -->
+    <div class="feature-detail fade-in" id="quality-gates">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">🔒</div>
+        <span class="feature-card-tag">Non-negotiable</span>
+        <h3>Automated Quality Gates</h3>
+        <p>
+          Agents don't hand you rough drafts. They fight through quality gates the entire way.
+          There is no soft-fail mode.
+        </p>
+        <ul>
+          <li><strong>Lint</strong> — format violations tank the pipeline</li>
+          <li><strong>Type check</strong> — strict mode, no <code>any</code> escapes</li>
+          <li><strong>Code format</strong> — enforced by CI, not just recommended</li>
+          <li><strong>Unit tests</strong> — must pass; no skipping</li>
+          <li><strong>Integration tests</strong> — end-to-end verification</li>
+          <li><strong>Coverage thresholds</strong> — monotonically increasing, never regress</li>
+          <li><strong>CI pipeline</strong> — GitHub Actions gate before merge</li>
+        </ul>
+        <p>
+          By the time code reaches you, it has passed every automated check.
+          You're the <strong>final gate</strong> — reviewing for intent, architecture, and edge cases.
+          Not checking whether the tests pass.
+        </p>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ CI pipeline output</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-ok">✓</span> lint          <span class="terminal-dim">0 violations</span>
+<span class="terminal-ok">✓</span> typecheck     <span class="terminal-dim">0 errors</span>
+<span class="terminal-ok">✓</span> format        <span class="terminal-dim">clean</span>
+<span class="terminal-ok">✓</span> unit tests    <span class="terminal-dim">142 passed</span>
+<span class="terminal-ok">✓</span> integration   <span class="terminal-dim">28 passed</span>
+<span class="terminal-ok">✓</span> coverage      <span class="terminal-dim">87% ≥ 85%</span>
+
+<span class="terminal-ok">✓ All gates passed — ready for review</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Git Worktrees -->
+    <div class="feature-detail fade-in" id="worktrees">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">🌿</div>
+        <span class="feature-card-tag">Parallelism</span>
+        <h3>Git Worktrees</h3>
+        <p>
+          Got a monolith or multi-service codebase that can't be split up? Git worktrees solve this.
+          Each agent gets its own worktree — an isolated branch at a different filesystem path.
+          Same repo. No conflicts. No stepping on each other.
+        </p>
+        <p>
+          A monolith becomes multiple parallel workstreams. Three agents can work on three different
+          features of the same codebase simultaneously, each with a clean working tree,
+          each on its own branch, each running its own tests.
+        </p>
+        <ul>
+          <li>Same repo, different paths — no file conflicts</li>
+          <li>Each worktree has its own branch and index</li>
+          <li>Agents can build and test independently</li>
+          <li>TMC coordinates when branches need to merge</li>
+        </ul>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ git worktree list</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree list</span>
+
+<span class="terminal-ok">~/Code/myapp</span>          <span class="terminal-dim">main</span>
+<span class="terminal-ok">~/Code/myapp-feat-auth</span> <span class="terminal-dim">feat/auth</span>
+<span class="terminal-ok">~/Code/myapp-fix-api</span>   <span class="terminal-dim">fix/api-timeout</span>
+<span class="terminal-ok">~/Code/myapp-coverage</span>  <span class="terminal-dim">chore/coverage</span>
+
+<span class="terminal-dim">3 agents · 3 branches · 0 conflicts</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TMC -->
+    <div class="feature-detail fade-in" id="tmc">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">🎭</div>
+        <span class="feature-card-tag">Orchestration</span>
+        <h3>TMC — Too Many Cooks</h3>
+        <p>
+          When the TMC server is available, it acts as the conductor for cross-project agent orchestration.
+          TMC dispatches work, manages dependencies, and avoids conflicts across agents and projects.
+        </p>
+        <p>
+          TMC <em>sequences</em>, not just parallelises. If a feature branch needs passing tests before
+          a PR opens, TMC enforces that. If two projects share a library, TMC knows.
+        </p>
+        <p>Agent protocol when TMC is available:</p>
+        <ul>
+          <li>Register immediately: descriptive name, intent, files to touch</li>
+          <li>Lock files before editing — never edit a locked file</li>
+          <li>Broadcast plans before starting work</li>
+          <li>Check messages every few minutes</li>
+          <li>Release locks immediately when done</li>
+        </ul>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ TMC orchestration log</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-ok">[TMC]</span> agent-A registered: feat/auth
+<span class="terminal-ok">[TMC]</span> agent-B registered: fix/ci-timeout
+<span class="terminal-ok">[TMC]</span> agent-A locked: src/auth/login.ts
+<span class="terminal-warn">[TMC]</span> agent-B requested: src/auth/login.ts
+<span class="terminal-warn">[TMC]</span> agent-B: file locked — waiting
+<span class="terminal-ok">[TMC]</span> agent-A released: src/auth/login.ts
+<span class="terminal-ok">[TMC]</span> agent-B acquired: src/auth/login.ts</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Spec-Driven Traceability ──────────────── -->
+    <div class="feature-detail fade-in" id="traceability">
+      <div class="feature-detail-body">
+        <div class="feature-detail-icon" aria-hidden="true">🔗</div>
+        <span class="feature-card-tag" style="background: var(--color-accent-subtle); color: var(--color-accent); border-color: rgba(167,139,250,0.15);">Killer Feature</span>
+        <h3>Spec-Driven Traceability</h3>
+        <p>
+          When 20 agents are building across 20 projects simultaneously, you need to know exactly
+          <strong>what</strong> was built, <strong>why</strong> it was built, and <strong>where</strong>
+          to find the tests that prove it works. Spec IDs are the answer.
+        </p>
+        <p>
+          Every spec section gets a unique ID: <code>[SPEC-001]</code>, <code>[FEAT-AUTH-01]</code>, <code>[REQ-003]</code>.
+          These IDs become the connective tissue of the entire system:
+        </p>
+        <ul>
+          <li><strong>Spec sections</strong> define requirements: <code>[SPEC-001] User Authentication</code></li>
+          <li><strong>Code</strong> declares what it implements: <code>// Implements [SPEC-001]</code></li>
+          <li><strong>Tests</strong> declare what they verify: <code>// Tests for [SPEC-001]</code></li>
+          <li><strong>PRs</strong> list the spec IDs they address in the description</li>
+          <li><strong>Plans</strong> reference spec IDs in their TODO checklists</li>
+        </ul>
+        <p>
+          The enforcement skill can audit the entire codebase and answer:
+        </p>
+        <ul>
+          <li>"What tests cover <code>SPEC-001</code>?" → grep for the ID</li>
+          <li>"Is <code>SPEC-003</code> implemented?" → check for code references</li>
+          <li>"What's untested?" → find spec IDs with no test references</li>
+          <li>"What did this PR deliver?" → list all spec IDs in the diff</li>
+          <li>"Are there orphaned IDs?" → spec IDs nothing implements</li>
+          <li>"Is there unlinked code?" → code with no spec reference</li>
+        </ul>
+        <div class="callout callout-accent">
+          <strong>Traceability isn't paperwork.</strong> It's how you stay sane at scale.
+          Nothing ships without a reason. Nothing is untested without you knowing.
+          Every line of code traces back to a requirement.
+          Every test proves a requirement works.
+        </div>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ SPEC-001 traceability matrix</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-accent">SPEC-001</span> <span class="terminal-ok">User Authentication</span>
+
+<span class="terminal-dim">implements:</span>
+  <span class="terminal-ok">src/auth/login.ts</span>
+  <span class="terminal-ok">src/auth/session.ts</span>
+  <span class="terminal-ok">src/middleware/auth.ts</span>
+
+<span class="terminal-dim">verifies:</span>
+  <span class="terminal-ok">tests/auth/login.spec.ts</span>
+  <span class="terminal-ok">tests/e2e/auth-flow.spec.ts</span>
+
+<span class="terminal-dim">delivers:</span>
+  <span class="terminal-ok">PR #42  · merged · CI green</span>
+
+<span class="terminal-dim">scheduled:</span>
+  <span class="terminal-ok">PLAN.md § Phase 2</span>
+
+<span class="terminal-dim">───────────────────────────────</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make audit-traceability</span>
+<span class="terminal-ok">✓</span> All specs have IDs
+<span class="terminal-ok">✓</span> All specs have tests
+<span class="terminal-ok">✓</span> No orphaned IDs
+<span class="terminal-ok">✓</span> No unlinked code</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- ── Comparison table ───────────────────────── -->
+<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Comparison table">
+  <div class="section-inner">
+    <div class="section-center fade-in">
+      <div class="section-label">Before &amp; After</div>
+      <h2 class="section-heading">Serialised vs. parallel</h2>
+      <p class="section-subheading">What changes when you adopt Agent PMO.</p>
+    </div>
+
+    <div class="compare-table-wrap fade-in delay-1">
+      <table>
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>Without Agent PMO</th>
+            <th>With Agent PMO</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Projects active at once</td>
+            <td class="check-no">1</td>
+            <td class="check-yes">20+</td>
+          </tr>
+          <tr>
+            <td>Cross-project visibility</td>
+            <td class="check-no">Manual context-switching</td>
+            <td class="check-yes">Dashboard refresh every 3 min</td>
+          </tr>
+          <tr>
+            <td>Agent setup per repo</td>
+            <td class="check-no">Custom per project</td>
+            <td class="check-yes">Zero — standards enforced</td>
+          </tr>
+          <tr>
+            <td>Code quality on arrival</td>
+            <td class="check-no">Varies — you check manually</td>
+            <td class="check-yes">All gates passed before you see it</td>
+          </tr>
+          <tr>
+            <td>Coverage regression</td>
+            <td class="check-no">Possible — no enforcement</td>
+            <td class="check-yes">Impossible — monotonic threshold</td>
+          </tr>
+          <tr>
+            <td>Monorepo parallelism</td>
+            <td class="check-no">One agent, one branch</td>
+            <td class="check-yes">Multiple worktrees, no conflicts</td>
+          </tr>
+          <tr>
+            <td>Cross-agent coordination</td>
+            <td class="check-no">None — agents collide</td>
+            <td class="check-yes">TMC locks, sequences, coordinates</td>
+          </tr>
+          <tr>
+            <td>Your role</td>
+            <td class="check-no">Spectator waiting for agents</td>
+            <td class="check-yes">Engineering director setting direction</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────── -->
+<section class="section cta-banner" aria-label="Call to action">
+  <div class="section-inner">
+    <div class="fade-in">
+      <h2>See all of this in action.</h2>
+      <p>Set up Agent PMO in minutes. One command. Open source and free.</p>
+      <div class="cta-actions">
+        <a href="/get-started/" class="btn btn-primary">Get Started →</a>
+        <a href="/how-it-works/" class="btn btn-secondary">How it works</a>
+      </div>
+    </div>
+  </div>
+</section>

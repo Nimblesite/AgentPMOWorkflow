@@ -3,7 +3,7 @@
 # =============================================================================
 
 .PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
-        install-skill uninstall-skill help
+        install-skill uninstall-skill website-build website-run help
 
 # =============================================================================
 # PRIMARY TARGETS
@@ -50,6 +50,18 @@ check: lint test
 ci: lint test build
 
 # =============================================================================
+# WEBSITE
+# =============================================================================
+
+website-build:
+	@echo "==> Building website..."
+	cd website && npx @11ty/eleventy
+
+website-run:
+	@echo "==> Starting local dev server..."
+	cd website && npx @11ty/eleventy --serve
+
+# =============================================================================
 # SKILL MANAGEMENT
 # =============================================================================
 
@@ -94,5 +106,7 @@ help:
 	@echo "  clean            - Remove test artifacts"
 	@echo "  check            - lint + test (pre-commit)"
 	@echo "  ci               - lint + test + build (full CI)"
+	@echo "  website-build    - Build the HTML dashboard report"
+	@echo "  website-run      - Serve the dashboard locally on port 8080"
 	@echo "  install-skill    - Install Claude Code Skill Globally"
 	@echo "  uninstall-skill  - Remove the global skill symlink"

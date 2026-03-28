@@ -147,6 +147,8 @@ make check          # lint + test (pre-commit)
 make ci             # lint + test + build (full CI simulation)
 make coverage       # generate and open coverage report
 make coverage-check # assert coverage thresholds
+make website-build  # build the website/static site
+make website-run    # run the website locally (dev server)
 make setup          # post-create dev environment setup
 ```
 

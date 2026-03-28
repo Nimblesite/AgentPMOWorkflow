@@ -1,0 +1,215 @@
+---
+layout: base.njk
+title: "How It Works"
+description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch, quality gates, and the TMC conductor for cross-project orchestration."
+---
+
+<section class="page-hero" aria-label="Page header">
+  <div class="page-hero-inner">
+    <div class="hero-badge">The PMO Cycle</div>
+    <h1>From spectator to<br>engineering director.</h1>
+    <p class="tagline">
+      Five steps. Running continuously across every project simultaneously.
+      Here's exactly how Agent PMO breaks the serialisation trap.
+    </p>
+  </div>
+</section>
+
+<!-- ── Architecture Overview ──────────────────── -->
+<section class="section" aria-label="System overview">
+  <div class="section-inner">
+    <div class="fade-in">
+      <div class="section-label">Architecture</div>
+      <h2 class="section-heading">Two components. One system.</h2>
+      <p class="section-subheading">
+        Agent PMO has two parts that work together: a real-time PMO Dashboard that tells you what's happening,
+        and Repo Standards Enforcement that makes every project agent-ready.
+      </p>
+    </div>
+
+    <div class="diagram-wrap fade-in delay-1">
+      <div class="diagram" role="img" aria-label="System architecture diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                        You (PMO Director)                    │
+│                    checks dashboard every ~3 min            │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+              ┌─────────────▼──────────────┐
+              │       PMO Dashboard         │
+              │  F# script · launchd poll  │
+              │  CI · PRs · branch · push  │
+              └─────────────┬──────────────┘
+                            │ dispatch
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+    ┌─────▼─────┐    ┌──────▼──────┐   ┌──────▼──────┐
+    │  Agent A  │    │   Agent B   │   │   Agent C   │
+    │ feature   │    │  CI fix     │   │  coverage   │
+    └─────┬─────┘    └──────┬──────┘   └──────┬──────┘
+          │                 │                 │
+    ┌─────▼─────────────────▼─────────────────▼──────┐
+    │          Standardised Repos (enforce-repo-std)  │
+    │  same make targets · same CI · same lint cmds   │
+    └────────────────────────────────────────────────┘
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Step-by-step ────────────────────────────── -->
+<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Step by step walkthrough">
+  <div class="section-inner">
+    <div class="section-center fade-in">
+      <div class="section-label">The Five Steps</div>
+      <h2 class="section-heading">The PMO loop in detail</h2>
+    </div>
+
+    <div class="how-steps">
+
+      <div class="how-step fade-in">
+        <div class="how-step-num">01</div>
+        <div>
+          <h3>Dashboard scans all repos</h3>
+          <p>
+            The F# script (<code>dashboard/repo-report.fsx</code>) runs every 3 minutes via macOS <code>launchd</code>.
+            It scans every git repository under <code>~/Documents/Code/</code> and for each repo collects:
+          </p>
+          <ul style="color: var(--color-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem; margin: 0.75rem 0;">
+            <li>Uncommitted file count</li>
+            <li>Current branch name</li>
+            <li>Last commit date</li>
+            <li>Push status (ahead/behind remote)</li>
+            <li>Open PRs via <code>gh</code> CLI</li>
+            <li>CI status via <code>gh</code> CLI</li>
+            <li>Latest GitHub release</li>
+          </ul>
+          <p>It generates a self-contained HTML report at <code>dashboard/repo-report.html</code> — no server needed, open in any browser.</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <span class="terminal-dot terminal-dot-red"></span>
+              <span class="terminal-dot terminal-dot-yellow"></span>
+              <span class="terminal-dot terminal-dot-green"></span>
+              <span class="terminal-title">~ launchd · runs every 180 seconds</span>
+            </div>
+            <div class="terminal-body">
+<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">dotnet fsi dashboard/repo-report.fsx</span>
+<span class="terminal-ok">✓ Scanning ~/Documents/Code/ ...</span>
+<span class="terminal-dim">  Found 24 repositories</span>
+<span class="terminal-ok">✓ Fetching PR status for 24 repos ...</span>
+<span class="terminal-ok">✓ Fetching CI status for 24 repos ...</span>
+<span class="terminal-ok">✓ Report written → dashboard/repo-report.html</span>
+<span class="terminal-dim">  Generated in 8.3s</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="how-step fade-in delay-1">
+        <div class="how-step-num">02</div>
+        <div>
+          <h3>You review the dashboard and prioritize</h3>
+          <p>
+            Open <code>repo-report.html</code> in a browser. The dashboard tells you — at a glance — exactly which projects
+            need attention. No context-switching into each repo to investigate. That's minimal cognitive load.
+          </p>
+          <p>
+            You're not managing tasks. You're allocating agent capacity. Where's the most value?
+            Which CI failure is blocking a PR? Which project has no activity and needs a nudge?
+          </p>
+          <div class="callout">
+            <strong>Key insight:</strong> The dashboard is your air traffic control screen. You're the controller, not the pilot. Agents are the pilots.
+          </div>
+        </div>
+      </div>
+
+      <div class="how-step fade-in delay-2">
+        <div class="how-step-num">03</div>
+        <div>
+          <h3>Dispatch agents into standardised repos</h3>
+          <p>
+            Because every repo uses the same structure — same Makefile targets, same CI pipeline, same lint and format commands —
+            an agent dropped into any project already knows how to run, test, and ship. No setup. No hand-holding.
+          </p>
+          <p>
+            For monorepos or multi-service codebases, <strong>git worktrees</strong> let multiple agents work on the same repo simultaneously,
+            each on an isolated branch at a different path. A monolith becomes multiple parallel workstreams.
+          </p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <span class="terminal-dot terminal-dot-red"></span>
+              <span class="terminal-dot terminal-dot-yellow"></span>
+              <span class="terminal-dot terminal-dot-green"></span>
+              <span class="terminal-title">~ git worktrees for parallel agents</span>
+            </div>
+            <div class="terminal-body">
+<pre><span class="terminal-dim"># Agent A — feature branch</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree add ../myrepo-feature feature/auth</span>
+
+<span class="terminal-dim"># Agent B — hotfix branch (same repo, different path)</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree add ../myrepo-hotfix hotfix/api-timeout</span>
+
+<span class="terminal-dim"># Both agents work independently — zero conflicts</span>
+<span class="terminal-ok">✓ Parallel workstreams active</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="how-step fade-in">
+        <div class="how-step-num">04</div>
+        <div>
+          <h3>TMC conducts cross-project orchestration</h3>
+          <p>
+            <strong>Too Many Cooks (TMC)</strong> is project-level agent orchestration. When multiple agents are active
+            across multiple projects simultaneously, TMC prevents conflicts and manages dependencies.
+          </p>
+          <p>Agents using TMC follow a strict protocol:</p>
+          <ul style="color: var(--color-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem; margin: 0.75rem 0;">
+            <li>Register immediately with a descriptive name and intent</li>
+            <li>Lock files before editing — never touch a locked file</li>
+            <li>Broadcast plans before starting work</li>
+            <li>Release locks immediately when done</li>
+            <li>Check for messages every few minutes</li>
+          </ul>
+          <p>
+            TMC sequences, not just parallelises. If a feature branch needs passing tests before a PR opens, TMC enforces that.
+            If two projects share a library version, TMC knows.
+          </p>
+        </div>
+      </div>
+
+      <div class="how-step fade-in delay-1">
+        <div class="how-step-num">05</div>
+        <div>
+          <h3>Review and ship</h3>
+          <p>
+            By the time code reaches you, it has passed every automated quality gate:
+            lint, type check, format, unit tests, integration tests, coverage thresholds, and CI.
+          </p>
+          <p>
+            You're not the first line of defence — you're the <strong>final gate</strong>.
+            Human review is for intent, architecture, and edge cases — not for checking whether the tests pass.
+          </p>
+          <div class="callout callout-accent">
+            <strong>Coverage thresholds are monotonically increasing.</strong> They never regress. Each PR must maintain or improve coverage. Agents fight to meet the bar, not to lower it.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ────────────────────────────────────── -->
+<section class="section cta-banner" aria-label="Next steps">
+  <div class="section-inner">
+    <div class="fade-in">
+      <h2>Ready to direct your own engineering organisation?</h2>
+      <p>Set up Agent PMO in minutes. It's open source and free.</p>
+      <div class="cta-actions">
+        <a href="/get-started/" class="btn btn-primary">Get Started →</a>
+        <a href="/features/" class="btn btn-secondary">Explore features</a>
+      </div>
+    </div>
+  </div>
+</section>

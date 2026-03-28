@@ -4,14 +4,20 @@ description: Apply portfolio-wide repository standards (Makefile, CI, linting, c
 disable-model-invocation: true
 ---
 
+> **Portable skill.** This skill adapts to the current repository. The agent MUST inspect the repo structure and use judgment to apply these instructions appropriately.
+
 # Enforce Repository Standards
 
-Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file from the project_status directory. Works on both new and existing repos.
+Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file. Works on both new and existing repos.
 
-**Finding the spec:** Locate `REPO-STANDARDS-SPEC.md` by checking in order:
-1. `$REPO_BOOTSTRAP_PATH/docs/specs/REPO-STANDARDS-SPEC.md` (if env var is set)
-2. `/workspaces/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (Docker/container)
-3. `~/Documents/Code/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (local dev fallback)
+**Finding the spec:** Locate `REPO-STANDARDS-SPEC.md` by searching in order:
+1. `$REPO_STANDARDS_PATH/docs/specs/REPO-STANDARDS-SPEC.md` (if env var is set)
+2. The current repo's `docs/specs/REPO-STANDARDS-SPEC.md` (if this IS the standards repo)
+3. Sibling directories of the current repo (e.g., `../project_status/docs/specs/REPO-STANDARDS-SPEC.md`)
+4. `~/Documents/Code/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (local dev fallback)
+5. `/workspaces/project_status/docs/specs/REPO-STANDARDS-SPEC.md` (Docker/container fallback)
+
+The agent MUST search for the spec file using the above order and use the first match found. If none is found, report an error and stop.
 
 **NEVER run `git commit`, `git push`, or any git write command.** Read-only git commands (status, log, diff) are fine.
 
@@ -19,7 +25,7 @@ Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file from the projec
 
 ### Step 1 — Read the spec and detect context
 
-1. Locate and read `REPO-STANDARDS-SPEC.md` from the project_status directory (see path resolution above). **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
+1. Locate and read `REPO-STANDARDS-SPEC.md` using the path resolution order above. The directory containing this spec is referred to as `{STANDARDS_REPO}` below. **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
 2. Detect which languages are present in the target repo (look for `Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`, etc.).
 3. Determine repo type (library, CLI, app/service, extension, static site) for coverage thresholds per the spec. All projects default to 90% code coverage target by default
 
@@ -67,7 +73,7 @@ Before creating anything, **inventory what already exists** so you never create 
 
 #### 2h. GitHub repository settings
 - If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
-- Compare against the standard in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above).
+- Compare against the standard in `{STANDARDS_REPO}/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above).
 - If settings already match, leave them alone. Only apply changes for settings that differ.
 
 ### CRITICAL — Template Customization Rule
@@ -154,7 +160,7 @@ For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain 
 - Merge spec sections into existing `.editorconfig`, or create one if none exists.
 
 #### 3h. GitHub repository settings
-Apply the standard GitHub repo settings defined in `<project_status>/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
+Apply the standard GitHub repo settings defined in `{STANDARDS_REPO}/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
 
 Use the `gh` CLI to configure:
 - **Merge settings:** Squash merge only (disable merge commit and rebase merge), auto merge enabled, delete branch on merge enabled, squash commit title = PR_TITLE, message = PR_BODY.

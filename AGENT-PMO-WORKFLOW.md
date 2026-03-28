@@ -58,6 +58,34 @@ Coverage thresholds are **monotonically increasing** — they never regress.
 
 ---
 
+## Spec-Driven Development: The Traceability Matrix
+
+Agents writing code is easy. Agents delivering *verified requirements* is the hard part — and it's what separates a functioning engineering organization from a pile of commits.
+
+Every requirement gets a unique ID. That ID is the thread connecting everything:
+
+```
+[SPEC-001] User Authentication
+    ↓ implemented by
+  auth/login.py          // Implements [SPEC-001]
+    ↓ verified by
+  tests/test_auth.py     // Tests [SPEC-001]
+    ↓ designed in
+  docs/designs/auth.md   // Design for [SPEC-001]
+    ↓ tracked in
+  plans/sprint-4.md      // Plan item [SPEC-001]
+    ↓ shipped via
+  PR #42                 // Addresses [SPEC-001]
+```
+
+This is **bidirectional**. From any artifact — a test, a file, a PR, a design doc — you can trace back to the requirement it serves. From any spec, you can trace forward to every artifact that implements it.
+
+The `enforce-repo-standards` skill audits this automatically: every spec has an ID, every test links to a spec, every implementation links to a spec. Orphaned code is flagged. Unimplemented specs are flagged. Nothing ships without a traceable chain from requirement to delivery.
+
+When twenty agents are building in parallel, this is what keeps them aligned. Spec IDs are the backbone.
+
+---
+
 ## Worktrees: Parallelism Inside a Monolith
 
 Got a monolith or multi-service codebase that can't be split up? **[Git worktrees](https://git-scm.com/docs/git-worktree) solve this.** Each agent gets its own worktree — an isolated branch at a different path. Same repo, no conflicts, no stepping on each other. A monolith becomes multiple parallel workstreams.
