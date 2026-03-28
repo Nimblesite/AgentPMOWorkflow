@@ -10,7 +10,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
     <h1>One command.<br>Running in minutes.</h1>
     <p class="tagline">
       Agent PMO installs itself. One script handles .NET, the gh CLI, the dashboard,
-      and the scheduled refresh. macOS and Linux supported.
+      and the scheduled refresh. macOS, Linux, and Windows supported.
     </p>
   </div>
 </section>
@@ -22,18 +22,19 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
       <p class="install-tagline">Copy. Paste. Done.</p>
       <div class="install-block" role="group" aria-label="Install command">
         <div class="install-tabs">
-          <button class="install-tab active" data-cmd="curl" aria-pressed="true">curl</button>
+          <button class="install-tab active" data-cmd="curl" aria-pressed="true">macOS / Linux</button>
+          <button class="install-tab" data-cmd="windows" aria-pressed="false">Windows</button>
           <button class="install-tab" data-cmd="git" aria-pressed="false">git clone</button>
         </div>
         <div class="install-cmd-wrap">
-          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup.sh | bash</code>
+          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.sh | bash</code>
           <button class="copy-btn" aria-label="Copy install command" id="copy-btn" title="Copy to clipboard">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             <span id="copy-label">Copy</span>
           </button>
         </div>
       </div>
-      <p class="install-note">Requires macOS or Linux. .NET SDK and gh CLI installed automatically if missing.</p>
+      <p class="install-note">Works on macOS, Linux, and Windows. .NET SDK and gh CLI installed automatically if missing.</p>
     </div>
   </div>
 </section>
@@ -53,8 +54,8 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
       <div class="prereq-item">
         <span class="prereq-icon" aria-hidden="true">💻</span>
         <div>
-          <h3>macOS or Linux</h3>
-          <p>macOS 12+ (Homebrew recommended) or Debian/Ubuntu/Fedora Linux. The setup script detects your OS.</p>
+          <h3>macOS, Linux, or Windows</h3>
+          <p>macOS 12+ (Homebrew recommended), Debian/Ubuntu/Fedora Linux, or Windows 10+ (winget/choco). The setup script detects your OS.</p>
         </div>
       </div>
       <div class="prereq-item">
@@ -116,6 +117,9 @@ brew install dotnet
 # Ubuntu / Debian
 sudo apt-get update &amp;&amp; sudo apt-get install -y dotnet-sdk-8.0
 
+# Windows (winget)
+winget install Microsoft.DotNet.SDK.8
+
 # Or download from: https://dot.net</code></pre>
         </div>
       </div>
@@ -131,7 +135,10 @@ brew install gh
 # Ubuntu / Debian
 sudo apt install gh
 
-# Authenticate
+# Windows
+winget install GitHub.cli
+
+# Authenticate (all platforms)
 gh auth login</code></pre>
         </div>
       </div>
@@ -157,7 +164,10 @@ cp com.agentpmo.repo-report.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist
 
 # Linux — cron job
-echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | crontab -</code></pre>
+echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | crontab -
+
+# Windows — Task Scheduler (PowerShell, admin)
+# The setup.ps1 script handles this automatically</code></pre>
         </div>
       </div>
 
@@ -419,8 +429,9 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
 <script defer>
 document.addEventListener('DOMContentLoaded', function () {
   const cmds = {
-    curl: 'curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup.sh | bash',
-    git:  'git clone https://github.com/MelbourneDeveloper/project_status.git && cd project_status && ./setup.sh'
+    curl: 'curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.sh | bash',
+    windows: 'irm https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.ps1 | iex',
+    git:  'git clone https://github.com/MelbourneDeveloper/project_status.git && cd project_status && make setup'
   };
 
   const display = document.getElementById('install-cmd-display');

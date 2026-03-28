@@ -3,7 +3,7 @@
 # =============================================================================
 
 .PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
-        install-skill uninstall-skill website-build website-run help
+        install-skill uninstall-skill website-build website-run setup help
 
 # =============================================================================
 # PRIMARY TARGETS
@@ -48,6 +48,19 @@ clean:
 check: lint test
 
 ci: lint test build
+
+# =============================================================================
+# SETUP (auto-detects OS)
+# =============================================================================
+
+setup:
+ifeq ($(OS),Windows_NT)
+	@echo "==> Running Windows setup (PowerShell)..."
+	powershell -ExecutionPolicy Bypass -File setup/setup.ps1
+else
+	@echo "==> Running setup..."
+	bash setup/setup.sh
+endif
 
 # =============================================================================
 # WEBSITE
@@ -106,6 +119,7 @@ help:
 	@echo "  clean            - Remove test artifacts"
 	@echo "  check            - lint + test (pre-commit)"
 	@echo "  ci               - lint + test + build (full CI)"
+	@echo "  setup            - Install dependencies + configure (auto-detects OS)"
 	@echo "  website-build    - Build the HTML dashboard report"
 	@echo "  website-run      - Serve the dashboard locally on port 8080"
 	@echo "  install-skill    - Install Claude Code Skill Globally"
