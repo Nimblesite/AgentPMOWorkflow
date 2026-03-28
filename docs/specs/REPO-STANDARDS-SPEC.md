@@ -154,6 +154,8 @@ ensures coverage never regresses.
 
 ## 4. Linting Standards — Exact Configurations
 
+Turn all rules on and turn them up to error unless there is a comment explaining why the rule should not be turned on.
+
 ### 4.1 Rust — Cargo.toml workspace lints
 
 The basic principle is to turn ALL lints on and turn them up to ERROR. The only exception would be that the existing configuration already has a documented reason NOT to turn the lint run on.
@@ -192,13 +194,15 @@ Every Rust workspace Cargo.toml MUST include these lint sections.
 
 **File:** [`templates/linting/.golangci.yml`](templates/linting/.golangci.yml)
 
-### 4.9 C# — .editorconfig (C# section)
+### 4.9 C# — Static Analysis via Directory.Build.props
 
-See full `.editorconfig` in §6. The C# section enforces all diagnostics as errors.
+Do not add style rules to the .editorconfig because this can destroy formatting. 
+Do add all code analysis rules, especially null safety rules
+If the repo has a rules config file, use this instead
 
-### 4.10 F# — .editorconfig (F# section)
+### 4.10 F# — Analyzer Configuration
 
-Included in the `.editorconfig` file — see §6.
+F# analyzer rules are configured via project files.
 
 ---
 
@@ -227,15 +231,6 @@ Included in the `.editorconfig` file — see §6.
 For repos with multiple languages, the Makefile `fmt` and `fmt-check` targets MUST chain all applicable formatters. A single `make fmt-check` validates every language in the repo.
 
 ---
-
-## 6. Editor Configuration
-
-### 6.1 .editorconfig (root — all repos)
-
-**File:** [`templates/.editorconfig`](templates/.editorconfig)
-
-Includes universal settings, web/config 2-space indent, and language-specific sections
-for Rust, C#, F#, Go, Makefile, and shell scripts.
 
 ---
 
@@ -471,7 +466,6 @@ STRUCTURE
 [ ] .claude/skills/ci-prep/SKILL.md
 [ ] .claude/skills/code-dedup/SKILL.md
 [ ] .claude/skills/submit-pr/SKILL.md
-[ ] .editorconfig
 [ ] .gitignore (comprehensive)
 [ ] .prettierrc.json                       (TypeScript repos)
 [ ] eslint.config.mjs                      (TypeScript repos)
@@ -511,7 +505,7 @@ LINTING
 [ ] Python: Basilisk (primary linter) + pyproject.toml [tool.ruff] with select=["ALL"]
 [ ] Dart: analysis_options.yaml with strict-casts, strict-inference
 [ ] Go: .golangci.yml with default: all
-[ ] C#: .editorconfig with CA* and IDE* as error
+[ ] C#: Directory.Build.props with NetAnalyzers, CA* and IDE* as error
 
 FORMATTING
 [ ] Rust: rustfmt.toml
@@ -602,28 +596,28 @@ What this means in practice:
 
 ## Appendix A: Current State Summary (20 repos, 2026-03-26)
 
-| Repo | Language(s) | CI | Makefile | Coverage | Devcontainer | Skills | CLAUDE.md | PR Template | .editorconfig |
-|------|------------|----|---------|---------|--------------|---------|-----------|-----------|-|
-| forge | Rust+C#+F#+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ | ✓ |
-| StoryTowns | Flutter+Deno | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| project_status | Flutter | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Books | Markdown | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ | ✗ |
-| Napper | F#+Rust+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ | ✓ |
-| CommandTree | TypeScript | ✓ | ✗ | ✓ 90% | ✗ | partial | ✓ | ✗ | ✗ |
-| tmc | TypeScript | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| gigs | TS+Python+C# | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| alcove | Python+Flutter | ✓ | ✗ | ✓ 70%/60% | ✗ | ✗ | ✓ | ✗ | ✗ |
-| Basilisk | Rust+TS+Python | ✓ | ✗ | ✓ per-crate | ✗* | ✗ | ✓ | ✗ | ✗ |
-| DataProvider | C#+TS | ✗ | ✗ | partial | ✗ | ✓ 7 | ✓ | partial | ✓ |
-| YFNUSYVJRH | Ruby/Jekyll | ✗ | ✗ | ✗ | ✓ | ✗ | minimal | ✗ | ✗ |
-| dart_agent | Dart | ✗ | ✓ | ✗ | ✓ | partial | ✓ | ✗ | ✗ |
-| vscode-copilot-chat | TypeScript | ✗ | ✗ | partial | ✓ | ✗ | ✗ | ✗ | ✗ |
-| spline | TypeScript | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (prettier) |
-| GrammarApi | Rust | ✓ | ✗ | ✗ | ✗ | ✗ | minimal | ✗ | ✗ |
-| h5-master | C# | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| vexels | Go+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ | ✗ |
-| osprey_dua | Go+C+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ | ✗ |
-| dart_mutant | Rust | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
+| Repo | Language(s) | CI | Makefile | Coverage | Devcontainer | Skills | CLAUDE.md | PR Template |
+|------|------------|----|---------|---------|--------------|---------|-----------|----|
+| forge | Rust+C#+F#+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ |
+| StoryTowns | Flutter+Deno | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| project_status | Flutter | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Books | Markdown | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ |
+| Napper | F#+Rust+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ |
+| CommandTree | TypeScript | ✓ | ✗ | ✓ 90% | ✗ | partial | ✓ | ✗ |
+| tmc | TypeScript | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| gigs | TS+Python+C# | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| alcove | Python+Flutter | ✓ | ✗ | ✓ 70%/60% | ✗ | ✗ | ✓ | ✗ |
+| Basilisk | Rust+TS+Python | ✓ | ✗ | ✓ per-crate | ✗* | ✗ | ✓ | ✗ |
+| DataProvider | C#+TS | ✗ | ✗ | partial | ✗ | ✓ 7 | ✓ | partial |
+| YFNUSYVJRH | Ruby/Jekyll | ✗ | ✗ | ✗ | ✓ | ✗ | minimal | ✗ |
+| dart_agent | Dart | ✗ | ✓ | ✗ | ✓ | partial | ✓ | ✗ |
+| vscode-copilot-chat | TypeScript | ✗ | ✗ | partial | ✓ | ✗ | ✗ | ✗ |
+| spline | TypeScript | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| GrammarApi | Rust | ✓ | ✗ | ✗ | ✗ | ✗ | minimal | ✗ |
+| h5-master | C# | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| vexels | Go+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ |
+| osprey_dua | Go+C+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ |
+| dart_mutant | Rust | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
 
 *Basilisk: devcontainer mentioned in CLAUDE.md but not present on disk
 
@@ -638,7 +632,6 @@ templates/
 ├── .clinerules/
 │   └── 00-read-claude-md.md
 ├── .cursorrules
-├── .editorconfig
 ├── .github/
 │   ├── copilot-instructions.md
 │   ├── pull_request_template.md

@@ -141,7 +141,6 @@ project_status/
 │   ├── plans/
 │   └── specs/
 │       └── REPO-STANDARDS-SPEC.md # Authoritative standards spec
-├── .editorconfig
 ├── .env.example
 ├── AGENT-PMO-WORKFLOW.md          # Vision doc
 ├── CLAUDE.md                      # THIS FILE

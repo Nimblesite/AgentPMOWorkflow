@@ -134,6 +134,14 @@ Follow these carefully
 
 [https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)
 
+# Website (If One Exists)
+
+**Optimise for SEO and AI**: always pay attention to this then when writing content
+
+[Top ways to ensure your content performs well in Google's AI experiences on Search](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
+
+[Search Engine Optimization (SEO) Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+
 ## Build Commands (exact)
 
 ```bash
@@ -166,7 +174,6 @@ make setup          # post-create dev environment setup
 │   │   └── deploy-pages.yml  (if applicable)
 │   └── pull_request_template.md
 ├── [...]                # Source code
-├── .editorconfig
 ├── .gitignore
 ├── CLAUDE.md
 └── Makefile

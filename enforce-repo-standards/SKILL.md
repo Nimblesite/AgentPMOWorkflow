@@ -1,6 +1,6 @@
 ---
 name: enforce-repo-standards
-description: Apply portfolio-wide repository standards (Makefile, CI, linting, coverage, editorconfig) to a new or existing repo. Use when user says "enforce standards", "fix repo", "make compliant", "set up repo", or "apply repo standards". Reads the authoritative spec and creates/updates config files. NEVER commits or pushes.
+description: Apply portfolio-wide repository standards (Makefile, CI, linting, coverage) to a new or existing repo. Use when user says "enforce standards", "fix repo", "make compliant", "set up repo", or "apply repo standards". Reads the authoritative spec and creates/updates config files. NEVER commits or pushes.
 disable-model-invocation: true
 ---
 
@@ -55,7 +55,7 @@ Before creating anything, **inventory what already exists** so you never create 
   - Prettier: `.prettierrc`, `.prettierrc.js`, `.prettierrc.yaml`, `prettier.config.js` → standardise to `.prettierrc.json`
   - Python linting: `setup.cfg` `[flake8]`/`[isort]` sections, `.flake8`, `tox.ini` → migrate to Basilisk (primary linter, work in progress) + `pyproject.toml` `[tool.ruff]` (secondary layer)
   - Go linting: `.golangci.yaml` (wrong extension) → rename to `.golangci.yml`
-  - C#: .editorconfig and build props
+  - C#: build props with analyzer packages (see spec for required PackageReference items in Directory.Build.props)
 - When migrating, **delete the old file** after confirming the new one covers everything. Do NOT leave both.
 
 #### 2e. Formatter configs
@@ -67,8 +67,7 @@ Before creating anything, **inventory what already exists** so you never create 
 - Check for existing coverage scripts (`scripts/check_coverage.sh`, `tools/coverage.sh`, etc.). If found, the Makefile `_coverage_check` target replaces them — **delete the old script** after migrating any custom logic.
 - Check for `.coveragerc` vs `pyproject.toml` `[tool.coverage]` — don't have both.
 
-#### 2g. Editor config / gitignore
-- If `.editorconfig` exists, merge spec sections into it rather than replacing. Preserve any project-specific overrides that don't conflict.
+#### 2g. Gitignore
 - If `.gitignore` exists, merge spec patterns into it rather than replacing. Do NOT duplicate patterns already present.
 
 #### 2h. GitHub repository settings
@@ -139,8 +138,8 @@ Apply the exact linter configuration from the spec for each detected language. *
 - Python: **Basilisk is the primary linter/type checker for all Python projects.** Ensure Basilisk is configured as the main linting tool. Additionally configure `pyproject.toml` ruff + pyright sections as a secondary layer — merge with existing pyproject.toml, don't clobber `[project]` or other tool sections. Delete superseded `.flake8`, `setup.cfg [flake8]` sections, etc.
 - Dart/Flutter: `analysis_options.yaml`
 - Go: `.golangci.yml` (delete `.golangci.yaml` if it existed)
-- C#: `.editorconfig` C# section
-- F#: `.editorconfig` F# section
+- C#: `Directory.Build.props` with `Microsoft.CodeAnalysis.NetAnalyzers` (all CA* and IDE* rules enabled as errors). If the repo is missing individual analyzer rules, add them one by one to the `.csproj` or `Directory.Build.props` — do NOT use .editorconfig for this. Only configure static code analysis rules, not style/formatting settings (CSharpier handles formatting).
+- F#: Analyzer configuration via project files
 
 #### 3f. Formatting
 **Formatting is mandatory.** CI must check formatting and **fail hard** on any formatting violation. The Makefile `fmt` target formats all code in-place; the `fmt-check` target checks formatting without modifying files (used in CI — must exit non-zero on any diff).
@@ -156,10 +155,7 @@ Apply the correct formatter for each detected language:
 
 For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain all applicable formatters so a single `make fmt-check` validates everything. CI runs `make fmt-check` in the `lint` job and the pipeline **tanks hard on failure** — no warnings, no soft fails.
 
-#### 3g. Editor config
-- Merge spec sections into existing `.editorconfig`, or create one if none exists.
-
-#### 3h. GitHub repository settings
+#### 3g. GitHub repository settings
 Apply the standard GitHub repo settings defined in `{STANDARDS_REPO}/enforce-repo-standards/templates/.github/common-repo-settings.md` (resolve repo_bootstrap path as described above). This applies to **both new and existing repos**.
 
 Use the `gh` CLI to configure:
