@@ -33,9 +33,32 @@ If the TMC server is available:
 - **Files < 500 lines.** If a file exceeds 500 lines, extract modules.
 - **100% test coverage is the goal.** Never delete or skip tests. Never remove assertions.
 - **Prefer E2E/integration tests.** Unit tests are acceptable only for pure transformation functions.
-- **Heavy logging everywhere.** Use structured logging with a logging library. Log at entry/exit of all significant operations. Use appropriate levels (error, warn, info, debug).
+- **Heavy logging everywhere.** See Logging Standards section below.
 - **No suppressing linter warnings.** Fix the code, not the linter.
 - **Pure functions** over statements
+
+## Logging Standards
+
+- **Use a structured logging library.** Never use `print`, `console.log`, `println!`, or `Debug.WriteLine` for diagnostics. Use a proper structured logging library appropriate to the language (see table below).
+- **Log at entry/exit of all significant operations.** Use appropriate levels: `error`, `warn`, `info`, `debug`, `trace`.
+- **Logging must be throughout the app.** Every service, handler, and non-trivial operation should log. Silent failures are forbidden.
+- **VS Code extensions:** Write detailed logs to a file in the extension's state folder (`.vsixname/` in the workspace root). Basic errors and diagnostics MUST also appear in the extension's VS Code Output Channel so users can see them without hunting for files.
+- **SaaS / server apps:** Log to the database for persistence and queryability. Log calls that write to the database or file MUST be async or run on a background thread — never block the request path with I/O logging.
+- **NEVER log personal data.** No names, emails, addresses, phone numbers, IP addresses (unless required for security audit with explicit consent), or any PII.
+- **NEVER log secrets.** No API keys, tokens, passwords, connection strings, or credentials. If you need to confirm a key is loaded, log a truncated hash or just `"API key: present"`.
+- **Structured fields over string interpolation.** Log `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`. This enables filtering and aggregation.
+
+### Logging Libraries by Language
+
+| Language | Library | Notes |
+|----------|---------|-------|
+| Rust | `tracing` | With `tracing-subscriber` for output |
+| TypeScript/Node | `pino` | JSON structured logging; use `pino-pretty` for dev |
+| Python | `structlog` | Wraps stdlib `logging` with structured output |
+| Dart/Flutter | `dart_logging` | Mandatory package (see Dart section) |
+| C# | `Microsoft.Extensions.Logging` + `Serilog` | Serilog for structured sinks |
+| F# | `Microsoft.Extensions.Logging` + `Serilog` | Same as C# |
+| Go | `log/slog` | stdlib structured logging (Go 1.21+) |
 
 ## Hard Rules — Language-Specific
 
@@ -65,7 +88,8 @@ If the TMC server is available:
 - No `.then()` on futures — use `async`/`await`
 - State management: SUDF (Single Unidirectional Data Flow) only (No Provider, Riverpod or Bloc)
 - For complex interdependent reactive observability, use the Signals package
-- Tests: Widget tests for UI, unit tests for business logic, integration tests for flows
+- Tests: write tests that double as integration tests AND widget tests. The test headers should point to shared test code. Follow [this guide](https://www.christianfindlay.com/blog/flutter-integration-tests). In widget testing mode, some tests should produce goldens, and you need to inject mocks for network calls etc.
+- Only use unit tests for isolating issues.
 
 #### Mandatory Packages
 - **Logging**: [dart_logging](https://pub.dev/packages/dart_logging)
@@ -142,7 +166,9 @@ Follow these carefully
 
 [Search Engine Optimization (SEO) Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
-## Build Commands (exact)
+## Build Commands (exact — cross-platform via GNU Make)
+
+All `make` targets work on Linux, macOS, and Windows. The Makefile uses OS detection to select portable commands. On Windows, install GNU Make via `choco install make` or use the one bundled with Git for Windows.
 
 ```bash
 make build          # compile everything

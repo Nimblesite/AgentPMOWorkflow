@@ -47,6 +47,7 @@ Before creating anything, **inventory what already exists** so you never create 
 
 #### 2c. Makefile
 - If a `Makefile` exists, read it. Merge spec-required targets into the existing file. Preserve any extra custom targets the repo has. Do NOT create a second Makefile or overwrite custom targets.
+- Check whether the Makefile has cross-platform OS detection (§1.0). If it uses raw `rm -rf` or `mkdir -p` instead of `$(RM)`/`$(MKDIR)`, flag it for update in Step 3.
 - If the repo uses a different build file instead (e.g., `justfile`, `Taskfile.yml`), keep it for reference but create the standard `Makefile` that delegates or replaces it — ask the user if unsure.
 
 #### 2d. Linter configs
@@ -109,6 +110,7 @@ For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)**
 
 #### 3b. Makefile
 - Merge spec-required targets into existing `Makefile`, or create one if none exists.
+- **Cross-platform (§1.0):** Ensure the Makefile has the OS detection block at the top (`ifeq ($(OS),Windows_NT)` ... `endif`) and uses `$(RM)`/`$(MKDIR)` instead of `rm -rf`/`mkdir -p`. Platform-specific targets (symlinks, scheduled tasks, etc.) must have both Unix and Windows variants.
 - Uncomment language-specific implementation targets for each detected language.
 - For multi-language repos, chain implementations as described in the spec.
 - Preserve any extra custom targets the repo already has.

@@ -31,6 +31,38 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
 Every repo MUST have a root `Makefile` with **exactly** these target names.
 Language-specific work is delegated internally; the external interface never changes.
 
+### 1.0 Cross-Platform Requirements (Linux, macOS, Windows)
+
+Every Makefile MUST support Linux, macOS, and Windows. Add OS detection at the top:
+
+```makefile
+ifeq ($(OS),Windows_NT)
+  SHELL := powershell.exe
+  .SHELLFLAGS := -NoProfile -Command
+  RM = Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+  MKDIR = New-Item -ItemType Directory -Force
+  HOME ?= $(USERPROFILE)
+else
+  RM = rm -rf
+  MKDIR = mkdir -p
+endif
+```
+
+**Rules:**
+- Use `$(RM)` instead of `rm -rf` and `$(MKDIR)` instead of `mkdir -p`
+- Use forward slashes for paths (works on all platforms)
+- Tools like `dotnet`, `npm`/`npx`, `gh`, `cargo`, `go`, `flutter`, `dart`, `python`/`pip` are already cross-platform — no changes needed for commands that use them
+- Where a command genuinely cannot work on Windows (e.g., `launchd`, `cron`, `chmod`, `ln -s`), provide both Unix and Windows targets:
+  ```makefile
+  ifeq ($(OS),Windows_NT)
+  install-schedule: install-schedule-windows
+  else
+  install-schedule: install-schedule-unix
+  endif
+  ```
+- Coverage check shell scripts that use `grep`/`awk` inline in Makefile recipes are Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make coverage-check` via WSL or Git Bash
+- Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
+
 ### 1.1 Required Targets (identical across all repos)
 
 | Target | What it does |
@@ -231,6 +263,59 @@ F# analyzer rules are configured via project files.
 For repos with multiple languages, the Makefile `fmt` and `fmt-check` targets MUST chain all applicable formatters. A single `make fmt-check` validates every language in the repo.
 
 ---
+
+---
+
+## 6. Logging Standards
+
+Every repo MUST use structured logging throughout the application. `print`/`console.log`/`println!`/`Debug.WriteLine` are prohibited for diagnostics.
+
+### 6.1 Universal Logging Rules
+
+1. **Structured logging library required.** See §6.2 for per-language libraries.
+2. **Log at entry/exit of all significant operations.** Use levels: `error`, `warn`, `info`, `debug`, `trace`.
+3. **Structured fields over string interpolation.** Log `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`.
+4. **Async/background logging for I/O sinks.** Any log call that writes to a database or file MUST be async or run on a background thread. Never block the request/UI thread with logging I/O.
+5. **NEVER log personal data.** No PII: names, emails, addresses, phone numbers, IP addresses (unless required for security audit with explicit documented consent).
+6. **NEVER log secrets.** No API keys, tokens, passwords, connection strings, or credentials. To confirm a key is loaded, log a truncated hash or `"API key: present"`.
+
+### 6.2 Logging Libraries by Language
+
+| Language | Library | Install |
+|----------|---------|---------|
+| Rust | `tracing` + `tracing-subscriber` | `cargo add tracing tracing-subscriber` |
+| TypeScript/Node | `pino` | `npm install pino` (`pino-pretty` for dev) |
+| Python | `structlog` | `pip install structlog` |
+| Dart/Flutter | `dart_logging` | `dart pub add dart_logging` |
+| C# | `Microsoft.Extensions.Logging` + `Serilog` | NuGet: `Serilog.Extensions.Logging` |
+| F# | `Microsoft.Extensions.Logging` + `Serilog` | Same as C# |
+| Go | `log/slog` (stdlib) | Built-in (Go 1.21+) |
+
+### 6.3 VS Code Extension Logging
+
+- Write detailed structured logs to a file inside the extension's state folder (`.vsixname/` in the workspace root).
+- Basic errors and diagnostics MUST also be written to the extension's VS Code **Output Channel** so users can see them without hunting for log files.
+- Both sinks (file + Output Channel) must be active simultaneously.
+
+### 6.4 SaaS / Server Application Logging
+
+- Log to the database for persistence and queryability.
+- Database/file log writes MUST be async or on a background thread — never block the request path.
+- In addition to the database, emit structured logs to stdout/stderr for container orchestrators and log aggregation services.
+
+### 6.5 Repo State Checklist Addition
+
+The §15 checklist gains these items under a new LOGGING section:
+
+```
+LOGGING
+[ ] Structured logging library installed (per §6.2)
+[ ] No raw print/console.log/println!/Debug.WriteLine for diagnostics
+[ ] Log calls present at entry/exit of significant operations
+[ ] VS Code extensions: Output Channel + file logging configured
+[ ] SaaS apps: async database logging configured
+[ ] No PII or secrets in log output
+```
 
 ---
 
@@ -476,6 +561,8 @@ STRUCTURE
 [ ] coverlet.runsettings                   (C#/.NET repos)
 [ ] .coveragerc                            (Python repos)
 [ ] Makefile (with all 10 required targets)
+[ ] Makefile has OS detection block (§1.0 cross-platform support)
+[ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile `_coverage_check` target (language-specific inline check)
 [ ] CLAUDE.md (all required sections)
 [ ] AGENTS.md (@CLAUDE.md pointer)
@@ -484,6 +571,14 @@ STRUCTURE
 [ ] .windsurfrules (@CLAUDE.md pointer)
 [ ] .github/copilot-instructions.md (@CLAUDE.md pointer)
 [ ] opencode.json (instructions array referencing CLAUDE.md)
+
+LOGGING (§6)
+[ ] Structured logging library installed (per §6.2)
+[ ] No raw print/console.log/println!/Debug.WriteLine for diagnostics
+[ ] Log calls present at entry/exit of significant operations
+[ ] VS Code extensions: Output Channel + file logging configured
+[ ] SaaS apps: async database logging configured
+[ ] No PII or secrets in log output
 
 CI
 [ ] ci.yml has jobs named exactly: lint, test, build

@@ -1,12 +1,32 @@
 # =============================================================================
 # Makefile — project_status
+# Cross-platform: Linux, macOS, Windows (via GNU Make)
 # =============================================================================
+
+# -----------------------------------------------------------------------------
+# OS Detection
+# -----------------------------------------------------------------------------
+ifeq ($(OS),Windows_NT)
+  SHELL := powershell.exe
+  .SHELLFLAGS := -NoProfile -Command
+  RM = Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+  MKDIR = New-Item -ItemType Directory -Force
+  RMFILE = Remove-Item -Force -ErrorAction SilentlyContinue
+  # On Windows, HOME may not be set; use USERPROFILE
+  HOME ?= $(USERPROFILE)
+else
+  RM = rm -rf
+  MKDIR = mkdir -p
+  RMFILE = rm -f
+endif
 
 .PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
-        install-skill uninstall-skill website-build website-run setup help
+        install-skill install-skill-unix install-skill-windows \
+        uninstall-skill uninstall-skill-unix uninstall-skill-windows \
+        website-build website-run setup help
 
 # =============================================================================
-# PRIMARY TARGETS
+# PRIMARY TARGETS (cross-platform — dotnet, npx, gh are already portable)
 # =============================================================================
 
 build:
@@ -42,8 +62,8 @@ fmt-check:
 
 clean:
 	@echo "==> Cleaning..."
-	rm -rf dashboard/test-results/
-	rm -rf dashboard/playwright-report/
+	$(RM) dashboard/test-results
+	$(RM) dashboard/playwright-report
 
 check: lint test
 
@@ -63,7 +83,7 @@ else
 endif
 
 # =============================================================================
-# WEBSITE
+# WEBSITE (cross-platform — npx is portable)
 # =============================================================================
 
 website-build:
@@ -75,15 +95,24 @@ website-run:
 	cd website && npx @11ty/eleventy --serve
 
 # =============================================================================
-# SKILL MANAGEMENT
+# SKILL MANAGEMENT (platform-specific: symlinks vs junctions)
 # =============================================================================
 
-install-skill:
+ifeq ($(OS),Windows_NT)
+install-skill: install-skill-windows
+uninstall-skill: uninstall-skill-windows
+else
+install-skill: install-skill-unix
+uninstall-skill: uninstall-skill-unix
+endif
+
+# --- Unix (macOS / Linux) ---
+install-skill-unix:
 	@echo "==> Install Claude Code Skill Globally..."
-	@mkdir -p "$(HOME)/.claude/skills"
+	@$(MKDIR) "$(HOME)/.claude/skills"
 	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
 		echo "    Removing existing symlink..."; \
-		rm "$(HOME)/.claude/skills/enforce-repo-standards"; \
+		$(RMFILE) "$(HOME)/.claude/skills/enforce-repo-standards"; \
 	elif [ -d "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
 		echo "ERROR: $(HOME)/.claude/skills/enforce-repo-standards exists and is not a symlink. Remove it manually."; \
 		exit 1; \
@@ -92,15 +121,32 @@ install-skill:
 	@echo "    $(HOME)/.claude/skills/enforce-repo-standards -> $$(pwd)/enforce-repo-standards"
 	@echo "==> Done. Skill available globally as /enforce-repo-standards"
 
-uninstall-skill:
+uninstall-skill-unix:
 	@echo "==> Removing enforce-repo-standards skill..."
 	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
-		rm "$(HOME)/.claude/skills/enforce-repo-standards"; \
+		$(RMFILE) "$(HOME)/.claude/skills/enforce-repo-standards"; \
 		echo "    Removed."; \
 	else \
 		echo "    Nothing to remove."; \
 	fi
 	@echo "==> Done."
+
+# --- Windows (PowerShell) ---
+install-skill-windows:
+	@echo "==> Install Claude Code Skill Globally (Windows)..."
+	$(MKDIR) "$(HOME)/.claude/skills" | Out-Null
+	$$skillPath = "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force }; \
+	New-Item -ItemType Junction -Path $$skillPath -Target "$(CURDIR)/enforce-repo-standards" | Out-Null; \
+	Write-Host "    $$skillPath -> $(CURDIR)/enforce-repo-standards"; \
+	Write-Host "==> Done. Skill available globally as /enforce-repo-standards"
+
+uninstall-skill-windows:
+	@echo "==> Removing enforce-repo-standards skill (Windows)..."
+	$$skillPath = "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force; Write-Host "    Removed." } \
+	else { Write-Host "    Nothing to remove." }; \
+	Write-Host "==> Done."
 
 # =============================================================================
 # HELP

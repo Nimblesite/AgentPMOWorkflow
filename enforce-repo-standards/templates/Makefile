@@ -1,12 +1,27 @@
 # =============================================================================
 # Standard Makefile — {{REPO_NAME}}
+# Cross-platform: Linux, macOS, Windows (via GNU Make)
 # All targets are language-agnostic. Add language-specific helpers below.
 # =============================================================================
 
 .PHONY: build test lint fmt fmt-check clean check ci coverage coverage-check setup
 
-# Detect OS for platform-specific commands
-OS := $(shell uname -s)
+# -----------------------------------------------------------------------------
+# OS Detection — portable commands for Linux, macOS, and Windows
+# On Windows, run via GNU Make with PowerShell (e.g., make from Git Bash or
+# choco install make). The $(OS) variable is set to "Windows_NT" automatically.
+# -----------------------------------------------------------------------------
+ifeq ($(OS),Windows_NT)
+  SHELL := powershell.exe
+  .SHELLFLAGS := -NoProfile -Command
+  RM = Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+  MKDIR = New-Item -ItemType Directory -Force
+  # On Windows, HOME may not be set; use USERPROFILE
+  HOME ?= $(USERPROFILE)
+else
+  RM = rm -rf
+  MKDIR = mkdir -p
+endif
 
 # Coverage threshold (override in CI via env var or per-repo)
 COVERAGE_THRESHOLD ?= 90
@@ -139,7 +154,7 @@ setup:
 # 	npm run fmt:check
 #
 # _clean:
-# 	rm -rf out dist coverage .vscode-test
+# 	$(RM) out dist coverage .vscode-test
 #
 # _coverage:
 # 	@echo "==> HTML report: coverage/index.html"
@@ -176,7 +191,7 @@ setup:
 # 	ruff check .
 #
 # _clean:
-# 	rm -rf dist build *.egg-info htmlcov .coverage coverage.xml lcov.info
+# 	$(RM) dist build *.egg-info htmlcov .coverage coverage.xml lcov.info
 #
 # _coverage:
 # 	python -m pytest tests/ --cov=. --cov-report=html --cov-config=.coveragerc
@@ -209,7 +224,7 @@ setup:
 # 	dart format --set-exit-if-changed .
 #
 # _clean:
-# 	flutter clean || rm -rf build
+# 	flutter clean || $(RM) build
 #
 # _coverage:
 # 	genhtml coverage/lcov.info -o coverage/html
@@ -241,7 +256,7 @@ setup:
 # 	dotnet build --configuration Release
 #
 # _test:
-# 	rm -rf TestResults
+# 	$(RM) TestResults
 # 	dotnet test $$(find . -maxdepth 1 -name '*.sln' | head -1) \
 # 	  --configuration Release \
 # 	  --settings coverlet.runsettings \
@@ -261,7 +276,11 @@ setup:
 # 	dotnet csharpier . --check
 #
 # _clean:
-# 	find . -type d -name bin -o -type d -name obj | xargs rm -rf
+# ifeq ($(OS),Windows_NT)
+# 	Get-ChildItem -Recurse -Directory -Include bin,obj | Remove-Item -Recurse -Force
+# else
+# 	find . -type d \( -name bin -o -name obj \) -exec rm -rf {} +
+# endif
 #
 # _coverage:
 # 	reportgenerator \
@@ -317,7 +336,7 @@ setup:
 #
 # _clean:
 # 	go clean ./...
-# 	rm -f coverage.out coverage.html
+# 	$(RM) coverage.out coverage.html
 #
 # _coverage:
 # 	go tool cover -html=coverage.out -o coverage.html
