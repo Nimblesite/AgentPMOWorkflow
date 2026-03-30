@@ -1,5 +1,5 @@
 ---
-name: enforce-repo-standards
+name: agent-pmo
 description: Apply portfolio-wide repository standards (Makefile, CI, linting, coverage) to a new or existing repo. Use when user says "enforce standards", "fix repo", "make compliant", "set up repo", or "apply repo standards". Reads the authoritative spec and creates/updates config files. NEVER commits or pushes.
 disable-model-invocation: true
 ---
@@ -13,7 +13,7 @@ Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file. Works on both 
 **Finding the spec:** The spec and all templates live at a fixed path that was stamped into this skill at install time:
 
 - Spec: `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`
-- Templates: `{{STANDARDS_REPO}}/enforce-repo-standards/templates/`
+- Templates: `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`
 
 Read the spec directly. Do NOT search the filesystem, scan sibling directories, or guess paths. If the path above does not exist, report an error and stop.
 
@@ -88,7 +88,7 @@ Before creating anything, **inventory what already exists** so you never create 
 
 #### 2h. GitHub repository settings
 - If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
-- Compare against the standard in `{{STANDARDS_REPO}}/enforce-repo-standards/templates/.github/common-repo-settings.md`.
+- Compare against the standard in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`.
 - If settings already match, leave them alone. Only apply changes for settings that differ.
 
 ### CRITICAL — Template Customization Rule
@@ -177,7 +177,7 @@ Apply the correct formatter for each detected language:
 For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain all applicable formatters so a single `make fmt-check` validates everything. CI runs `make fmt-check` in the `lint` job and the pipeline **tanks hard on failure** — no warnings, no soft fails.
 
 #### 3g. GitHub repository settings
-Apply the standard GitHub repo settings defined in `{{STANDARDS_REPO}}/enforce-repo-standards/templates/.github/common-repo-settings.md`. This applies to **both new and existing repos**.
+Apply the standard GitHub repo settings defined in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. This applies to **both new and existing repos**.
 
 Use the `gh` CLI to configure:
 - **Merge settings:** Squash merge only (disable merge commit and rebase merge), auto merge enabled, delete branch on merge enabled, squash commit title = PR_TITLE, message = PR_BODY.
@@ -203,19 +203,19 @@ The exact `gh api` commands are in the common-repo-settings file. The repo must 
 Based on the primary agent detected in Step 1:
 
 **If Claude is the primary agent:**
-1. Generate `CLAUDE.md` from `{{STANDARDS_REPO}}/enforce-repo-standards/templates/AGENTS.md`. **Customise fully as described above.** Add Claude-specific skill links at the bottom.
+1. Generate `CLAUDE.md` from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. **Customise fully as described above.** Add Claude-specific skill links at the bottom.
 2. Generate a trivial `AGENTS.md` pointer inline: `@CLAUDE.md` + "read CLAUDE.md for all rules".
 3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `CLAUDE.md`.
 
 **If Claude is NOT the primary agent (or no agent detected):**
-1. Generate `AGENTS.md` from `{{STANDARDS_REPO}}/enforce-repo-standards/templates/AGENTS.md`. **Customise fully as described above.**
-2. Use `{{STANDARDS_REPO}}/enforce-repo-standards/templates/CLAUDE.md` as the target repo's `CLAUDE.md` (pointer to AGENTS.md).
+1. Generate `AGENTS.md` from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. **Customise fully as described above.**
+2. Use `{{STANDARDS_REPO}}/agent-pmo-skill/templates/CLAUDE.md` as the target repo's `CLAUDE.md` (pointer to AGENTS.md).
 3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `AGENTS.md`.
 4. Still place skills in agent-native directory if any agent is used (skills don't interfere with other agents).
 
 #### 3i. Skills (§11 — agent-agnostic)
 
-Place skills from `{{STANDARDS_REPO}}/enforce-repo-standards/templates/skills/` into the target agent's native skill directory per §11.1:
+Place skills from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into the target agent's native skill directory per §11.1:
 - Claude Code primary → `.claude/skills/`
 - OpenAI Codex primary → `.agents/skills/`
 - GitHub Copilot primary → `.github/skills/` (or `.agents/skills/`)

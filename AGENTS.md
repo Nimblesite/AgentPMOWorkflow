@@ -7,7 +7,7 @@
 Agent PMO Workflow — a system for running 20+ AI agents across multiple projects simultaneously. See `AGENT-PMO-WORKFLOW.md` for the full vision. Two components:
 
 1. **PMO Dashboard** (`dashboard/`) — F# script that scans repos under `~/Documents/Code/` and generates an HTML status dashboard
-2. **Repo Standards Enforcement** (`enforce-repo-standards/`) — portfolio-wide templates, linter configs, CI workflows, and a skill to apply consistent standards to any repo
+2. **Repo Standards Enforcement** (`agent-pmo-skill/`) — portfolio-wide templates, linter configs, CI workflows, and a skill to apply consistent standards to any repo
 
 ## What This Repo Contains
 
@@ -15,8 +15,8 @@ Agent PMO Workflow — a system for running 20+ AI agents across multiple projec
 - **One F# script** — `dashboard/repo-report.fsx` generates the HTML dashboard
 - **Playwright E2E tests** — `dashboard/tests/repo-report.spec.js` tests the generated HTML
 - **F# tests** — `dashboard/test-report.fsx` unit tests + integration test (generates report from mock repos)
-- **An agent skill** — `enforce-repo-standards/SKILL.md` applies standards to other repos
-- **Templates** — `enforce-repo-standards/templates/` contains configs, workflows, and instruction files for target repos
+- **An agent skill** — `agent-pmo-skill/SKILL.md` applies standards to other repos
+- **Templates** — `agent-pmo-skill/templates/` contains configs, workflows, and instruction files for target repos
 
 This is NOT an application codebase. Most work here is editing docs, specs, templates, and the dashboard script.
 
@@ -32,7 +32,7 @@ This is NOT an application codebase. Most work here is editing docs, specs, temp
 
 Hard rules, testing rules, and language-specific rules for target repos live in the templates and specs — not here:
 
-- **Template AGENTS.md for target repos:** `enforce-repo-standards/templates/AGENTS.md`
+- **Template AGENTS.md for target repos:** `agent-pmo-skill/templates/AGENTS.md`
 - **Authoritative spec:** `docs/specs/REPO-STANDARDS-SPEC.md`
 
 When editing those files, that's where coding standards belong. This root AGENTS.md is only for working in this workspace.
@@ -49,7 +49,7 @@ If the TMC server is available:
 
 ## Critical Reference Docs — Agent Instructions & Skills
 
-These are the authoritative docs for configuring AI coding agents. When working on templates or the enforce-repo-standards skill, you MUST consult the docs relevant to the target agent.
+These are the authoritative docs for configuring AI coding agents. When working on templates or the agent-pmo skill, you MUST consult the docs relevant to the target agent.
 
 ### Agent Instruction File Docs
 
@@ -86,8 +86,8 @@ make fmt-check        # check formatting (no-op for F# scripts)
 make clean            # remove test artifacts
 make check            # lint + test
 make ci               # lint + test + build
-make install-skill    # symlink enforce-repo-standards into ~/.claude/skills/
-make uninstall-skill  # remove the global skill symlink
+make install-skill-claude   # install agent-pmo skill for Claude Code
+make uninstall-skill-claude # remove the agent-pmo skill
 make help             # list all available targets
 ```
 
@@ -121,7 +121,7 @@ dotnet fsi dashboard/repo-report.fsx             # run manually
 ## Architecture
 
 ```
-project_status/
+AgentPMOWorkflow/
 ├── .devcontainer/                 # Dev container config
 ├── .github/
 │   ├── pull_request_template.md
@@ -137,7 +137,7 @@ project_status/
 │   ├── README.md
 │   └── tests/
 │       └── repo-report.spec.js    # Playwright E2E tests
-├── enforce-repo-standards/        # Agent-agnostic skill for standards enforcement
+├── agent-pmo-skill/               # Agent-agnostic skill for standards enforcement
 │   ├── SKILL.md                   # The skill definition
 │   └── templates/                 # Portfolio-wide templates (agent-agnostic)
 │       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)

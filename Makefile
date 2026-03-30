@@ -1,5 +1,5 @@
 # =============================================================================
-# Makefile — project_status
+# Makefile — AgentPMOWorkflow
 # Cross-platform: Linux, macOS, Windows (via GNU Make)
 # =============================================================================
 
@@ -21,8 +21,8 @@ else
 endif
 
 .PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
-        install-skill install-skill-unix install-skill-windows \
-        uninstall-skill uninstall-skill-unix uninstall-skill-windows \
+        install-skill-claude install-skill-claude-unix install-skill-claude-windows \
+        uninstall-skill-claude uninstall-skill-claude-unix uninstall-skill-claude-windows \
         website-build website-run setup help
 
 # =============================================================================
@@ -95,35 +95,34 @@ website-run:
 	cd website && npx @11ty/eleventy --serve
 
 # =============================================================================
-# SKILL MANAGEMENT (platform-specific: symlinks vs junctions)
+# SKILL MANAGEMENT (platform-specific)
 # =============================================================================
 
+SKILL_DIR = $(HOME)/.claude/skills/agent-pmo
+
 ifeq ($(OS),Windows_NT)
-install-skill: install-skill-windows
-uninstall-skill: uninstall-skill-windows
+install-skill-claude: install-skill-claude-windows
+uninstall-skill-claude: uninstall-skill-claude-windows
 else
-install-skill: install-skill-unix
-uninstall-skill: uninstall-skill-unix
+install-skill-claude: install-skill-claude-unix
+uninstall-skill-claude: uninstall-skill-claude-unix
 endif
 
 # --- Unix (macOS / Linux) ---
-SKILL_DIR = $(HOME)/.claude/skills/enforce-repo-standards
-
-install-skill-unix:
-	@echo "==> Install Claude Code Skill Globally..."
+install-skill-claude-unix:
+	@echo "==> Install agent-pmo skill for Claude Code..."
 	@rm -rf "$(SKILL_DIR)"
 	@mkdir -p "$(SKILL_DIR)"
-	@# Copy skill and stamp {{STANDARDS_REPO}} with the real absolute path
 	@sed 's|{{STANDARDS_REPO}}|$(CURDIR)|g' \
-		enforce-repo-standards/SKILL.md > "$(SKILL_DIR)/SKILL.md"
+		agent-pmo-skill/SKILL.md > "$(SKILL_DIR)/SKILL.md"
 	@echo "    Installed to $(SKILL_DIR)"
 	@echo "    STANDARDS_REPO = $(CURDIR)"
-	@echo "==> Done. Skill available globally as /enforce-repo-standards"
+	@echo "==> Done. Skill available globally as /agent-pmo"
 
-uninstall-skill-unix:
-	@echo "==> Removing enforce-repo-standards skill..."
+uninstall-skill-claude-unix:
+	@echo "==> Removing agent-pmo skill..."
 	@if [ -d "$(SKILL_DIR)" ]; then \
-		$(RM) "$(SKILL_DIR)"; \
+		rm -rf "$(SKILL_DIR)"; \
 		echo "    Removed."; \
 	else \
 		echo "    Nothing to remove."; \
@@ -131,20 +130,19 @@ uninstall-skill-unix:
 	@echo "==> Done."
 
 # --- Windows (PowerShell) ---
-install-skill-windows:
-	@echo "==> Install Claude Code Skill Globally (Windows)..."
-	$(MKDIR) "$(SKILL_DIR)" | Out-Null
+install-skill-claude-windows:
+	@echo "==> Install agent-pmo skill for Claude Code (Windows)..."
 	$$skillPath = "$(SKILL_DIR)"; \
 	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force }; \
 	New-Item -ItemType Directory -Path $$skillPath -Force | Out-Null; \
-	(Get-Content "$(CURDIR)/enforce-repo-standards/SKILL.md") -replace '\{\{STANDARDS_REPO\}\}', '$(CURDIR)' | \
+	(Get-Content "$(CURDIR)/agent-pmo-skill/SKILL.md") -replace '\{\{STANDARDS_REPO\}\}', '$(CURDIR)' | \
 		Set-Content "$$skillPath/SKILL.md"; \
 	Write-Host "    Installed to $$skillPath"; \
 	Write-Host "    STANDARDS_REPO = $(CURDIR)"; \
-	Write-Host "==> Done. Skill available globally as /enforce-repo-standards"
+	Write-Host "==> Done. Skill available globally as /agent-pmo"
 
-uninstall-skill-windows:
-	@echo "==> Removing enforce-repo-standards skill (Windows)..."
+uninstall-skill-claude-windows:
+	@echo "==> Removing agent-pmo skill (Windows)..."
 	$$skillPath = "$(SKILL_DIR)"; \
 	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force; Write-Host "    Removed." } \
 	else { Write-Host "    Nothing to remove." }; \
@@ -170,5 +168,5 @@ help:
 	@echo "  setup            - Install dependencies + configure (auto-detects OS)"
 	@echo "  website-build    - Build the HTML dashboard report"
 	@echo "  website-run      - Serve the dashboard locally on port 8080"
-	@echo "  install-skill    - Install Claude Code Skill Globally"
-	@echo "  uninstall-skill  - Remove the global skill symlink"
+	@echo "  install-skill-claude   - Install agent-pmo skill for Claude Code"
+	@echo "  uninstall-skill-claude - Remove the agent-pmo skill"

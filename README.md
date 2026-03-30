@@ -38,7 +38,7 @@ While one agent ships a feature, another fixes a failing CI check. Another write
 
 ## Two Components. One System.
 
-### Repo Standards Enforcement (`enforce-repo-standards/` + `templates/`)
+### Repo Standards Enforcement (`agent-pmo-skill/` + `templates/`)
 
 Agents can't navigate chaos. If every project has a different structure, different scripts, different CI config — every project requires hand-holding. That hand-holding is what keeps you tethered to one project at a time.
 
@@ -55,7 +55,7 @@ This isn't cosmetic. It's what makes twenty projects manageable instead of twent
 - **Agent instructions** — a single source of truth that every AI coding tool reads from
 - **Dev environment** — containerized setup so onboarding is one command
 
-The full specification lives in the [repo standards spec](docs/specs/REPO-STANDARDS-SPEC.md). The [enforcement skill](enforce-repo-standards/SKILL.md) applies it automatically.
+The full specification lives in the [repo standards spec](docs/specs/REPO-STANDARDS-SPEC.md). The [enforcement skill](agent-pmo-skill/SKILL.md) applies it automatically.
 
 ### The PMO Dashboard (`repo-report.fsx`)
 

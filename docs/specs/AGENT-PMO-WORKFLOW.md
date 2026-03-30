@@ -36,13 +36,13 @@ Your control panel. An F# script scans every repo under `~/Documents/Code/`, gat
 
 You're not context-switching into each repo to figure out what's happening. The dashboard tells you. You decide where to direct attention. That's minimal cognitive load.
 
-### Repo Standards Enforcement (`enforce-repo-standards/`)
+### Repo Standards Enforcement (`agent-pmo-skill/`)
 
 Agents can't navigate chaos. If every project has a different structure, different scripts, different CI config — every project requires hand-holding. That hand-holding is what keeps you serialized.
 
 **Consistency solves this.** Every standardized repo exposes the same interface: same build targets, same CI pipeline, same lint and format commands, same PR workflow. Drop an agent into any project and it already knows how to run, test, and ship — no setup, no babysitting.
 
-That's what makes twenty projects manageable instead of twenty separate headaches. The full spec is in [docs/specs/REPO-STANDARDS-SPEC.md](docs/specs/REPO-STANDARDS-SPEC.md). The [enforcement skill](enforce-repo-standards/SKILL.md) applies it automatically.
+That's what makes twenty projects manageable instead of twenty separate headaches. The full spec is in [docs/specs/REPO-STANDARDS-SPEC.md](docs/specs/REPO-STANDARDS-SPEC.md). The [enforcement skill](agent-pmo-skill/SKILL.md) applies it automatically.
 
 ---
 
@@ -80,7 +80,7 @@ Every requirement gets a unique ID. That ID is the thread connecting everything:
 
 This is **bidirectional**. From any artifact — a test, a file, a PR, a design doc — you can trace back to the requirement it serves. From any spec, you can trace forward to every artifact that implements it.
 
-The `enforce-repo-standards` skill audits this automatically: every spec has an ID, every test links to a spec, every implementation links to a spec. Orphaned code is flagged. Unimplemented specs are flagged. Nothing ships without a traceable chain from requirement to delivery.
+The `agent-pmo` skill audits this automatically: every spec has an ID, every test links to a spec, every implementation links to a spec. Orphaned code is flagged. Unimplemented specs are flagged. Nothing ships without a traceable chain from requirement to delivery.
 
 When twenty agents are building in parallel, this is what keeps them aligned. Spec IDs are the backbone.
 

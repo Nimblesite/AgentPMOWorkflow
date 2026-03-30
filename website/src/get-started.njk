@@ -176,9 +176,9 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
         <div>
           <h3>Install the enforcement skill (optional)</h3>
           <p>To standardise your other repos with the Claude skill:</p>
-          <pre><code>make install-skill
-# Symlinks enforce-repo-standards/ into ~/.claude/skills/</code></pre>
-          <p>Then in any repo: tell Claude to run the <strong>enforce-repo-standards</strong> skill.</p>
+          <pre><code>make install-skill-claude
+# Copies agent-pmo skill into ~/.claude/skills/</code></pre>
+          <p>Then in any repo: tell Claude to run the <strong>agent-pmo</strong> skill.</p>
         </div>
       </div>
 
@@ -235,7 +235,7 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
       <div class="feature-card">
         <span class="feature-card-icon" aria-hidden="true">📐</span>
         <h3>Standardise your repos</h3>
-        <p>Run the <strong>enforce-repo-standards</strong> Claude skill on each of your repos. Give every project the same interface so agents can navigate them without help.</p>
+        <p>Run the <strong>agent-pmo</strong> Claude skill on each of your repos. Give every project the same interface so agents can navigate them without help.</p>
         <a href="/features/#standards" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about standards →</a>
       </div>
       <div class="feature-card">

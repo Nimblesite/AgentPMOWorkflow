@@ -1,6 +1,6 @@
 # Repository Standards Specification
 
-> **Machine-readable standard for the `enforce-repo-standards` skill.**
+> **Machine-readable standard for the `agent-pmo` skill.**
 > This document defines the exact configuration files, targets, job names, and templates
 > that every repo in this portfolio must conform to. A skill reads this document to
 > MINT a new repo or REMEDIATE an existing one.
