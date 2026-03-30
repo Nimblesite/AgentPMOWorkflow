@@ -23,11 +23,22 @@ The agent MUST search for the spec file using the above order and use the first 
 
 ## Instructions
 
-### Step 1 — Read the spec and detect context
+### Step 1 — Read the spec, detect context, and detect primary agent
 
 1. Locate and read `REPO-STANDARDS-SPEC.md` using the path resolution order above. The directory containing this spec is referred to as `{STANDARDS_REPO}` below. **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
 2. Detect which languages are present in the target repo (look for `Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`, etc.).
 3. Determine repo type (library, CLI, app/service, extension, static site) for coverage thresholds per the spec. All projects default to 90% code coverage target by default
+4. **Detect the primary AI coding agent** per §10.2 of the spec. Check in priority order:
+   - `.claude/settings.json` or `.claude/settings.local.json` → Claude Code
+   - `.claude/skills/` with custom (non-template) skills → Claude Code
+   - `.cursor/` directory → Cursor
+   - `.cline/` or `.clinerules/` with custom rules (not just a pointer) → Cline/Roo
+   - `.windsurf/` directory → Windsurf
+   - `.github/copilot-instructions.md` with substantial content → GitHub Copilot
+   - `CLAUDE.md` with substantial content (>10 lines, not a pointer) → Claude Code
+   - `AGENTS.md` with substantial content → Agent-neutral
+   - None of the above → Default to AGENTS.md as canonical
+5. Based on detection, determine the **canonical file**: `CLAUDE.md` if Claude is primary, `AGENTS.md` otherwise. Report which agent was detected and which file will be canonical.
 
 ### Step 2 — Audit existing artifacts for equivalents
 
@@ -90,7 +101,7 @@ When applying any template:
 
 This applies especially to:
 - **Skills** (`.claude/skills/`): Templates like `code-dedup` and `ci-prep` contain examples for every supported language — strip to only what's relevant.
-- **CLAUDE.md**: Remove Hard Rules sections for languages not in use. Fill in all `{{placeholders}}`.
+- **Canonical instruction file** (CLAUDE.md or AGENTS.md per §10.3): Remove Hard Rules sections for languages not in use. Fill in all `{{placeholders}}`.
 - **Makefile**: Delete commented blocks for unused languages.
 - **CI workflows**: Remove commented setup steps for unused languages.
 
@@ -107,6 +118,10 @@ For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)**
   - Files that describe how to achieve goals or have TODO checklists → `docs/plans/`
   - Non-markdown files (images, assets, etc.) may remain in `docs/` or a `docs/assets/` subdirectory.
 - Update any internal references (README links, CLAUDE.md paths, etc.) that pointed to the old folder name.
+
+#### 3a-ii. Spec ID rule
+
+Ensure the spec ID rule is present in the canonical instruction file (AGENTS.md / CLAUDE.md). This skill does NOT validate or rename existing spec IDs — that's the `spec-check` skill's job. This skill only ensures the rule is documented so agents follow it going forward.
 
 #### 3b. Makefile
 - Merge spec-required targets into existing `Makefile`, or create one if none exists.
@@ -167,6 +182,23 @@ Use the `gh` CLI to configure:
 
 The exact `gh api` commands are in the common-repo-settings file. The repo must be pushed to GitHub for these commands to work — if it's a brand new local-only repo, note this for the user and skip (they can run it after the first push).
 
+#### 3h. Agent instruction files (§10 — agent-agnostic)
+Based on the primary agent detected in Step 1:
+
+**If Claude is the primary agent:**
+1. Generate `CLAUDE.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md` (the canonical template with all rules). Customize per §16.2.
+2. Append Claude-specific content from `{STANDARDS_REPO}/enforce-repo-standards/templates/CLAUDE-ADDENDUM.md` (skills section, `.claude/` directory structure).
+3. Generate a trivial `AGENTS.md` pointer inline: `@CLAUDE.md` + "read CLAUDE.md for all rules".
+4. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `CLAUDE.md`.
+
+**If Claude is NOT the primary agent (or no agent detected):**
+1. Generate `AGENTS.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md` (the canonical template with all rules). Customize per §16.2.
+2. Use `{STANDARDS_REPO}/enforce-repo-standards/templates/CLAUDE.md` as the target repo's `CLAUDE.md` (pointer to AGENTS.md).
+3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `AGENTS.md`.
+4. Still place `.claude/skills/` if Claude Code is used at all (even as secondary agent), since skills don't interfere with other agents.
+
+**For ALL cases:** Replace `{{CANONICAL_FILE}}` in pointer templates with the detected canonical filename. If an existing instruction file has substantial custom content that differs from the template, **merge** the custom content into the canonical file rather than overwriting it.
+
 ### Step 4 — Deduplication check (CRITICAL)
 
 After all changes, run this checklist to catch any bloat introduced:
@@ -182,7 +214,8 @@ After all changes, run this checklist to catch any bloat introduced:
 5. **Build files:** Verify there aren't competing build systems doing the same thing (e.g., both `Makefile` and `Taskfile.yml` with identical targets).
 6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
 7. **Skills:** Check `.claude/skills/` — don't create duplicates of skills that already exist under the correct name.
-8. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
+8. **Agent instruction files:** Verify exactly ONE file has the full rules content (either CLAUDE.md or AGENTS.md, not both). All other agent files must be pointers. Check that old pointer filenames (e.g., `.clinerules/00-read-claude-md.md`) are renamed to the new standard (`.clinerules/00-read-instructions.md`).
+9. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
 
 In some cases, multiple files may merge into one file. This is optimal as it reduces clutter. **This case overrides the no delete rule**.
 
@@ -204,3 +237,4 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.
 - When remediating an existing repo, preserve any project-specific settings that don't conflict with the spec (e.g., extra Makefile targets, additional CI jobs, custom tsconfig paths).
 - If the repo already has a config that's compliant, leave it alone — don't touch files unnecessarily.
+- **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.

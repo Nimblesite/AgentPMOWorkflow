@@ -121,12 +121,13 @@ project_status/
 │   ├── README.md
 │   └── tests/
 │       └── repo-report.spec.js    # Playwright E2E tests
-├── enforce-repo-standards/        # Claude skill for standards enforcement
+├── enforce-repo-standards/        # Agent-agnostic skill for standards enforcement
 │   ├── SKILL.md                   # The skill definition
-│   └── templates/                 # Portfolio-wide templates
-│       ├── CLAUDE.md              # CLAUDE.md template (coding standards live here)
+│   └── templates/                 # Portfolio-wide templates (agent-agnostic)
+│       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)
+│       ├── CLAUDE.md              # Pointer to AGENTS.md (when Claude is not primary)
+│       ├── CLAUDE-ADDENDUM.md     # Claude-specific addendum (skills, .claude/ dir)
 │       ├── Makefile
-│       ├── AGENTS.md
 │       ├── .github/
 │       │   ├── common-repo-settings.md
 │       │   ├── copilot-instructions.md
