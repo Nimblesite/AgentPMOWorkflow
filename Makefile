@@ -107,24 +107,23 @@ uninstall-skill: uninstall-skill-unix
 endif
 
 # --- Unix (macOS / Linux) ---
+SKILL_DIR = $(HOME)/.claude/skills/enforce-repo-standards
+
 install-skill-unix:
 	@echo "==> Install Claude Code Skill Globally..."
-	@$(MKDIR) "$(HOME)/.claude/skills"
-	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
-		echo "    Removing existing symlink..."; \
-		$(RMFILE) "$(HOME)/.claude/skills/enforce-repo-standards"; \
-	elif [ -d "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
-		echo "ERROR: $(HOME)/.claude/skills/enforce-repo-standards exists and is not a symlink. Remove it manually."; \
-		exit 1; \
-	fi
-	@ln -s "$$(pwd)/enforce-repo-standards" "$(HOME)/.claude/skills/enforce-repo-standards"
-	@echo "    $(HOME)/.claude/skills/enforce-repo-standards -> $$(pwd)/enforce-repo-standards"
+	@rm -rf "$(SKILL_DIR)"
+	@mkdir -p "$(SKILL_DIR)"
+	@# Copy skill and stamp {{STANDARDS_REPO}} with the real absolute path
+	@sed 's|{{STANDARDS_REPO}}|$(CURDIR)|g' \
+		enforce-repo-standards/SKILL.md > "$(SKILL_DIR)/SKILL.md"
+	@echo "    Installed to $(SKILL_DIR)"
+	@echo "    STANDARDS_REPO = $(CURDIR)"
 	@echo "==> Done. Skill available globally as /enforce-repo-standards"
 
 uninstall-skill-unix:
 	@echo "==> Removing enforce-repo-standards skill..."
-	@if [ -L "$(HOME)/.claude/skills/enforce-repo-standards" ]; then \
-		$(RMFILE) "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	@if [ -d "$(SKILL_DIR)" ]; then \
+		$(RM) "$(SKILL_DIR)"; \
 		echo "    Removed."; \
 	else \
 		echo "    Nothing to remove."; \
@@ -134,16 +133,19 @@ uninstall-skill-unix:
 # --- Windows (PowerShell) ---
 install-skill-windows:
 	@echo "==> Install Claude Code Skill Globally (Windows)..."
-	$(MKDIR) "$(HOME)/.claude/skills" | Out-Null
-	$$skillPath = "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	$(MKDIR) "$(SKILL_DIR)" | Out-Null
+	$$skillPath = "$(SKILL_DIR)"; \
 	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force }; \
-	New-Item -ItemType Junction -Path $$skillPath -Target "$(CURDIR)/enforce-repo-standards" | Out-Null; \
-	Write-Host "    $$skillPath -> $(CURDIR)/enforce-repo-standards"; \
+	New-Item -ItemType Directory -Path $$skillPath -Force | Out-Null; \
+	(Get-Content "$(CURDIR)/enforce-repo-standards/SKILL.md") -replace '\{\{STANDARDS_REPO\}\}', '$(CURDIR)' | \
+		Set-Content "$$skillPath/SKILL.md"; \
+	Write-Host "    Installed to $$skillPath"; \
+	Write-Host "    STANDARDS_REPO = $(CURDIR)"; \
 	Write-Host "==> Done. Skill available globally as /enforce-repo-standards"
 
 uninstall-skill-windows:
 	@echo "==> Removing enforce-repo-standards skill (Windows)..."
-	$$skillPath = "$(HOME)/.claude/skills/enforce-repo-standards"; \
+	$$skillPath = "$(SKILL_DIR)"; \
 	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force; Write-Host "    Removed." } \
 	else { Write-Host "    Nothing to remove." }; \
 	Write-Host "==> Done."
