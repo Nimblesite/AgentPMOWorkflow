@@ -423,6 +423,40 @@ Dev environment setup is handled by `make setup` (defined in the Makefile). All 
 
 The rules content (hard rules, logging standards, testing, build commands, architecture) is **agent-neutral**. The file it lives in depends on which AI coding agent the target repo primarily uses.
 
+### 10.0 Critical Reference Documentation
+
+Before manipulating ANY agent instruction or skill files, the skill MUST read the official documentation for the target agent. Each agent has its own syntax, file locations, and conventions. **Do not guess — read the docs first.**
+
+#### Agent Instruction File Docs
+
+| Agent | Instruction file | Official docs |
+|---|---|---|
+| Claude Code | `CLAUDE.md` (uses `@file` imports) | https://code.claude.com/docs/en/memory#claude-md-files |
+| OpenAI Codex | `AGENTS.md` (walks up directory tree) | https://developers.openai.com/codex/guides/agents-md |
+| GitHub Copilot | `.github/copilot-instructions.md` + `AGENTS.md` | https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions |
+| Cline / Roo | `.clinerules/*.md` (supports `paths:` frontmatter) | https://docs.cline.bot/customization/cline-rules |
+| OpenCode | `AGENTS.md` (falls back to `CLAUDE.md`) | https://opencode.ai/docs/rules/ |
+
+#### Agent Skill Docs
+
+| Agent | Skill directory | Official docs |
+|---|---|---|
+| Claude Code | `.claude/skills/<name>/SKILL.md` | https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview |
+| OpenAI Codex | `.agents/skills/<name>/SKILL.md` | https://developers.openai.com/codex/skills |
+| GitHub Copilot | `.github/skills/<name>/SKILL.md` or `.agents/skills/<name>/SKILL.md` | https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/create-skills |
+| Cline / Roo | `.cline/skills/<name>/SKILL.md` or `.claude/skills/<name>/SKILL.md` | https://docs.cline.bot/customization/skills |
+| OpenCode | `.opencode/skills/<name>/SKILL.md` or `.agents/skills/<name>/SKILL.md` | https://opencode.ai/docs/skills/ |
+
+#### Key differences between agents
+
+| Concern | Claude Code | OpenAI Codex | GitHub Copilot | Cline/Roo | OpenCode |
+|---|---|---|---|---|---|
+| **Primary instruction file** | `CLAUDE.md` | `AGENTS.md` | `.github/copilot-instructions.md` | `.clinerules/*.md` | `AGENTS.md` |
+| **Import syntax** | `@path/to/file` | N/A (concatenates) | N/A | N/A | `instructions` in JSON |
+| **Skill directory** | `.claude/skills/` | `.agents/skills/` | `.github/skills/` or `.agents/skills/` | `.cline/skills/` or `.claude/skills/` | `.opencode/skills/` or `.agents/skills/` |
+| **Reads `AGENTS.md`** | No (needs `@AGENTS.md` import in `CLAUDE.md`) | Yes (native) | Yes | Yes (auto-detect) | Yes (native) |
+| **Reads `CLAUDE.md`** | Yes (native) | No | No | No | Yes (fallback) |
+
 ### 10.1 Canonical Template
 
 **File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language. This is the authoritative template for project instructions regardless of which agent consumes them.
@@ -467,13 +501,20 @@ When Claude IS the primary agent:
 
 When Claude is NOT the primary agent:
 - `AGENTS.md` gets the full template content (no Claude addendum)
-- `CLAUDE.md` becomes a pointer to `AGENTS.md`
+- `CLAUDE.md` imports `AGENTS.md` using the official `@AGENTS.md` syntax (per Claude Code docs) plus any Claude-specific addendum
 - All other agent files point to `AGENTS.md`
 - Claude-specific files (`.claude/skills/`) are still placed if Claude Code is used at all (secondary agent), since they don't interfere with other agents
 
+**CRITICAL — Pointer syntax is agent-specific.** Each agent has its own way of importing/referencing another file. The skill MUST use the correct syntax per the docs in §10.0:
+- **Claude Code**: `@AGENTS.md` import in `CLAUDE.md` (official import syntax)
+- **Copilot**: `.github/copilot-instructions.md` says "read AGENTS.md" in plain text
+- **Cline/Roo**: `.clinerules/` file says "read {{CANONICAL_FILE}}" in plain text
+- **Cursor/Windsurf**: `.cursorrules`/`.windsurfrules` says "read {{CANONICAL_FILE}}" in plain text
+- **OpenCode**: `opencode.json` `"instructions"` array references the canonical file
+
 ### 10.4 Pointer Files
 
-Every repo gets pointer files for agents that are NOT the primary agent. Each pointer redirects to the canonical file. The skill generates these inline using `{{CANONICAL_FILE}}` — no separate pointer templates needed.
+Every repo gets pointer files for agents that are NOT the primary agent. Each pointer redirects to the canonical file.
 
 | Agent / Tool | File | Template |
 |--------------|------|----------|
@@ -484,41 +525,43 @@ Every repo gets pointer files for agents that are NOT the primary agent. Each po
 | GitHub Copilot | `.github/copilot-instructions.md` | [`templates/.github/copilot-instructions.md`](templates/.github/copilot-instructions.md) |
 | OpenCode | `opencode.json` | [`templates/opencode.json`](templates/opencode.json) |
 
-When `AGENTS.md` is the canonical file, `CLAUDE.md` uses `templates/CLAUDE.md` (a pointer to AGENTS.md). When `CLAUDE.md` is canonical, the skill generates a trivial `AGENTS.md` pointer inline (same pattern, reversed direction).
-
 **Rules:**
 - NEVER add project rules to pointer files. All rules live in the canonical file.
 - If a new agent tool appears, add a pointer file here — do not create a second set of rules.
 
 ---
 
-## 11. Claude Skills Standard
+## 11. Skills Standard (Agent-Agnostic)
 
-### 11.1 Required skills directory structure
+Skills are portable, on-demand instruction packages. The templates in `templates/skills/` are written in a generic SKILL.md format. When applying to a target repo, the skill MUST convert them to the target agent's native format and directory structure.
 
-```
-.claude/
-└── skills/
-    ├── build/
-    │   └── SKILL.md
-    ├── test/
-    │   └── SKILL.md
-    ├── lint/
-    │   └── SKILL.md
-    ├── fmt/
-    │   └── SKILL.md
-    ├── ci-prep/
-    │   └── SKILL.md
-    ├── code-dedup/
-    │   └── SKILL.md
-    └── submit-pr/
-        └── SKILL.md
-```
+### 11.0 CRITICAL — Read the target agent's skill docs first
 
-### 11.2 Skill file templates
+Before placing or converting any skill files, the agent MUST read the official skill documentation for the target agent (see §10.0 Agent Skill Docs table). Each agent has different:
+- **Directory locations** (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/`)
+- **Frontmatter requirements** (some require `name` to match directory, some have `compatibility` fields)
+- **Size constraints** (Cline: keep under 5,000 tokens; others vary)
+- **Discovery conventions** (some walk up directories, some only check project root)
 
-| Skill | File |
-|-------|------|
+### 11.1 Skill placement by agent
+
+| Agent | Primary skill directory | Also scanned |
+|---|---|---|
+| Claude Code | `.claude/skills/<name>/SKILL.md` | — |
+| OpenAI Codex | `.agents/skills/<name>/SKILL.md` | — |
+| GitHub Copilot | `.github/skills/<name>/SKILL.md` | `.agents/skills/`, `.claude/skills/` |
+| Cline / Roo | `.cline/skills/<name>/SKILL.md` | `.claude/skills/`, `.clinerules/skills/` |
+| OpenCode | `.opencode/skills/<name>/SKILL.md` | `.agents/skills/`, `.claude/skills/` |
+
+When placing skills:
+1. **Primary agent gets skills in its native directory.** If Claude is primary, skills go in `.claude/skills/`. If Copilot is primary, skills go in `.github/skills/`.
+2. **Cross-compatible directories are acceptable.** Copilot, Cline, and OpenCode all scan `.agents/skills/` as a fallback. If the repo uses multiple agents, placing skills in `.agents/skills/` covers the most agents with one copy.
+3. **The SKILL.md format is universal.** All agents use the same `SKILL.md` with YAML frontmatter (`name`, `description`) plus markdown body. The skill content itself is portable.
+
+### 11.2 Required skills
+
+| Skill | Template |
+|-------|----------|
 | build | [`templates/skills/build/SKILL.md`](templates/skills/build/SKILL.md) |
 | test | [`templates/skills/test/SKILL.md`](templates/skills/test/SKILL.md) |
 | lint | [`templates/skills/lint/SKILL.md`](templates/skills/lint/SKILL.md) |
@@ -633,13 +676,8 @@ STRUCTURE
 [ ] .github/pull_request_template.md
 [ ] .devcontainer/devcontainer.json
 [ ] Makefile `setup` target configured
-[ ] .claude/skills/build/SKILL.md
-[ ] .claude/skills/test/SKILL.md
-[ ] .claude/skills/lint/SKILL.md
-[ ] .claude/skills/fmt/SKILL.md
-[ ] .claude/skills/ci-prep/SKILL.md
-[ ] .claude/skills/code-dedup/SKILL.md
-[ ] .claude/skills/submit-pr/SKILL.md
+[ ] Skills in agent-native directory (§11.1: .claude/, .agents/, .github/, .cline/, or .opencode/)
+[ ] Required skills present: build, test, lint, fmt, ci-prep, code-dedup, submit-pr
 [ ] .gitignore (comprehensive)
 [ ] .prettierrc.json                       (TypeScript repos)
 [ ] eslint.config.mjs                      (TypeScript repos)
