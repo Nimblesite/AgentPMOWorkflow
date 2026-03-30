@@ -461,8 +461,6 @@ Before manipulating ANY agent instruction or skill files, the skill MUST read th
 
 **File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language. This is the authoritative template for project instructions regardless of which agent consumes them.
 
-**File:** [`templates/CLAUDE-ADDENDUM.md`](templates/CLAUDE-ADDENDUM.md) — Claude Code-specific content only (skills configuration, `.claude/` directory structure, Claude-specific links). Appended to CLAUDE.md when Claude is the primary agent.
-
 ### 10.2 Agent Detection
 
 Before placing files, the skill MUST detect which AI coding agent the target repo primarily uses. Check these signals in priority order:
@@ -495,7 +493,7 @@ Based on detection, the skill places the full rules content in the **canonical f
 | No agent / Unknown | `AGENTS.md` | Pointer → `AGENTS.md` |
 
 When Claude IS the primary agent:
-- `CLAUDE.md` gets the full AGENTS.md template content PLUS the Claude addendum (skills section, `.claude/` directory)
+- `CLAUDE.md` gets the full AGENTS.md template content plus Claude-specific skill links at the bottom
 - `AGENTS.md` becomes a pointer to `CLAUDE.md`
 - All other agent files point to `CLAUDE.md`
 
@@ -764,7 +762,7 @@ A skill built from this spec operates in two modes:
 3. Select devcontainer template for primary language
 4. Select Makefile implementation section for primary language
 5. Detect primary agent (§10.2) and determine canonical file (§10.3)
-6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, append `templates/CLAUDE-ADDENDUM.md` content to CLAUDE.md.
+6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, add Claude-specific skill links to CLAUDE.md.
 7. Create all pointer files from §10.4, substituting `{{CANONICAL_FILE}}` with the detected canonical file
 8. Create all 7 skills from §11 templates — **see §16.2 Template Customization Rule**
 8. Ensure `_coverage_check` Makefile target has inline coverage check logic per §3.3
@@ -866,7 +864,6 @@ templates/
 ├── .windsurfrules
 ├── AGENTS.md                    # Canonical template (all rules, agent-neutral)
 ├── CLAUDE.md                    # Pointer to AGENTS.md (used when Claude is not primary)
-├── CLAUDE-ADDENDUM.md           # Claude-specific addendum (skills, .claude/ dir)
 ├── Makefile
 ├── opencode.json
 ├── coverage/

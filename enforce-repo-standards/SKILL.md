@@ -39,6 +39,12 @@ The agent MUST search for the spec file using the above order and use the first 
    - `AGENTS.md` with substantial content → Agent-neutral
    - None of the above → Default to AGENTS.md as canonical
 5. Based on detection, determine the **canonical file**: `CLAUDE.md` if Claude is primary, `AGENTS.md` otherwise. Report which agent was detected and which file will be canonical.
+6. **Read the target agent's official documentation** before touching any instruction or skill files. The spec §10.0 has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess. Key differences:
+   - **Claude Code**: uses `@AGENTS.md` import syntax in `CLAUDE.md`; skills in `.claude/skills/`
+   - **OpenAI Codex**: reads `AGENTS.md` natively; skills in `.agents/skills/`
+   - **GitHub Copilot**: reads `.github/copilot-instructions.md` + `AGENTS.md`; skills in `.github/skills/` or `.agents/skills/`
+   - **Cline/Roo**: reads `.clinerules/*.md` with optional `paths:` frontmatter; skills in `.cline/skills/` or `.claude/skills/`
+   - **OpenCode**: reads `AGENTS.md` (falls back to `CLAUDE.md`); skills in `.opencode/skills/` or `.agents/skills/`
 
 ### Step 2 — Audit existing artifacts for equivalents
 
@@ -183,19 +189,43 @@ Use the `gh` CLI to configure:
 The exact `gh api` commands are in the common-repo-settings file. The repo must be pushed to GitHub for these commands to work — if it's a brand new local-only repo, note this for the user and skip (they can run it after the first push).
 
 #### 3h. Agent instruction files (§10 — agent-agnostic)
+
+**CRITICAL: The canonical instruction file (AGENTS.md or CLAUDE.md) MUST be fully customised for the target repo.** The template is a STARTING POINT. You MUST:
+- Fill ALL `{{placeholders}}` with real values (repo name, languages, description, architecture)
+- **Strip every language section that doesn't apply.** A Python repo MUST NOT mention Rust, TypeScript, Dart, C#, Go rules.
+- **Strip every tool/package reference that doesn't apply.** Don't mention `cargo`, `tsconfig`, `dotnet` in a Python repo.
+- **Fill in the project overview** with a real description of what the repo does.
+- **Fill in the architecture section** with the actual directory structure.
+- **Add repo-specific build commands** if they differ from the defaults.
+- **Include only the logging library row for the repo's language(s).**
+- **Include only the relevant agent reference docs** from the URL tables — a Claude-only repo doesn't need Codex/Copilot links.
+
+**The test:** After customisation, a developer reading the file should see ZERO references to languages, tools, frameworks, or packages not used in the repo.
+
 Based on the primary agent detected in Step 1:
 
 **If Claude is the primary agent:**
-1. Generate `CLAUDE.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md` (the canonical template with all rules). Customize per §16.2.
-2. Append Claude-specific content from `{STANDARDS_REPO}/enforce-repo-standards/templates/CLAUDE-ADDENDUM.md` (skills section, `.claude/` directory structure).
-3. Generate a trivial `AGENTS.md` pointer inline: `@CLAUDE.md` + "read CLAUDE.md for all rules".
-4. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `CLAUDE.md`.
+1. Generate `CLAUDE.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md`. **Customise fully as described above.** Add Claude-specific skill links at the bottom.
+2. Generate a trivial `AGENTS.md` pointer inline: `@CLAUDE.md` + "read CLAUDE.md for all rules".
+3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `CLAUDE.md`.
 
 **If Claude is NOT the primary agent (or no agent detected):**
-1. Generate `AGENTS.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md` (the canonical template with all rules). Customize per §16.2.
+1. Generate `AGENTS.md` from `{STANDARDS_REPO}/enforce-repo-standards/templates/AGENTS.md`. **Customise fully as described above.**
 2. Use `{STANDARDS_REPO}/enforce-repo-standards/templates/CLAUDE.md` as the target repo's `CLAUDE.md` (pointer to AGENTS.md).
 3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `AGENTS.md`.
-4. Still place `.claude/skills/` if Claude Code is used at all (even as secondary agent), since skills don't interfere with other agents.
+4. Still place skills in agent-native directory if any agent is used (skills don't interfere with other agents).
+
+#### 3i. Skills (§11 — agent-agnostic)
+
+Place skills from `{STANDARDS_REPO}/enforce-repo-standards/templates/skills/` into the target agent's native skill directory per §11.1:
+- Claude Code primary → `.claude/skills/`
+- OpenAI Codex primary → `.agents/skills/`
+- GitHub Copilot primary → `.github/skills/` (or `.agents/skills/`)
+- Cline/Roo primary → `.cline/skills/` (or `.claude/skills/`)
+- OpenCode primary → `.opencode/skills/` (or `.agents/skills/`)
+- Multiple agents / unknown → `.agents/skills/` (maximum cross-compatibility)
+
+The SKILL.md format (YAML frontmatter with `name` + `description`, followed by markdown instructions) is universal across all agents. Customize content per §16.2 (strip irrelevant languages, fill placeholders).
 
 **For ALL cases:** Replace `{{CANONICAL_FILE}}` in pointer templates with the detected canonical filename. If an existing instruction file has substantial custom content that differs from the template, **merge** the custom content into the canonical file rather than overwriting it.
 
@@ -213,7 +243,7 @@ After all changes, run this checklist to catch any bloat introduced:
 4. **Formatter configs:** For each language, verify only ONE formatter config exists per tool (e.g., not both `.prettierrc` and `.prettierrc.json`; not both `[tool.black]` and `[tool.ruff.format]` in pyproject.toml).
 5. **Build files:** Verify there aren't competing build systems doing the same thing (e.g., both `Makefile` and `Taskfile.yml` with identical targets).
 6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
-7. **Skills:** Check `.claude/skills/` — don't create duplicates of skills that already exist under the correct name.
+7. **Skills:** Check the agent-native skill directory (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/` per §11.1) — don't create duplicates of skills that already exist. If skills exist in multiple directories, consolidate to the primary agent's directory.
 8. **Agent instruction files:** Verify exactly ONE file has the full rules content (either CLAUDE.md or AGENTS.md, not both). All other agent files must be pointers. Check that old pointer filenames (e.g., `.clinerules/00-read-claude-md.md`) are renamed to the new standard (`.clinerules/00-read-instructions.md`).
 9. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
 
@@ -237,4 +267,6 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.
 - When remediating an existing repo, preserve any project-specific settings that don't conflict with the spec (e.g., extra Makefile targets, additional CI jobs, custom tsconfig paths).
 - If the repo already has a config that's compliant, leave it alone — don't touch files unnecessarily.
+- **Read the agent docs before touching agent files.** The spec §10.0 has the complete URL table. Each agent has different import syntax, file locations, and conventions. Use the correct syntax for the detected agent — never guess.
+- **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per §11.1. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
 - **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.

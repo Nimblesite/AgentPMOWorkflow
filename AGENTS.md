@@ -141,8 +141,7 @@ project_status/
 │   ├── SKILL.md                   # The skill definition
 │   └── templates/                 # Portfolio-wide templates (agent-agnostic)
 │       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)
-│       ├── CLAUDE.md              # Pointer to AGENTS.md (when Claude is not primary)
-│       ├── CLAUDE-ADDENDUM.md     # Claude-specific addendum (skills, .claude/ dir)
+│       ├── CLAUDE.md              # Pointer to AGENTS.md (with Claude-specific skill links)
 │       ├── Makefile
 │       ├── .github/
 │       │   ├── common-repo-settings.md
