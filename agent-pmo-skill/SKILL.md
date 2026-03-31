@@ -214,7 +214,9 @@ Generate your own canonical instruction file from the template at `{{STANDARDS_R
 
 1. **Write your canonical file.** Put the customised content into whatever file you natively read (e.g., Claude → `CLAUDE.md`, Codex → `AGENTS.md`, Copilot → `.github/copilot-instructions.md`).
 2. **Create pointer files** so other agents can also find the instructions. Every other agent instruction file should be a trivial pointer to your canonical file.
-3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Customise per §17.2 (strip irrelevant languages, fill placeholders).
+3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Read each source SKILL.md in full, then apply §17.2 customization rules:
+   - **Language-customizable skills** (`code-dedup`, `ci-prep`, `upgrade-packages`): strip irrelevant language sections, fill placeholders.
+   - **Content-preserving skills** (`website-audit`, `spec-check`, `submit-pr`, and any skill without multi-language examples): **the spirit of the skill must remain intact.** Copy the full step-by-step procedure verbatim. You may add repo-specific context (e.g., which websites to audit) but NEVER drop, merge, summarize, rewrite, or gut steps. Every step, sub-check, URL, specific instruction, checklist item, and report format must be preserved. Diff the source against your output — the only differences should be repo-specific additions.
 
 If an existing instruction file has substantial custom content, **merge** it into the canonical file rather than overwriting.
 

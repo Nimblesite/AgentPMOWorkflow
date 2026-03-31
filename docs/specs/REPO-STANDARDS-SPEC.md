@@ -111,15 +111,11 @@ endif
 | Target | What it does |
 |--------|-------------|
 | `make build` | Compile/assemble all artifacts |
-| `make test` | Run full test suite with coverage collection |
+| `make test` | Run full test suite with coverage collection and coverage report generation |
 | `make lint` | Run all linters in error mode (non-zero exit on any warning) |
 | `make fmt` | Format all code in-place |
-| `make fmt-check` | Check formatting without modifying (used in CI) |
 | `make clean` | Delete all build artifacts |
-| `make check` | `lint` + `test` (pre-commit validation; fast) |
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
-| `make coverage` | Generate and open coverage report |
-| `make coverage-check` | Assert coverage thresholds; exit non-zero if below |
 
 ### 1.2 Standard Makefile Template
 
@@ -849,10 +845,24 @@ A skill built from this spec operates in two modes:
 
 What this means in practice:
 
-1. **Skills (`.claude/skills/`):** Skill templates like `code-dedup`, `ci-prep`, etc. contain examples spanning all supported languages (Rust, TypeScript, Python, C#, F#, Go, Dart). When applying to a specific repo:
+1. **Skills (`.claude/skills/`):** There are two categories:
+
+   **Language-customizable skills** (`code-dedup`, `ci-prep`, `upgrade-packages`) contain examples spanning all supported languages. When applying to a specific repo:
    - **Remove all language sections that don't apply.** A Python repo's `code-dedup` skill should only mention Python tools (`pyright`, `ruff`, `pytest-cov`), not `tsconfig`, `cargo`, or `dotnet`.
    - **Replace generic examples with repo-specific ones.** If the skill says "check for `Cargo.toml`, `package.json`, `pubspec.yaml`..." and the repo is Go, replace with the actual project files.
    - **Adjust tool references** to match what the repo actually uses (its Makefile targets, its CI steps, its linter configs).
+
+   **Content-preserving skills** (`website-audit`, `spec-check`, `submit-pr`, and any skill that does NOT contain multi-language examples) are language-agnostic and contain detailed step-by-step procedures, checklists, and reference URLs. **The spirit of the skill must remain intact.** Customization is limited to:
+   - Filling in repo-specific details (e.g., which websites to audit, which site generator is used).
+   - Adding repo-specific context where the template has placeholders.
+
+   **What you MUST NOT change:**
+   - **Steps** — every step and sub-check in the source must appear in the output. Do not drop, merge, summarize, or rewrite steps.
+   - **URLs** — every reference URL must be preserved exactly. These are authoritative sources the skill depends on.
+   - **Specific instructions** — checklists, validation criteria, rules, tool commands, and report formats must be copied verbatim.
+   - **The overall structure** — step numbering, heading hierarchy, and the progress checklist (if present) must match the source.
+
+   **The test:** diff the source template against the output. The only differences should be repo-specific additions. If entire steps, URLs, or instructions are missing, the customization is wrong.
 
 2. **Canonical instruction file (CLAUDE.md or AGENTS.md per §10.3):** The template has `{{placeholders}}` and multi-language Hard Rules sections. Strip language-specific rules that don't apply. Fill in all placeholders with real content — project description, architecture, actual languages used.
 
