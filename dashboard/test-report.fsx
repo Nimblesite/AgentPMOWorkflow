@@ -564,7 +564,7 @@ assert' "HTML is not empty" (html.Length > 500) $"only {html.Length} chars"
 assertContains "DOCTYPE" "<!DOCTYPE html>" html
 assertContains "html lang" "<html lang=\"en\">" html
 assertContains "charset UTF-8" "<meta charset=\"UTF-8\">" html
-assertContains "title" "<title>Dashboard</title>" html
+assertContains "title" "<title>Agent PMO Dashboard</title>" html
 assertContains "closing html tag" "</html>" html
 assertContains "has body" "<body>" html
 assertContains "has style block" "<style>" html
