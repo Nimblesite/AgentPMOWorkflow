@@ -672,7 +672,9 @@ STRUCTURE
 [ ] .devcontainer/devcontainer.json
 [ ] Makefile `setup` target configured
 [ ] Skills in agent-native directory (§11.1: .claude/, .agents/, .github/, .cline/, or .opencode/)
-[ ] Required skills present: build, test, lint, fmt, ci-prep, code-dedup, submit-pr
+[ ] Required skills present: build, ci-prep, code-dedup, submit-pr
+[ ] All agent-pmo managed files have `agent-pmo:<hash>` marker (§16)
+[ ] No orphaned agent-pmo files (marked files whose source template no longer exists)
 [ ] .gitignore (comprehensive)
 [ ] .prettierrc.json                       (TypeScript repos)
 [ ] eslint.config.mjs                      (TypeScript repos)
@@ -748,7 +750,67 @@ GITHUB REPO SETTINGS (§13)
 
 ---
 
-## 16. Mint vs Remediate Modes
+## 16. File Markers
+
+### [MARKER-FORMAT] Agent-PMO file marker
+
+Every file created or substantively edited by agent-pmo MUST contain a marker comment near the top of the file (after any shebang, frontmatter, or XML declaration). The marker tells agents that the file is managed by agent-pmo and includes the short git commit hash of the agent-pmo repo at the time the file was written.
+
+**Format:**
+
+```
+agent-pmo:<short-hash>
+```
+
+Where `<short-hash>` is the 7-character abbreviated commit hash from the AgentPMOWorkflow repo (output of `git rev-parse --short HEAD` run inside the standards repo).
+
+**Placement by file type:**
+
+| File type | Marker syntax | Example |
+|-----------|--------------|---------|
+| YAML (`.yml`, `.yaml`) | `# agent-pmo:abc1234` | CI workflows, analysis_options |
+| Makefile | `# agent-pmo:abc1234` | Root Makefile |
+| Markdown (`.md`) | `<!-- agent-pmo:abc1234 -->` | AGENTS.md, CLAUDE.md, skills, PR template |
+| JSON (`.json`) | Top-level `"_agent_pmo": "abc1234"` field | devcontainer.json, opencode.json, tsconfig |
+| TOML (`.toml`) | `# agent-pmo:abc1234` | pyproject.toml, rustfmt.toml |
+| JavaScript/TypeScript (`.js`, `.mjs`, `.ts`) | `// agent-pmo:abc1234` | eslint.config.mjs |
+| XML (`.props`, `.runsettings`) | `<!-- agent-pmo:abc1234 -->` | Directory.Build.props, coverlet.runsettings |
+| Shell (`.sh`) | `# agent-pmo:abc1234` | Any shell scripts |
+| Dotfiles (`.gitignore`, `.coveragerc`, etc.) | `# agent-pmo:abc1234` | .gitignore, .coveragerc |
+
+**Rules:**
+
+1. The marker MUST appear within the first 10 lines of the file.
+2. For files with required headers (shebang lines, YAML `---` frontmatter, XML `<?xml?>` declarations), place the marker immediately after the header.
+3. For SKILL.md files, place the marker on the line immediately after the closing `---` of the YAML frontmatter.
+4. Only stamp files that agent-pmo creates or substantively modifies. Do not stamp files that already exist and are left unchanged.
+5. When re-running agent-pmo on a repo, update the hash in existing markers to the current commit.
+
+### [MARKER-CLEANUP] Orphaned file cleanup
+
+During the deduplication check (§17 Step 4), the agent MUST scan for files with an `agent-pmo:` marker that correspond to templates or skills that **no longer exist** in the source standards repo. If a marked file in the target repo has no corresponding source in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`, the file is orphaned and MUST be deleted.
+
+**Process:**
+
+1. Find all files in the target repo containing `agent-pmo:` markers.
+2. For each marked file, determine which template or skill it originated from.
+3. Check whether that template or skill still exists in the standards repo.
+4. If the source no longer exists, delete the orphaned file from the target repo.
+5. Report all orphaned files deleted.
+
+This ensures that when skills or templates are removed from the standards repo (e.g., the `fmt`, `lint`, and `test` skills were consolidated into `ci-prep`), target repos get cleaned up automatically on the next agent-pmo run.
+
+### [MARKER-AUDIT] Provenance auditing
+
+The commit hash in the marker enables traceability:
+
+- `git log --oneline <hash>..HEAD` in the standards repo shows what changed since the file was stamped.
+- If a file's marker hash is far behind the current standards repo HEAD, the file may need re-application.
+- The `agent-pmo` skill SHOULD note files with stale markers (more than 50 commits behind) and offer to re-apply the current templates.
+
+---
+
+## 17. Mint vs Remediate Modes
 
 A skill built from this spec operates in two modes:
 
@@ -761,9 +823,10 @@ A skill built from this spec operates in two modes:
 5. Detect primary agent (§10.2) and determine canonical file (§10.3)
 6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, add Claude-specific skill links to CLAUDE.md.
 7. Create all pointer files from §10.4, substituting `{{CANONICAL_FILE}}` with the detected canonical file
-8. Create all 7 skills from §11 templates — **see §16.2 Template Customization Rule**
-8. Ensure `_coverage_check` Makefile target has inline coverage check logic per §3.3
-9. Set `COVERAGE_THRESHOLD` appropriate for repo type (§3.1)
+8. Create all skills from §11 templates — **see §17.2 Template Customization Rule**
+9. Stamp every created file with the `agent-pmo:<hash>` marker per §16
+10. Ensure `_coverage_check` Makefile target has inline coverage check logic per §3.3
+11. Set `COVERAGE_THRESHOLD` appropriate for repo type (§3.1)
 
 ### REMEDIATE mode (existing repo)
 
@@ -779,7 +842,7 @@ A skill built from this spec operates in two modes:
 4. Report what was changed vs what needs human action
 5. When two configs serve the same purpose, **merge them into the normative file and delete the old one** (e.g., merge `.eslintrc.js` into `eslint.config.mjs`, then delete `.eslintrc.js`). Merging and renaming to the standard name is expected — do not leave duplicates.
 
-### 16.2 Template Customization Rule (CRITICAL)
+### 17.2 Template Customization Rule (CRITICAL)
 
 **Templates are STARTING POINTS, not copy-paste targets.** Every template that contains language-specific examples, multi-language listings, or placeholder content MUST be tailored to the target repo before writing it. The repo must be **ready to go immediately** — no irrelevant languages, no generic examples, no placeholder text left behind.
 
@@ -901,12 +964,12 @@ templates/
     │   └── SKILL.md
     ├── code-dedup/
     │   └── SKILL.md
-    ├── fmt/
-    │   └── SKILL.md
-    ├── lint/
+    ├── spec-check/
     │   └── SKILL.md
     ├── submit-pr/
     │   └── SKILL.md
-    └── test/
+    ├── upgrade-packages/
+    │   └── SKILL.md
+    └── website-audit/
         └── SKILL.md
 ```

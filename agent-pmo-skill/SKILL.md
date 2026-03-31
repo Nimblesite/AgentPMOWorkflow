@@ -100,6 +100,23 @@ This applies especially to:
 - **Makefile**: Delete commented blocks for unused languages.
 - **CI workflows**: Remove commented setup steps for unused languages.
 
+### File Markers (applies to ALL steps below)
+
+Every file you create or substantively modify MUST include an `agent-pmo:<hash>` marker near the top. Before writing any files, get the current short hash:
+
+```bash
+git -C "{{STANDARDS_REPO}}" rev-parse --short HEAD
+```
+
+Use this hash in every marker. See the spec §16 for exact placement rules by file type. For example:
+- YAML/Makefile/TOML/dotfiles: `# agent-pmo:abc1234`
+- Markdown: `<!-- agent-pmo:abc1234 -->`
+- JSON: `"_agent_pmo": "abc1234"` as a top-level field
+- JS/TS: `// agent-pmo:abc1234`
+- XML: `<!-- agent-pmo:abc1234 -->`
+
+Place markers within the first 10 lines. For files with headers (shebang, YAML frontmatter, XML declarations), place immediately after the header. When updating an existing agent-pmo file, update the hash to the current value.
+
 ### Step 3 — Apply standards with merge-first logic (DO NOT commit/push)
 
 For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)** if an equivalent exists under the wrong name or with wrong content, rename/update it in place; **(3)** only create from scratch if nothing equivalent exists.
@@ -195,7 +212,7 @@ Generate your own canonical instruction file from the template at `{{STANDARDS_R
 
 1. **Write your canonical file.** Put the customised content into whatever file you natively read (e.g., Claude → `CLAUDE.md`, Codex → `AGENTS.md`, Copilot → `.github/copilot-instructions.md`).
 2. **Create pointer files** so other agents can also find the instructions. Every other agent instruction file should be a trivial pointer to your canonical file.
-3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Customise per §16.2 (strip irrelevant languages, fill placeholders).
+3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Customise per §17.2 (strip irrelevant languages, fill placeholders).
 
 If an existing instruction file has substantial custom content, **merge** it into the canonical file rather than overwriting.
 
@@ -215,7 +232,9 @@ After all changes, run this checklist to catch any bloat introduced:
 6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
 7. **Skills:** Check the agent-native skill directory (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/` per §11.1) — don't create duplicates of skills that already exist. If skills exist in multiple directories, consolidate to the primary agent's directory.
 8. **Agent instruction files:** Verify exactly ONE file has the full rules content (either CLAUDE.md or AGENTS.md, not both). All other agent files must be pointers. Check that old pointer filenames (e.g., `.clinerules/00-read-claude-md.md`) are renamed to the new standard (`.clinerules/00-read-instructions.md`).
-9. **Report:** List any duplicates found and deleted. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
+9. **Orphaned agent-pmo files (§16):** Search the target repo for all files containing an `agent-pmo:` marker. For each marked file, verify that its corresponding source template or skill still exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`. If the source no longer exists, **delete the orphaned file**. This cleans up files from skills or templates that were removed from the standards repo (e.g., the old `fmt`, `lint`, and `test` skills that were consolidated into `ci-prep`).
+10. **Stale markers:** For files with `agent-pmo:` markers, compare the stamped hash against the current standards repo HEAD. If a file is more than 50 commits behind, flag it for re-application.
+11. **Report:** List any duplicates found and deleted, any orphaned files removed, and any stale markers found. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
 
 In some cases, multiple files may merge into one file. This is optimal as it reduces clutter. **This case overrides the no delete rule**.
 
@@ -240,3 +259,4 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **Read the agent docs before touching agent files.** The spec §10.0 has the complete URL table. Each agent has different import syntax, file locations, and conventions. Use the correct syntax for the detected agent — never guess.
 - **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per §11.1. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
 - **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.
+- **Every file you create or substantively modify gets an `agent-pmo:<hash>` marker (§16).** This enables orphaned file cleanup and provenance auditing. Never skip the marker.
