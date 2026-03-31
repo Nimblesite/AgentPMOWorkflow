@@ -742,6 +742,9 @@ GITHUB REPO SETTINGS (§13)
 [ ] Squash commit title = PR_TITLE, message = PR_BODY
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
 [ ] Branch protection on main (require PR + CI pass)
+
+IDE
+[ ] VS Code title bar colorized with project brand colors (.vscode/settings.json workbench.colorCustomizations)
 ```
 
 ---

@@ -220,6 +220,34 @@ Generate your own canonical instruction file from the template at `{{STANDARDS_R
 
 If an existing instruction file has substantial custom content, **merge** it into the canonical file rather than overwriting.
 
+#### 3i. VS Code workspace colorization (only if VS Code is detected)
+
+If the target repo has a `.vscode/` directory or `.vscode/settings.json`, colorize the VS Code title bar so the user can visually distinguish this workspace from others.
+
+1. **Find the project's brand colors.** Search the repo for a design system or CSS file that defines the project's color palette. Check, in order:
+   - A design system folder (`designsystem/`, `design-system/`, `design/`)
+   - CSS files in a website directory (`website/`, `site/`, `docs/`) — look for CSS custom properties (`--color-*`, `--brand-*`, `--primary`) or prominent color declarations
+   - `tailwind.config.*` theme colors
+   - Any `theme.*` or `colors.*` file
+   - The project's website or README if it references a color scheme
+2. **Extract the primary brand color** (the dominant accent/brand color, NOT white/black/grey).
+3. **Write `.vscode/settings.json`** (merge into existing if the file already exists). Add the `workbench.colorCustomizations` block:
+   ```json
+   {
+     "workbench.colorCustomizations": {
+       "titleBar.activeBackground": "<primary-brand-color>",
+       "titleBar.activeForeground": "<contrasting-text-color>",
+       "titleBar.inactiveBackground": "<darker-shade-of-primary>",
+       "titleBar.inactiveForeground": "<contrasting-text-color-with-opacity>"
+     }
+   }
+   ```
+   - `titleBar.activeBackground` — the primary brand color
+   - `titleBar.activeForeground` — white or dark text, whichever has better contrast
+   - `titleBar.inactiveBackground` — a slightly darker/desaturated shade of the primary color
+   - `titleBar.inactiveForeground` — same as active foreground but with ~80% opacity (append `cc` to the hex)
+4. If no brand colors can be found anywhere in the repo, **skip this step** and note it in the report. Do NOT invent colors.
+
 ### Step 4 — Deduplication check (CRITICAL)
 
 After all changes, run this checklist to catch any bloat introduced:

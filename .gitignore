@@ -1,6 +1,11 @@
 # =============================================================================
-# UNIVERSAL — applies to every repo in this portfolio
+# UNIVERSAL — can apply to every repo in this portfolio
 # =============================================================================
+
+# DO NOT BLINDLY COPY ALL THESE
+# ONLY COPY WHAT IS RELEVANT TO THE PROJECT
+# THESE ARE JUST A COMPREHENSIVE LIST THAT MAY BE IMPORTANT
+# ALWAYS INCLUDE THE STANDARD GIT IGNORE FILES FOR THE LANGUAGE/FRAMEWORKS
 
 # OS
 .DS_Store
@@ -11,18 +16,6 @@
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# IDE / Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.project
-.classpath
-.settings/
-*.sublime-project
-*.sublime-workspace
 
 # Portfolio-wide tooling
 .too_many_cooks/
@@ -71,9 +64,4 @@ dashboard/config.json
 node_modules/
 test-results/
 playwright-report/
-
-
 _site/
-
-# Downloaded assets (copied on build)
-website/src/assets/images/nimblesite-logo.png
