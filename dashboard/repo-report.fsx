@@ -459,7 +459,7 @@ a "<html lang=\"en\">"
 a "<head>"
 a "<meta charset=\"UTF-8\">"
 // No meta refresh - handled by JS that pauses when modal is open
-a "<title>Repo Report</title>"
+a "<title>Agent PMO Dashboard</title>"
 a "<style>"
 a cssContent
 a "</style>"

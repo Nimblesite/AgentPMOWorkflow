@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('page loads and shows h1 title', async ({ page }) => {
-  await expect(page.locator('h1')).toHaveText('Repo Report');
+  await expect(page.locator('h1')).toHaveText('Dashboard');
 });
 
 test('all 3 tab buttons exist', async ({ page }) => {

@@ -564,7 +564,7 @@ assert' "HTML is not empty" (html.Length > 500) $"only {html.Length} chars"
 assertContains "DOCTYPE" "<!DOCTYPE html>" html
 assertContains "html lang" "<html lang=\"en\">" html
 assertContains "charset UTF-8" "<meta charset=\"UTF-8\">" html
-assertContains "title" "<title>Repo Report</title>" html
+assertContains "title" "<title>Dashboard</title>" html
 assertContains "closing html tag" "</html>" html
 assertContains "has body" "<body>" html
 assertContains "has style block" "<style>" html
@@ -574,7 +574,7 @@ assertContains "has script block" "<script>" html
 printfn "\n%s" (bold "19. Page header")
 // ----------------------------------------------------------
 
-assertContains "h1 title" "<h1>Repo Report</h1>" html
+assertContains "h1 title" "<h1>Dashboard</h1>" html
 assertContains "meta generation line" "Generated:" html
 assertContains "repos scanned count" "Repos scanned:" html
 assertContains "meta shows 5 repos" "Repos scanned: 5" html

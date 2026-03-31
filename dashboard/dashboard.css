@@ -329,7 +329,7 @@ td a:hover { text-decoration: underline; color: var(--color-primary); }
 
 .dashboard-brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
 }
 
