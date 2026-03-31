@@ -65,17 +65,17 @@ Agents writing code is easy. Agents delivering *verified requirements* is the ha
 Every requirement gets a unique ID. That ID is the thread connecting everything:
 
 ```
-[SPEC-001] User Authentication
+[AUTH-LOGIN] User Authentication
     ↓ implemented by
-  auth/login.py          // Implements [SPEC-001]
+  auth/login.py          // Implements [AUTH-LOGIN]
     ↓ verified by
-  tests/test_auth.py     // Tests [SPEC-001]
+  tests/test_auth.py     // Tests [AUTH-LOGIN]
     ↓ designed in
-  docs/designs/auth.md   // Design for [SPEC-001]
+  docs/designs/auth.md   // Design for [AUTH-LOGIN]
     ↓ tracked in
-  plans/sprint-4.md      // Plan item [SPEC-001]
+  plans/sprint-4.md      // Plan item [AUTH-LOGIN]
     ↓ shipped via
-  PR #42                 // Addresses [SPEC-001]
+  PR #42                 // Addresses [AUTH-LOGIN]
 ```
 
 This is **bidirectional**. From any artifact — a test, a file, a PR, a design doc — you can trace back to the requirement it serves. From any spec, you can trace forward to every artifact that implements it.

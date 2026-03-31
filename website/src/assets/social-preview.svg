@@ -47,7 +47,7 @@
   <text x="196" y="438" font-family="'Cascadia Code','Fira Code',Consolas,monospace" font-size="14.5" fill="#f59e0b">⚠  data-pipeline   3 failing  CI ● running</text>
   <text x="196" y="463" font-family="'Cascadia Code','Fira Code',Consolas,monospace" font-size="14.5" fill="#3ee898">✓  mobile-client    review     CI ● green</text>
   <text x="196" y="488" font-family="'Cascadia Code','Fira Code',Consolas,monospace" font-size="14.5" fill="#3a6b52">↻  api-gateway      linting    CI ● pending</text>
-  <text x="196" y="513" font-family="'Cascadia Code','Fira Code',Consolas,monospace" font-size="14.5" fill="#c4b5fd">✓  [SPEC-001] auth    traced    CI ● green</text>
+  <text x="196" y="513" font-family="'Cascadia Code','Fira Code',Consolas,monospace" font-size="14.5" fill="#c4b5fd">✓  [AUTH-LOGIN] auth   traced    CI ● green</text>
 
   <!-- Footer -->
   <text x="600" y="605" text-anchor="middle" font-family="'Segoe UI',system-ui,-apple-system,sans-serif" font-size="16" fill="#3a6b52">Built by <tspan fill="#19d078" font-weight="700">NIMBLESITE</tspan> · nimblesite.co · Open Source</text>
