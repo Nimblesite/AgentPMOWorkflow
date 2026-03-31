@@ -280,13 +280,13 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
           to find the tests that prove it works. Spec IDs are the answer.
         </p>
         <p>
-          Every spec section gets a unique ID: <code>[SPEC-001]</code>, <code>[FEAT-AUTH-01]</code>, <code>[REQ-003]</code>.
+          Every spec section gets a unique ID: <code>[AUTH-LOGIN]</code>, <code>[AUTH-TOKEN-VERIFY]</code>, <code>[CI-COVERAGE]</code>.
           These IDs become the connective tissue of the entire system:
         </p>
         <ul>
-          <li><strong>Spec sections</strong> define requirements: <code>[SPEC-001] User Authentication</code></li>
-          <li><strong>Code</strong> declares what it implements: <code>// Implements [SPEC-001]</code></li>
-          <li><strong>Tests</strong> declare what they verify: <code>// Tests for [SPEC-001]</code></li>
+          <li><strong>Spec sections</strong> define requirements: <code>[AUTH-LOGIN] User Authentication</code></li>
+          <li><strong>Code</strong> declares what it implements: <code>// Implements [AUTH-LOGIN]</code></li>
+          <li><strong>Tests</strong> declare what they verify: <code>// Tests for [AUTH-LOGIN]</code></li>
           <li><strong>PRs</strong> list the spec IDs they address in the description</li>
           <li><strong>Plans</strong> reference spec IDs in their TODO checklists</li>
         </ul>
@@ -307,10 +307,10 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
             <span class="terminal-dot terminal-dot-red"></span>
             <span class="terminal-dot terminal-dot-yellow"></span>
             <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ SPEC-001 traceability matrix</span>
+            <span class="terminal-title">~ AUTH-LOGIN traceability matrix</span>
           </div>
           <div class="terminal-body">
-<pre><span class="terminal-accent">SPEC-001</span> <span class="terminal-ok">User Authentication</span>
+<pre><span class="terminal-accent">AUTH-LOGIN</span> <span class="terminal-ok">User Authentication</span>
 
 <span class="terminal-dim">implements:</span>
   <span class="terminal-ok">src/auth/login.ts</span>
