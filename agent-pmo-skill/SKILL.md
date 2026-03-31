@@ -117,6 +117,8 @@ Use this hash in every marker. See the spec §16 for exact placement rules by fi
 
 Place markers within the first 10 lines. For files with headers (shebang, YAML frontmatter, XML declarations), place immediately after the header. When updating an existing agent-pmo file, update the hash to the current value.
 
+**CRITICAL: Before stamping ANY file, verify its source template or skill exists at the exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` by reading it. If the source file does not exist, DO NOT create the file and DO NOT stamp it. A marker is a claim of provenance — if the source doesn't exist in the standards repo, the file must not exist in the target repo. This applies especially to skills: only create skills that exist in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/`. List the directory first, then only create what you find.**
+
 ### Step 3 — Apply standards with merge-first logic (DO NOT commit/push)
 
 For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)** if an equivalent exists under the wrong name or with wrong content, rename/update it in place; **(3)** only create from scratch if nothing equivalent exists.
@@ -260,3 +262,4 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per §11.1. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
 - **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.
 - **Every file you create or substantively modify gets an `agent-pmo:<hash>` marker (§16).** This enables orphaned file cleanup and provenance auditing. Never skip the marker.
+- **NEVER stamp a file unless its source exists in the standards repo.** Before creating any file from a template or skill, read the source at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` to confirm it exists. If the source path does not exist, do not create the file. List `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` before creating skills — only create what is actually there.

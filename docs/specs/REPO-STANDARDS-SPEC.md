@@ -785,6 +785,7 @@ Where `<short-hash>` is the 7-character abbreviated commit hash from the AgentPM
 3. For SKILL.md files, place the marker on the line immediately after the closing `---` of the YAML frontmatter.
 4. Only stamp files that agent-pmo creates or substantively modifies. Do not stamp files that already exist and are left unchanged.
 5. When re-running agent-pmo on a repo, update the hash in existing markers to the current commit.
+6. **NEVER stamp a file with the `agent-pmo:` marker unless its source template or skill exists at an exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` RIGHT NOW.** Before stamping ANY file, verify the source exists by reading it. If you cannot read the source file at the expected path, the file MUST NOT be created and MUST NOT be stamped. This is non-negotiable. A marker is a claim of provenance — stamping a file that has no source in the standards repo is a lie.
 
 ### [MARKER-CLEANUP] Orphaned file cleanup
 
