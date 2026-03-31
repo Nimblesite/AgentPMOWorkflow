@@ -26,23 +26,14 @@ Read the spec directly. Do NOT search the filesystem, scan sibling directories, 
 1. Read `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`. **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
 2. Detect which languages are present in the target repo (look for `Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`, etc.).
 3. Determine repo type (library, CLI, app/service, extension, static site) for coverage thresholds per the spec. All projects default to 90% code coverage target by default
-4. **Detect the primary AI coding agent** per §10.2 of the spec. Check in priority order:
-   - `.claude/settings.json` or `.claude/settings.local.json` → Claude Code
-   - `.claude/skills/` with custom (non-template) skills → Claude Code
-   - `.cursor/` directory → Cursor
-   - `.cline/` or `.clinerules/` with custom rules (not just a pointer) → Cline/Roo
-   - `.windsurf/` directory → Windsurf
-   - `.github/copilot-instructions.md` with substantial content → GitHub Copilot
-   - `CLAUDE.md` with substantial content (>10 lines, not a pointer) → Claude Code
-   - `AGENTS.md` with substantial content → Agent-neutral
-   - None of the above → Default to AGENTS.md as canonical
-5. Based on detection, determine the **canonical file**: `CLAUDE.md` if Claude is primary, `AGENTS.md` otherwise. Report which agent was detected and which file will be canonical.
-6. **Read the target agent's official documentation** before touching any instruction or skill files. The spec §10.0 has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess. Key differences:
-   - **Claude Code**: uses `@AGENTS.md` import syntax in `CLAUDE.md`; skills in `.claude/skills/`
-   - **OpenAI Codex**: reads `AGENTS.md` natively; skills in `.agents/skills/`
-   - **GitHub Copilot**: reads `.github/copilot-instructions.md` + `AGENTS.md`; skills in `.github/skills/` or `.agents/skills/`
-   - **Cline/Roo**: reads `.clinerules/*.md` with optional `paths:` frontmatter; skills in `.cline/skills/` or `.claude/skills/`
-   - **OpenCode**: reads `AGENTS.md` (falls back to `CLAUDE.md`); skills in `.opencode/skills/` or `.agents/skills/`
+4. **You are the primary agent.** You know what agent you are — use that directly. Do NOT scan the filesystem to guess. Set up the target repo for yourself:
+   - **Claude Code** → canonical file is `CLAUDE.md`, skills go in `.claude/skills/`, use `@AGENTS.md` import syntax
+   - **OpenAI Codex** → canonical file is `AGENTS.md`, skills go in `.agents/skills/`
+   - **GitHub Copilot** → canonical file is `AGENTS.md`, skills go in `.github/skills/` or `.agents/skills/`, also update `.github/copilot-instructions.md`
+   - **Cline/Roo** → canonical file is `AGENTS.md`, skills go in `.cline/skills/`, also update `.clinerules/00-read-instructions.md`
+   - **OpenCode** → canonical file is `AGENTS.md`, skills go in `.opencode/skills/` or `.agents/skills/`
+5. Report which agent you are and which file will be canonical.
+6. **Read the target agent's official documentation** before touching any instruction or skill files. The spec §10.0 has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess.
 
 ### Step 2 — Audit existing artifacts for equivalents
 
@@ -200,32 +191,13 @@ The exact `gh api` commands are in the common-repo-settings file. The repo must 
 
 **The test:** After customisation, a developer reading the file should see ZERO references to languages, tools, frameworks, or packages not used in the repo.
 
-Based on the primary agent detected in Step 1:
+Generate your own canonical instruction file from the template at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. Customise it fully as described above, then set it up for yourself:
 
-**If Claude is the primary agent:**
-1. Generate `CLAUDE.md` from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. **Customise fully as described above.** Add Claude-specific skill links at the bottom.
-2. Generate a trivial `AGENTS.md` pointer inline: `@CLAUDE.md` + "read CLAUDE.md for all rules".
-3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `CLAUDE.md`.
+1. **Write your canonical file.** Put the customised content into whatever file you natively read (e.g., Claude → `CLAUDE.md`, Codex → `AGENTS.md`, Copilot → `.github/copilot-instructions.md`).
+2. **Create pointer files** so other agents can also find the instructions. Every other agent instruction file should be a trivial pointer to your canonical file.
+3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Customise per §16.2 (strip irrelevant languages, fill placeholders).
 
-**If Claude is NOT the primary agent (or no agent detected):**
-1. Generate `AGENTS.md` from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. **Customise fully as described above.**
-2. Use `{{STANDARDS_REPO}}/agent-pmo-skill/templates/CLAUDE.md` as the target repo's `CLAUDE.md` (pointer to AGENTS.md).
-3. Create all other pointer files (`.cursorrules`, `.clinerules/00-read-instructions.md`, `.windsurfrules`, `.github/copilot-instructions.md`, `opencode.json`) pointing to `AGENTS.md`.
-4. Still place skills in agent-native directory if any agent is used (skills don't interfere with other agents).
-
-#### 3i. Skills (§11 — agent-agnostic)
-
-Place skills from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into the target agent's native skill directory per §11.1:
-- Claude Code primary → `.claude/skills/`
-- OpenAI Codex primary → `.agents/skills/`
-- GitHub Copilot primary → `.github/skills/` (or `.agents/skills/`)
-- Cline/Roo primary → `.cline/skills/` (or `.claude/skills/`)
-- OpenCode primary → `.opencode/skills/` (or `.agents/skills/`)
-- Multiple agents / unknown → `.agents/skills/` (maximum cross-compatibility)
-
-The SKILL.md format (YAML frontmatter with `name` + `description`, followed by markdown instructions) is universal across all agents. Customize content per §16.2 (strip irrelevant languages, fill placeholders).
-
-**For ALL cases:** Replace `{{CANONICAL_FILE}}` in pointer templates with the detected canonical filename. If an existing instruction file has substantial custom content that differs from the template, **merge** the custom content into the canonical file rather than overwriting it.
+If an existing instruction file has substantial custom content, **merge** it into the canonical file rather than overwriting.
 
 ### Step 4 — Deduplication check (CRITICAL)
 

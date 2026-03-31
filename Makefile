@@ -20,7 +20,7 @@ else
   RMFILE = rm -f
 endif
 
-.PHONY: build test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
+.PHONY: build dashboard test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
         install-skill-claude install-skill-claude-unix install-skill-claude-windows \
         uninstall-skill-claude uninstall-skill-claude-unix uninstall-skill-claude-windows \
         website-build website-run setup help
@@ -32,6 +32,11 @@ endif
 build:
 	@echo "==> Building dashboard report..."
 	dotnet fsi dashboard/repo-report.fsx
+
+dashboard:
+	@echo "==> Refreshing dashboard..."
+	@dotnet fsi dashboard/repo-report.fsx
+	@echo "==> Done. Report at dashboard/repo-report.html"
 
 test: test-fsharp test-e2e
 
@@ -154,6 +159,7 @@ uninstall-skill-claude-windows:
 help:
 	@echo "Available targets:"
 	@echo "  build            - Generate the HTML dashboard report"
+	@echo "  dashboard        - Refresh the dashboard manually"
 	@echo "  test             - Run all tests (F# + Playwright E2E)"
 	@echo "  test-fsharp      - Run F# tests (alias for test-mock)"
 	@echo "  test-mock        - Run F# mock fixture tests (generates report for E2E)"
