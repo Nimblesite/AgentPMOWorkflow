@@ -21,7 +21,7 @@ description: "Agent PMO is an AI-native project management system. One developer
 
       <div class="hero-install" aria-label="Quick install command">
         <div class="hero-install-cmd">
-          <code id="hero-cmd">curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup.sh | bash</code>
+          <code id="hero-cmd">curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.sh | bash</code>
           <button class="hero-copy-btn" aria-label="Copy install command" id="hero-copy-btn" title="Copy">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </button>
@@ -224,53 +224,12 @@ description: "Agent PMO is an AI-native project management system. One developer
       <div class="section-label">Quality Gates</div>
       <h2 class="section-heading">Agents don't hand you rough drafts.</h2>
       <p class="section-subheading">
-        There is no soft-fail mode. By the time code reaches you, it has passed every automated check.
-        You're not the first line of defence — you're the final gate.
+        Lint, type check, format, tests, coverage — all enforced by CI.
+        No soft-fail mode. By the time code reaches you, every automated check has passed.
+        You're the final gate: reviewing intent and architecture, not whether it compiles.
       </p>
+      <a href="/features/#quality-gates" class="btn btn-accent">See all quality gates →</a>
     </div>
-
-    <ul class="gates-list fade-in delay-1" aria-label="Quality gate checklist">
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Lint</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Type check</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Code format</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Unit tests</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Integration tests</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Coverage threshold (monotonic)</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">CI pipeline</span>
-        <span class="gate-status">enforced</span>
-      </li>
-      <li class="gate-item">
-        <span class="gate-check" aria-hidden="true">✓</span>
-        <span class="gate-name">Human review (intent &amp; architecture)</span>
-        <span class="gate-status">final gate</span>
-      </li>
-    </ul>
   </div>
 </section>
 
@@ -287,17 +246,17 @@ description: "Agent PMO is an AI-native project management system. One developer
       <div class="level-card" role="listitem">
         <div class="level-altitude">Altitude 1</div>
         <h3>Review every commit</h3>
-        <p>Worktree branches are there. Diffs are clean. Tests passed. Every commit is a complete, verified unit of work.</p>
+        <p>Diffs are clean. Tests passed. Every commit is a complete, verified unit of work.</p>
       </div>
       <div class="level-card" role="listitem">
         <div class="level-altitude">Altitude 2</div>
         <h3>Review only PRs</h3>
-        <p>Every PR is already production-ready by automated standards. Your review is about the <em>what</em>, not the <em>whether it works</em>.</p>
+        <p>Every PR is already production-ready. Your review is about the <em>what</em>, not the <em>whether it works</em>.</p>
       </div>
       <div class="level-card" role="listitem">
         <div class="level-altitude">Altitude 3</div>
         <h3>Set direction. Check dashboard.</h3>
-        <p>You're still shipping — just operating at a different altitude. The PMO dashboard tells you what's happening without context-switching.</p>
+        <p>You're still shipping — just operating at a different altitude. The dashboard tells you what's happening.</p>
       </div>
     </div>
   </div>
@@ -311,19 +270,10 @@ description: "Agent PMO is an AI-native project management system. One developer
         <div class="section-label">Traceability</div>
         <h2 class="section-heading">Every line traces back<br>to a requirement.</h2>
         <p style="color: var(--color-muted); font-size: 1.02rem; line-height: 1.7; margin: 0 0 1.5rem;">
-          When 20 agents are building across 20 projects simultaneously, how do you know
-          <em style="color: var(--color-heading);">what</em> was built, <em style="color: var(--color-heading);">why</em>,
-          and <em style="color: var(--color-heading);">where</em> to find the tests that prove it works?
-        </p>
-        <p style="color: var(--color-muted); font-size: 1.02rem; line-height: 1.7; margin: 0 0 2rem;">
           Every spec section gets a unique ID — <code>[SPEC-001]</code>, <code>[FEAT-AUTH-01]</code>.
           Code references the spec it implements. Tests reference the spec they verify.
           PRs list the spec IDs they address. Full bidirectional traceability across the entire portfolio.
         </p>
-        <div class="callout" style="margin: 0 0 1.5rem;">
-          <strong>Traceability isn't paperwork.</strong> It's how you stay sane at scale.
-          Nothing ships without a reason. Nothing is untested without you knowing.
-        </div>
         <a href="/features/#traceability" class="btn btn-accent">See the full traceability model →</a>
       </div>
 
@@ -333,23 +283,14 @@ description: "Agent PMO is an AI-native project management system. One developer
             <span class="terminal-dot terminal-dot-red"></span>
             <span class="terminal-dot terminal-dot-yellow"></span>
             <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ spec traceability matrix</span>
+            <span class="terminal-title">~ spec traceability</span>
           </div>
           <div class="terminal-body">
-<pre><span class="terminal-dim"># SPEC-001 → bidirectional links</span>
-
-<span class="terminal-accent">SPEC-001</span> <span class="terminal-dim">User Authentication</span>
+<pre><span class="terminal-accent">SPEC-001</span> <span class="terminal-dim">User Authentication</span>
   <span class="terminal-dim">→</span> <span class="terminal-ok">code/auth.ts</span>        <span class="terminal-dim">implements</span>
   <span class="terminal-dim">→</span> <span class="terminal-ok">tests/auth.spec.ts</span>  <span class="terminal-dim">verifies</span>
   <span class="terminal-dim">→</span> <span class="terminal-ok">PR #42</span>             <span class="terminal-dim">delivers</span>
-  <span class="terminal-dim">→</span> <span class="terminal-ok">PLAN.md §2</span>         <span class="terminal-dim">scheduled</span>
 
-<span class="terminal-dim"># audit:</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make audit-traceability</span>
-<span class="terminal-ok">✓</span> 14 specs · all have IDs
-<span class="terminal-ok">✓</span> 14 specs · all have tests
-<span class="terminal-ok">✓</span>  0 orphaned IDs
-<span class="terminal-ok">✓</span>  0 unlinked code
 <span class="terminal-ok">✓ Full traceability — clean</span><span class="cursor">▋</span></pre>
           </div>
         </div>

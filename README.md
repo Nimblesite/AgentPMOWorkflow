@@ -42,7 +42,7 @@ While one agent ships a feature, another fixes a failing CI check. Another write
 
 Agents can't navigate chaos. If every project has a different structure, different scripts, different CI config — every project requires hand-holding. That hand-holding is what keeps you tethered to one project at a time.
 
-**repo_bootstrap enforces consistency.** Every repo looks the same to an agent: same build targets, same CI pipeline, same linting and formatting rules, same PR workflow. Drop an agent into any project and it already knows how to run, test, and ship — no setup, no explanation, no babysitting.
+**The enforcement skill applies consistency.** Every repo looks the same to an agent: same build targets, same CI pipeline, same linting and formatting rules, same PR workflow. Drop an agent into any project and it already knows how to run, test, and ship — no setup, no explanation, no babysitting.
 
 This isn't cosmetic. It's what makes twenty projects manageable instead of twenty separate headaches.
 

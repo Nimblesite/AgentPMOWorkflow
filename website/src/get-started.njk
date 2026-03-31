@@ -199,25 +199,16 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
 
     <div class="fade-in delay-1">
       <pre><code>{
-  "scanPaths": [
-    "~/Documents/Code",
-    "~/Projects"
-  ],
-  "excludeRepos": [
-    "archived-project",
-    "vendor"
-  ],
-  "refreshIntervalSeconds": 180,
-  "reportPath": "dashboard/repo-report.html",
-  "github": {
-    "fetchPRs": true,
-    "fetchCI": true,
-    "fetchReleases": true
-  }
+  "scanDir": "/Users/you/Documents/Code",
+  "githubOwners": "your-github-username",
+  "maxRepos": "20",
+  "excludeRepos": "",
+  "excludeAuthor": "",
+  "excludeRepoDomain": ""
 }</code></pre>
 
       <div class="callout callout-accent">
-        <strong>Multiple scan paths supported.</strong> If your repos live in different directories, list them all in <code>scanPaths</code>. The dashboard merges results from all paths.
+        <strong>Point <code>scanDir</code> at your code directory.</strong> Set <code>githubOwners</code> to your GitHub username so the dashboard can filter repos. Use <code>excludeRepos</code> to skip specific repos by name.
       </div>
     </div>
   </div>

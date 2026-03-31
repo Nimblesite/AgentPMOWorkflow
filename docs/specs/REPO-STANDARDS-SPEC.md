@@ -561,9 +561,6 @@ When placing skills:
 | Skill | Template |
 |-------|----------|
 | build | [`templates/skills/build/SKILL.md`](templates/skills/build/SKILL.md) |
-| test | [`templates/skills/test/SKILL.md`](templates/skills/test/SKILL.md) |
-| lint | [`templates/skills/lint/SKILL.md`](templates/skills/lint/SKILL.md) |
-| fmt | [`templates/skills/fmt/SKILL.md`](templates/skills/fmt/SKILL.md) |
 | ci-prep | [`templates/skills/ci-prep/SKILL.md`](templates/skills/ci-prep/SKILL.md) |
 | code-dedup | [`templates/skills/code-dedup/SKILL.md`](templates/skills/code-dedup/SKILL.md) |
 | submit-pr | [`templates/skills/submit-pr/SKILL.md`](templates/skills/submit-pr/SKILL.md) |

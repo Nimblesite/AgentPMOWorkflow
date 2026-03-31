@@ -50,19 +50,10 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
         <div>
           <h3>Dashboard scans all repos</h3>
           <p>
-            The F# script (<code>dashboard/repo-report.fsx</code>) runs every 3 minutes via macOS <code>launchd</code>.
-            It scans every git repository under <code>~/Documents/Code/</code> and for each repo collects:
+            An F# script runs every 3 minutes via <code>launchd</code> (macOS) or <code>cron</code> (Linux).
+            It scans every git repo under your code directory and collects CI status, open PRs, uncommitted changes,
+            push status, and latest releases — then generates a self-contained HTML report. No server needed.
           </p>
-          <ul style="color: var(--color-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem; margin: 0.75rem 0;">
-            <li>Uncommitted file count</li>
-            <li>Current branch name</li>
-            <li>Last commit date</li>
-            <li>Push status (ahead/behind remote)</li>
-            <li>Open PRs via <code>gh</code> CLI</li>
-            <li>CI status via <code>gh</code> CLI</li>
-            <li>Latest GitHub release</li>
-          </ul>
-          <p>It generates a self-contained HTML report at <code>dashboard/repo-report.html</code> — no server needed, open in any browser.</p>
           <div class="terminal">
             <div class="terminal-header">
               <span class="terminal-dot terminal-dot-red"></span>
@@ -140,19 +131,11 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
           <h3>TMC conducts cross-project orchestration</h3>
           <p>
             <strong>Too Many Cooks (TMC)</strong> is project-level agent orchestration. When multiple agents are active
-            across multiple projects simultaneously, TMC prevents conflicts and manages dependencies.
+            simultaneously, TMC prevents conflicts — agents register intent, lock files before editing, and release
+            locks when done. TMC sequences, not just parallelises.
           </p>
-          <p>Agents using TMC follow a strict protocol:</p>
-          <ul style="color: var(--color-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem; margin: 0.75rem 0;">
-            <li>Register immediately with a descriptive name and intent</li>
-            <li>Lock files before editing — never touch a locked file</li>
-            <li>Broadcast plans before starting work</li>
-            <li>Release locks immediately when done</li>
-            <li>Check for messages every few minutes</li>
-          </ul>
           <p>
-            TMC sequences, not just parallelises. If a feature branch needs passing tests before a PR opens, TMC enforces that.
-            If two projects share a library version, TMC knows.
+            <a href="/features/#tmc" class="btn btn-outline btn-sm">Full TMC protocol →</a>
           </p>
         </div>
       </div>

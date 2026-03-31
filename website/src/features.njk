@@ -268,10 +268,7 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
       </div>
     </div>
 
-  </div>
-</section>
-
-<!-- ── Spec-Driven Traceability ──────────────── -->
+    <!-- Spec-Driven Traceability -->
     <div class="feature-detail fade-in" id="traceability">
       <div class="feature-detail-body">
         <div class="feature-detail-icon" aria-hidden="true">🔗</div>
@@ -294,16 +291,9 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
           <li><strong>Plans</strong> reference spec IDs in their TODO checklists</li>
         </ul>
         <p>
-          The enforcement skill can audit the entire codebase and answer:
+          Because IDs are plain text, a simple <code>grep</code> answers any traceability question:
+          what tests cover a spec, what's untested, what a PR delivered, and whether any spec IDs are orphaned.
         </p>
-        <ul>
-          <li>"What tests cover <code>SPEC-001</code>?" → grep for the ID</li>
-          <li>"Is <code>SPEC-003</code> implemented?" → check for code references</li>
-          <li>"What's untested?" → find spec IDs with no test references</li>
-          <li>"What did this PR deliver?" → list all spec IDs in the diff</li>
-          <li>"Are there orphaned IDs?" → spec IDs nothing implements</li>
-          <li>"Is there unlinked code?" → code with no spec reference</li>
-        </ul>
         <div class="callout callout-accent">
           <strong>Traceability isn't paperwork.</strong> It's how you stay sane at scale.
           Nothing ships without a reason. Nothing is untested without you knowing.
@@ -338,15 +328,18 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
   <span class="terminal-ok">PLAN.md § Phase 2</span>
 
 <span class="terminal-dim">───────────────────────────────</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make audit-traceability</span>
-<span class="terminal-ok">✓</span> All specs have IDs
-<span class="terminal-ok">✓</span> All specs have tests
-<span class="terminal-ok">✓</span> No orphaned IDs
-<span class="terminal-ok">✓</span> No unlinked code</pre>
+<span class="terminal-dim"># grep verifies coverage:</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">grep -r "SPEC-001" src/ tests/</span>
+<span class="terminal-ok">✓</span> 3 source files implement
+<span class="terminal-ok">✓</span> 2 test files verify
+<span class="terminal-ok">✓</span> Full traceability</pre>
           </div>
         </div>
       </div>
     </div>
+
+  </div>
+</section>
 
 <!-- ── Comparison table ───────────────────────── -->
 <section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Comparison table">
