@@ -22,15 +22,22 @@ let runShell (cmdLine: string) workDir =
         psi.UseShellExecute <- false
         psi.CreateNoWindow <- true
         let p = Process.Start(psi)
-        let output = p.StandardOutput.ReadToEnd()
-        let stderr = p.StandardError.ReadToEnd()
-        p.WaitForExit(30000) |> ignore
-        let result = output.Trim()
-        try File.Delete(tmpFile) with _ -> ()
-        eprintfn "[OUT] %s" (if result.Length > 300 then result.[0..299] + "..." else result)
-        if not (String.IsNullOrWhiteSpace(stderr)) then
-            eprintfn "[ERR] %s" (stderr.Trim())
-        result
+        // Read output async to avoid deadlocks, then enforce timeout
+        let outputTask = p.StandardOutput.ReadToEndAsync()
+        let stderrTask = p.StandardError.ReadToEndAsync()
+        if not (p.WaitForExit(15000)) then
+            eprintfn "[TIMEOUT] Killing process after 15s: %s" cmdLine
+            try p.Kill() with _ -> ()
+            try File.Delete(tmpFile) with _ -> ()
+            ""
+        else
+            let result = outputTask.Result.Trim()
+            let stderr = stderrTask.Result
+            try File.Delete(tmpFile) with _ -> ()
+            eprintfn "[OUT] %s" (if result.Length > 300 then result.[0..299] + "..." else result)
+            if not (String.IsNullOrWhiteSpace(stderr)) then
+                eprintfn "[ERR] %s" (stderr.Trim())
+            result
     with ex ->
         eprintfn "[EXCEPTION] %s" (ex.Message)
         ""
@@ -408,6 +415,7 @@ type RepoInfo = {
     ReleaseTag: string
     ReleaseDate: string
     ReleaseUrl: string
+    ProcessError: string
 }
 
 let repos =
@@ -417,18 +425,27 @@ let repos =
         let folderMod = Directory.GetLastWriteTimeUtc(dir)
         eprintfn "\n=== %s === (modified: %s)" name (folderMod.ToString("yyyy-MM-dd HH:mm:ss"))
         printfn "  %s..." name
-        let modCount = getModifiedCount dir
-        let lastEdit = getLastEditDate dir
-        let branch = getBranch dir
-        let pushStatus = getPushStatus dir
-        let openPR, prBranch, prNumber, prUrl = getOpenPR dir branch
-        let ciStatus, ciDate, ciError, ciLog, ciUrl = getCIStatus dir prNumber
-        let relTag, relDate, relUrl = getLatestRelease dir
-        { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
-          Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
-          PRUrl = prUrl; CIStatus = ciStatus; CIDate = ciDate; CIError = ciError
-          CILog = ciLog; CIUrl = ciUrl
-          ReleaseTag = relTag; ReleaseDate = relDate; ReleaseUrl = relUrl }
+        try
+            let modCount = getModifiedCount dir
+            let lastEdit = getLastEditDate dir
+            let branch = getBranch dir
+            let pushStatus = getPushStatus dir
+            let openPR, prBranch, prNumber, prUrl = getOpenPR dir branch
+            let ciStatus, ciDate, ciError, ciLog, ciUrl = getCIStatus dir prNumber
+            let relTag, relDate, relUrl = getLatestRelease dir
+            { Name = name; FolderModified = folderMod; ModifiedCount = modCount; LastEdit = lastEdit
+              Branch = branch; PRBranch = prBranch; PushStatus = pushStatus; OpenPR = openPR
+              PRUrl = prUrl; CIStatus = ciStatus; CIDate = ciDate; CIError = ciError
+              CILog = ciLog; CIUrl = ciUrl
+              ReleaseTag = relTag; ReleaseDate = relDate; ReleaseUrl = relUrl; ProcessError = "" }
+        with ex ->
+            eprintfn "[ERROR] Failed to process %s: %s" name (ex.ToString())
+            { Name = name; FolderModified = folderMod; ModifiedCount = 0; LastEdit = ""
+              Branch = ""; PRBranch = ""; PushStatus = ""; OpenPR = ""
+              PRUrl = ""; CIStatus = ""; CIDate = ""; CIError = ""
+              CILog = ""; CIUrl = ""
+              ReleaseTag = ""; ReleaseDate = ""; ReleaseUrl = ""
+              ProcessError = ex.Message }
     )
     |> Array.sortByDescending (fun r -> r.LastEdit)
 
@@ -504,6 +521,13 @@ else
     a "<tbody>"
 
     for r in repos do
+        if r.ProcessError <> "" then
+            a "<tr>"
+            a ("<td>" + escape r.Name + "</td>")
+            a ("<td class=\"err\" colspan=\"10\">Error: " + escape r.ProcessError + "</td>")
+            a "</tr>"
+        else
+
         let pushClass =
             if r.PushStatus = "Up to date" then "ok"
             elif r.PushStatus = "No upstream" then "warn"

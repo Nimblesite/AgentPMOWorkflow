@@ -148,6 +148,7 @@ Ensure the spec ID rule is present in the canonical instruction file (AGENTS.md 
 - Update/rename the identified existing workflow (from Step 2b), or create `ci.yml` only if no equivalent exists.
 - Same for `release.yml` and `deploy-pages.yml`.
 - Uncomment the language setup sections that apply.
+- **Default to a single `ci` job with sequential steps** (lint → test → coverage-check → build). This avoids redundant checkout/setup/install across multiple runners. Only split into separate parallel jobs when individual tasks are expensive enough (e.g., 5+ minutes each) that the runner overhead is justified.
 - **CRITICAL: Every job in every workflow MUST have `timeout-minutes: 10`** unless there is a documented reason it genuinely needs longer. If a job needs longer than 10 minutes, keep `timeout-minutes` at the required value and add a comment directly above it explaining WHY it must exceed 10 minutes. Example:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
@@ -184,7 +185,7 @@ Apply the correct formatter for each detected language:
 - **Dart/Flutter:** `dart format` / `dart format --set-exit-if-changed`
 - **Go:** `gofmt` / `goimports`
 
-For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain all applicable formatters so a single `make fmt-check` validates everything. CI runs `make fmt-check` in the `lint` job and the pipeline **tanks hard on failure** — no warnings, no soft fails.
+For multi-language repos, the `fmt` and `fmt-check` Makefile targets MUST chain all applicable formatters so a single `make fmt-check` validates everything. CI runs `make fmt-check` in the lint step and the pipeline **tanks hard on failure** — no warnings, no soft fails.
 
 #### 3g. GitHub repository settings
 Apply the standard GitHub repo settings defined in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. This applies to **both new and existing repos**.
@@ -282,7 +283,7 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **NEVER skip the spec.** Every config file must match the spec exactly (with only the documented substitutions like `{{REPO_NAME}}`).
 - **NEVER copy templates verbatim.** Templates are starting points. Strip all language/tool references that don't apply to the target repo. Fill all placeholders. The output must be immediately usable with zero irrelevant content.
 - **All GH Actions jobs get `timeout-minutes: 10`** by default. Only deviate with an explicit comment justifying the exception.
-- **CI MUST check formatting and fail hard on violations.** The `lint` CI job must run `make fmt-check`. Any formatting diff = pipeline failure, no exceptions.
+- **CI MUST check formatting and fail hard on violations.** The CI lint step must run `make fmt-check`. Any formatting diff = pipeline failure, no exceptions.
 - **Basilisk is the primary linter/type checker for all Python projects.** Always configure Basilisk first, then layer on ruff format as the auto-formatter.
 - **MERGE, don't clobber.** When an existing file partially meets the spec, update it in place. When an equivalent exists under a wrong name, rename it. Only create from scratch when nothing equivalent exists.
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.

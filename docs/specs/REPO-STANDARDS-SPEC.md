@@ -279,7 +279,7 @@ F# analyzer rules are configured via project files.
 
 ## 5. Formatting Standards
 
-**CI MUST check formatting and fail hard on any violation.** The `lint` CI job runs `make fmt-check`; any formatting diff = pipeline failure.
+**CI MUST check formatting and fail hard on any violation.** The CI lint step runs `make fmt-check`; any formatting diff = pipeline failure.
 
 ### 5.1 Formatting Tools by Language
 
@@ -556,7 +556,6 @@ When placing skills:
 
 | Skill | Template |
 |-------|----------|
-| build | [`templates/skills/build/SKILL.md`](templates/skills/build/SKILL.md) |
 | ci-prep | [`templates/skills/ci-prep/SKILL.md`](templates/skills/ci-prep/SKILL.md) |
 | code-dedup | [`templates/skills/code-dedup/SKILL.md`](templates/skills/code-dedup/SKILL.md) |
 | submit-pr | [`templates/skills/submit-pr/SKILL.md`](templates/skills/submit-pr/SKILL.md) |
@@ -668,7 +667,7 @@ STRUCTURE
 [ ] .devcontainer/devcontainer.json
 [ ] Makefile `setup` target configured
 [ ] Skills in agent-native directory (§11.1: .claude/, .agents/, .github/, .cline/, or .opencode/)
-[ ] Required skills present: build, ci-prep, code-dedup, submit-pr
+[ ] Required skills present: ci-prep, code-dedup, submit-pr
 [ ] All agent-pmo managed files have `agent-pmo:<hash>` marker (§16)
 [ ] No orphaned agent-pmo files (marked files whose source template no longer exists)
 [ ] .gitignore (comprehensive)
@@ -701,12 +700,10 @@ LOGGING (§6)
 [ ] No PII or secrets in log output
 
 CI
-[ ] ci.yml has jobs named exactly: lint, test, build
+[ ] ci.yml has a single `ci` job with sequential steps: lint → test → coverage-check → build
 [ ] ci.yml has concurrency cancel-in-progress
-[ ] ci.yml: lint job runs `make fmt-check` (formatting failures = hard fail)
-[ ] ci.yml: lint runs before test
-[ ] ci.yml: test runs before build
-[ ] ci.yml: coverage-check step in test job
+[ ] ci.yml: lint step runs `make lint` which includes `make fmt-check` (formatting failures = hard fail)
+[ ] ci.yml: coverage-check step after test
 [ ] ci.yml: artifacts uploaded
 
 COVERAGE

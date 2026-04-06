@@ -106,15 +106,15 @@ make help             # list all available targets
 
 ### launchd polling (runs every 3 minutes)
 
-- **Plist:** `~/Library/LaunchAgents/com.agentpmo.repo-report.plist`
-- **Command:** `dotnet fsi dashboard/repo-report.fsx`
-- **Interval:** 180 seconds
+- **Plist:** `~/Library/LaunchAgents/com.christianfindlay.repo-report.plist`
+- **Command:** `zsh -l -c "MAX_REPOS=30 dotnet fsi dashboard/repo-report.fsx"`
+- **Interval:** 300 seconds
 - **RunAtLoad:** true
 
 ```bash
 launchctl list | grep repo-report                # check status
-launchctl unload ~/Library/LaunchAgents/com.agentpmo.repo-report.plist  # stop
-launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist    # start
+launchctl unload ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist  # stop
+launchctl load ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist    # start
 dotnet fsi dashboard/repo-report.fsx             # run manually
 ```
 
