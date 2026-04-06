@@ -37,8 +37,7 @@ Fetch and read each of these before auditing. These are the authoritative refere
 - [Top ways to ensure content performs well in Google's AI experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
 - [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
-Take the business plan into account:
-[text](../../../business_plan/business_plan.md)
+If the repo has a business plan doc, take it into account
 
 Identify the website source files in the repo. Determine the framework (static site generator, Next.js, Hugo, etc.) so you know where to find templates, metadata, and content.
 

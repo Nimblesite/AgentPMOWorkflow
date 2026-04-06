@@ -77,7 +77,13 @@ Before creating anything, **inventory what already exists** so you never create 
 #### 2g. Gitignore
 - If `.gitignore` exists, merge spec patterns into it rather than replacing. Do NOT duplicate patterns already present.
 
-#### 2h. GitHub repository settings
+#### 2h. LICENSE file (CRITICAL — must alert if missing)
+- Check for a `LICENSE`, `LICENSE.md`, `LICENSE.txt`, `LICENCE`, `COPYING`, or `UNLICENSE` file at the repo root.
+- **If NO license file exists, flag this loudly for the Step 5 report.** An unlicensed repo is legally "all rights reserved" — nobody can use, copy, or contribute to it without explicit permission.
+- **DO NOT create a LICENSE file automatically.** License choice is a deliberate decision the user must make (MIT, Apache-2.0, GPL, proprietary, etc.) — the wrong choice has legal consequences.
+- Record the finding for the final report.
+
+#### 2i. GitHub repository settings
 - If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
 - Compare against the standard in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`.
 - If settings already match, leave them alone. Only apply changes for settings that differ.
@@ -275,7 +281,30 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 
 1. List all files created, modified, renamed, or deleted.
 2. If possible, run `make lint` and `make fmt-check` to validate the setup works. Report any errors so the user can address them.
-3. Remind the user: **No commits or pushes were made. Review the changes and commit when ready.**
+3. **LICENSE CHECK — if no license file was found in Step 2h, emit a BIG, IMPOSSIBLE-TO-MISS warning at the top of the final report.** Use heavy visual emphasis (banner of `=` or `!` characters, uppercase heading, bold). Example:
+
+   ```
+   ================================================================================
+   !!!  WARNING — NO LICENSE FILE FOUND  !!!
+   ================================================================================
+   This repository has NO LICENSE file. Under default copyright law this means
+   "all rights reserved" — nobody (including contributors) has permission to use,
+   copy, modify, or distribute this code.
+
+   You MUST add a LICENSE file. Common choices:
+     - MIT          — permissive, simple
+     - Apache-2.0   — permissive, patent grant
+     - GPL-3.0      — copyleft
+     - BSD-3-Clause — permissive
+     - Proprietary  — all rights reserved (explicit)
+
+   This skill will NOT create a LICENSE file for you — the choice has legal
+   consequences and must be made deliberately.
+   ================================================================================
+   ```
+
+   This warning MUST appear even if everything else succeeded. Do not bury it, do not soften it, do not omit it.
+4. Remind the user: **No commits or pushes were made. Review the changes and commit when ready.**
 
 ## Rules
 
