@@ -105,7 +105,7 @@ endif
   install-schedule: install-schedule-unix
   endif
   ```
-- Coverage check shell scripts that use `grep`/`awk` inline in Makefile recipes are Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make coverage-check` via WSL or Git Bash
+- The inline `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make test` (which includes coverage enforcement) via WSL or Git Bash.
 - Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
 
 ### 1.1 Required Targets (identical across all repos)
@@ -190,8 +190,9 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
    fail-fast/exit-on-first-failure flag (table below). Never use a "run everything, report at the
    end" mode.
 2. **COVERAGE IS MANDATORY.** Every test target collects coverage AND enforces the threshold
-   (`make coverage-check` runs as the final step of `make test`, or coverage is collected inline
-   and asserted before the target exits). There is no "tests without coverage" mode.
+   inline. The `_coverage_check` step (which reads `coverage-thresholds.json`) runs as the
+   final step of the `_test` recipe, before `make test` exits. There is no "tests without
+   coverage" mode and no `--no-coverage` flag.
 
 **Why fail-fast is non-negotiable:**
 
@@ -223,7 +224,7 @@ failing test name parsed from output. Do not skip this rule.
 
 **Coverage is part of the same target.** `make test` does:
 1. Run tests fail-fast with coverage instrumentation enabled.
-2. On test success, run `make coverage-check` (or inline check) to assert thresholds.
+2. On test success, invoke `_coverage_check` (which reads `coverage-thresholds.json` via `jq`) to assert measured ≥ threshold.
 3. Exit non-zero if either step fails.
 
 There is no `make test-no-coverage`. There is no `make test-fast`. The standard target is the
@@ -307,15 +308,15 @@ coverage improves past the current threshold, bump the number in `coverage-thres
 in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified in the
 PR description.
 
-**Template:** [`templates/coverage/coverage-thresholds.json`](templates/coverage/coverage-thresholds.json)
+**Template:** [`templates/coverage-calc/coverage-thresholds.json`](../../agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json)
 
-### 3.4 .coveragerc (Python)
+### 3.4 coverlet.runsettings (C#/.NET)
 
-**File:** [`templates/coverage/.coveragerc`](templates/coverage/.coveragerc)
+**File:** [`templates/coverage-calc/coverlet.runsettings`](../../agent-pmo-skill/templates/coverage-calc/coverlet.runsettings)
 
-### 3.5 coverlet.runsettings (C#/.NET)
+### 3.5 jest.coverage.config.js (TypeScript / Jest)
 
-**File:** [`templates/coverage/coverlet.runsettings`](templates/coverage/coverlet.runsettings)
+**File:** [`templates/coverage-calc/jest.coverage.config.js`](../../agent-pmo-skill/templates/coverage-calc/jest.coverage.config.js)
 
 ---
 
@@ -347,11 +348,34 @@ Every Rust workspace Cargo.toml MUST include these lint sections.
 
 **File:** [`templates/linting/tsconfig.json`](templates/linting/tsconfig.json)
 
-### 4.6 Python — Basilisk (primary linter/type checker) + pyproject.toml (ruff + pyright)
+### [LINT-PYTHON-BASILISK] 4.6 Python — Basilisk is the PRIMARY linter AND type checker
 
-**Basilisk is the primary linter and type checker for all Python projects.** Configure Basilisk as the main linting tool. The `pyproject.toml` ruff + pyright sections serve as a secondary layer.
+> ⚠️ **Non-negotiable for every Python project, in every repo, every time.** ⚠️
 
-**File:** [`templates/linting/pyproject.toml`](templates/linting/pyproject.toml)
+**Basilisk is the primary linter AND the primary type checker for all Python code in this
+portfolio.** It is not optional. It is not "if available". It is not "preferred". It is the
+mandated tool. Every Python repo MUST have Basilisk configured before any other Python lint or
+type-check tool.
+
+**Layer order (primary → secondary):**
+
+1. **Basilisk** — primary linter + primary type checker. Source of truth for type errors and
+   lint violations. Configured in `pyproject.toml [tool.basilisk]`. CI MUST run Basilisk and
+   fail on any violation. See [Basilisk configuration docs](https://basilisk-python.dev/docs/configuration/).
+2. **ruff** — secondary linter + the auto-formatter. Configured in `pyproject.toml [tool.ruff]`
+   with `select = ["ALL"]`. Catches what Basilisk doesn't and handles `make fmt`.
+3. **pyright** — secondary type checker. Configured in `pyproject.toml [tool.pyright]`. Acts
+   as a safety net under Basilisk.
+
+**`make lint` runs Basilisk first.** If Basilisk fails, the build fails — ruff and pyright
+never get a chance to run. This forces every Python project to keep Basilisk green.
+
+**Migrating an existing repo:** If a repo has only ruff/pyright/mypy/flake8, the agent-pmo
+skill MUST add Basilisk configuration (in `pyproject.toml [tool.basilisk]`) and wire it into
+`make lint` ahead of the existing tools. Do not delete the existing tools — they become the
+secondary layer.
+
+**File:** [`templates/linting/pyproject.toml`](../../agent-pmo-skill/templates/linting/pyproject.toml)
 
 ### 4.7 Dart/Flutter — analysis_options.yaml
 
@@ -774,8 +798,8 @@ STRUCTURE
 [ ] analysis_options.yaml                  (Dart/Flutter repos)
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
-[ ] .coveragerc                            (Python repos)
-[ ] Makefile (with all 10 required targets)
+[ ] coverage-thresholds.json               (every repo — single source of truth, §3.3)
+[ ] Makefile has all required targets: build, test, lint, fmt, fmt-check, clean, check, ci, coverage, coverage-check, setup
 [ ] Makefile has OS detection block (§1.0 cross-platform support)
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile `_coverage_check` target (language-specific inline check)
@@ -923,8 +947,9 @@ A skill built from this spec operates in two modes:
 7. Create all pointer files from §10.4, substituting `{{CANONICAL_FILE}}` with the detected canonical file
 8. Create all skills from §11 templates — **see §17.2 Template Customization Rule**
 9. Stamp every created file with the `agent-pmo:<hash>` marker per §16
-10. Ensure `_coverage_check` Makefile target has inline coverage check logic per §3.3
-11. Set `COVERAGE_THRESHOLD` appropriate for repo type (§3.1)
+10. Ensure `_coverage_check` Makefile target reads `coverage-thresholds.json` and is wired into `make test` (§3 [TEST-FAIL-FAST])
+11. Create `coverage-thresholds.json` at the repo root with `default_threshold` set per the §3.1 repo-type table (§3.3 [COVERAGE-THRESHOLDS-JSON])
+12. Verify `make test` runs the test runner with its fail-fast flag (§3 [TEST-FAIL-FAST] table)
 
 ### REMEDIATE mode (existing repo)
 
@@ -933,7 +958,9 @@ A skill built from this spec operates in two modes:
 3. For each WRONG item:
    - CI job names wrong → rename to `lint`, `test`, `build`
    - Makefile target names wrong → add aliases or rename
-   - Coverage not enforced → add `coverage-check` step to CI and add `_coverage_check` target to Makefile
+   - `make test` not fail-fast → add the test runner's fail-fast flag (§3 [TEST-FAIL-FAST])
+   - `make test` not enforcing coverage → wire `_coverage_check` into the `_test` recipe so `make test` exits non-zero below threshold
+   - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage (§3.3 [COVERAGE-THRESHOLDS-JSON])
    - `.gitignore` missing tool dirs → append standard tool patterns
    - Canonical instruction file missing sections → append missing sections (detect primary agent per §10.2 first)
    - Default branch is `master` → note for human action (cannot change remotely)
@@ -1042,10 +1069,10 @@ templates/
 ├── CLAUDE.md                    # Pointer to AGENTS.md (used when Claude is not primary)
 ├── Makefile
 ├── opencode.json
-├── coverage/
-│   ├── .coveragerc
-│   ├── coverage-thresholds.json
-│   └── coverlet.runsettings
+├── coverage-calc/
+│   ├── coverage-thresholds.json   # Single source of truth for thresholds (§3.3)
+│   ├── coverlet.runsettings
+│   └── jest.coverage.config.js
 ├── devcontainer/
 │   ├── csharp.devcontainer.json
 │   ├── flutter.devcontainer.json

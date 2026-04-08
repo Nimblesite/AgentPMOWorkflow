@@ -1,6 +1,12 @@
 # Agent PMO Workflow — Agent Instructions
 
-⚠️ CRITICAL: **Reduce token usage.** Check file size before loading. Write less. Delete fluff and dead code. Alert user when context is loaded with pointless files. ⚠️ 
+> ⚠️ **TOKEN DISCIPLINE — read first.** Tokens are not free. Before reading any file, check its
+> size. Prefer `Grep` for known symbols over reading whole files. Read only the lines you
+> actually need (`offset`/`limit`). Write less code, not more — the right diff is the smallest
+> diff that solves the problem. Delete fluff, dead code, unused imports, and stale comments
+> aggressively. If the user loads context with files that are not relevant to the task, **call
+> it out** ("the context contains X.md and Y.ts which appear unrelated to this task — proceed
+> anyway?"). Bloated context degrades reasoning. ⚠️
 
 > Read this entire file before making changes.
 

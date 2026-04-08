@@ -12,11 +12,11 @@ Carefully search for duplicate code, duplicate tests, and dead code across the r
 Before touching ANY code, verify these conditions. If any fail, stop and report why.
 
 1. Run `make test` — all tests must pass. If tests fail, stop. Do not dedup a broken codebase.
-2. Run `make coverage-check` — coverage must meet the repo's threshold. If it doesn't, stop.
+2. Run `make test` — tests are fail-fast AND enforce the coverage threshold from `coverage-thresholds.json`. If anything fails, stop and fix it before deduping.
 3. Verify the project uses **static typing**. Check for:
    - Rust, Go, C#, F#, Dart, Java, Kotlin: typed by default — proceed
    - TypeScript: `tsconfig.json` must have `"strict": true` — proceed
-   - Python: must have type annotations AND a type checker configured (pyright, mypy, or Basilisk in pyproject.toml / Makefile) — proceed
+   - Python: must have **Basilisk** configured as the primary type checker in `pyproject.toml [tool.basilisk]` (per REPO-STANDARDS-SPEC §4.6 [LINT-PYTHON-BASILISK]). pyright is acceptable as a secondary check but Basilisk is the primary requirement.
    - **Untyped JavaScript or untyped Python: STOP. Refuse to dedup.** Print: "This codebase has no static type checking. Deduplication without types is reckless — too high a risk of silent breakage. Add type checking first."
 
 ## Steps

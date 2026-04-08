@@ -1,3 +1,29 @@
+# =============================================================================
+# Python lint + type-check configuration
+#
+# Layer order (PRIMARY → secondary). See REPO-STANDARDS-SPEC §4.6
+# [LINT-PYTHON-BASILISK]:
+#
+#   1. Basilisk  — PRIMARY linter AND type checker. Non-negotiable.
+#                  `make lint` runs Basilisk first; failure here blocks the build.
+#   2. ruff      — secondary linter + the auto-formatter (`make fmt`).
+#                  `select = ["ALL"]`. Catches what Basilisk doesn't.
+#   3. pyright   — secondary type checker. Safety net under Basilisk.
+# =============================================================================
+
+# ----- PRIMARY: Basilisk (linter + type checker) -----
+[tool.basilisk]
+python-version = "3.12"
+python-platform = "All"
+include = ["src/", "tests/"]
+exclude = ["**/migrations/**", "**/generated/**"]
+
+[tool.basilisk.mojo-safety]
+ownership = true
+immutability = true
+no-implicit-coercion = true
+
+# ----- SECONDARY: ruff (lint + format) -----
 [tool.ruff]
 target-version = "py312"
 line-length = 100
@@ -25,13 +51,9 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "lf"
 
-[tool.basilisk]
-python-version = "3.12"
-python-platform = "All"
-include = ["src/", "tests/"]
-exclude = ["**/migrations/**", "**/generated/**"]
-
-[tool.basilisk.mojo-safety]
-ownership = true
-immutability = true
-no-implicit-coercion = true
+# ----- SECONDARY: pyright (type-check safety net) -----
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src", "tests"]
+exclude = ["**/migrations", "**/generated"]

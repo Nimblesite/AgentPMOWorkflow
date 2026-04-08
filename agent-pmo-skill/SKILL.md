@@ -60,7 +60,7 @@ Before creating anything, **inventory what already exists** so you never create 
 - Check for equivalent configs under alternate names or locations:
   - ESLint: `.eslintrc.js`, `.eslintrc.cjs`, `.eslintrc.yaml`, `.eslintrc.json` → standardise to `eslint.config.mjs` (ESLint v9+ flat config)
   - Prettier: `.prettierrc`, `.prettierrc.js`, `.prettierrc.yaml`, `prettier.config.js` → standardise to `.prettierrc.json`
-  - Python linting: `setup.cfg` `[flake8]`/`[isort]` sections, `.flake8`, `tox.ini` → migrate to Basilisk (primary linter, work in progress) + `pyproject.toml` `[tool.ruff]` (secondary layer)
+  - Python linting: `setup.cfg` `[flake8]`/`[isort]` sections, `.flake8`, `tox.ini` → migrate to **Basilisk** (PRIMARY linter AND type checker — see §4.6 [LINT-PYTHON-BASILISK]) configured in `pyproject.toml [tool.basilisk]`, with `[tool.ruff]` and `[tool.pyright]` as the secondary layer
   - Go linting: `.golangci.yaml` (wrong extension) → rename to `.golangci.yml`
   - C#: build props with analyzer packages (see spec for required PackageReference items in Directory.Build.props)
 - When migrating, **delete the old file** after confirming the new one covers everything. Do NOT leave both.
@@ -68,9 +68,15 @@ Before creating anything, **inventory what already exists** so you never create 
 #### 2e. Formatter configs
 - Check for existing formatter setups: CSharpier (`.csharpierrc.json`, `dotnet-tools.json`), Fantomas (`.fantomasrc`, `dotnet-tools.json`), Prettier (`.prettierrc`, `.prettierrc.json`, `.prettierrc.js`, etc.), rustfmt (`rustfmt.toml`), ruff format (`pyproject.toml [tool.ruff.format]`). If `[tool.black]` exists in pyproject.toml, migrate to `[tool.ruff.format]` and remove it.
 - If an equivalent formatter config exists under a non-standard name, migrate it. Do NOT leave duplicates.
-- For Python repos, verify Basilisk is set up as the primary linter (work in progress — configure what's available locally). The formatter is ruff format.
+- For Python repos, verify Basilisk is set up as the **primary linter AND type checker** in `pyproject.toml [tool.basilisk]` and wired into `make lint` BEFORE ruff/pyright. The auto-formatter is ruff format. See §4.6 [LINT-PYTHON-BASILISK].
 
 #### 2f. Coverage configs
+- **Check for `coverage-thresholds.json`** at the repo root. If absent, you'll create one in Step 3d. If present, validate it has `default_threshold` and matches the §3.3 schema.
+- **Search for legacy threshold storage and flag for migration:**
+  - `vars.COVERAGE_THRESHOLD*` references in any workflow under `.github/workflows/`
+  - `COVERAGE_THRESHOLD ?= …` style defaults in the Makefile
+  - Hardcoded numbers in CI YAML (`--lines 90`, `--fail-under 85`, etc.)
+  - Run `gh variable list 2>/dev/null | grep -i COVERAGE` to find GitHub repo variables
 - Check for existing coverage scripts (`scripts/check_coverage.sh`, `tools/coverage.sh`, etc.). If found, the Makefile `_coverage_check` target replaces them — **delete the old script** after migrating any custom logic.
 - Check for `.coveragerc` vs `pyproject.toml` `[tool.coverage]` — don't have both.
 
@@ -154,26 +160,40 @@ Ensure the spec ID rule is present in the canonical instruction file (AGENTS.md 
 - Update/rename the identified existing workflow (from Step 2b), or create `ci.yml` only if no equivalent exists.
 - Same for `release.yml` and `deploy-pages.yml`.
 - Uncomment the language setup sections that apply.
-- **Default to a single `ci` job with sequential steps** (lint → test → coverage-check → build). This avoids redundant checkout/setup/install across multiple runners. Only split into separate parallel jobs when individual tasks are expensive enough (e.g., 5+ minutes each) that the runner overhead is justified.
+- **Default to a single `ci` job with sequential steps**: `lint → test → build`. `make test` is fail-fast AND already enforces coverage thresholds inline (§3 [TEST-FAIL-FAST], [COVERAGE-THRESHOLDS-JSON]) — do NOT add a separate `coverage-check` step. This avoids redundant checkout/setup/install across multiple runners. Only split into separate parallel jobs when individual tasks are expensive enough (e.g., 5+ minutes each) that the runner overhead is justified.
 - **CRITICAL: Every job in every workflow MUST have `timeout-minutes: 10`** unless there is a documented reason it genuinely needs longer. If a job needs longer than 10 minutes, keep `timeout-minutes` at the required value and add a comment directly above it explaining WHY it must exceed 10 minutes. Example:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
   timeout-minutes: 15
   ```
 
-#### 3d. Coverage
-- The `_coverage_check` Makefile target handles coverage enforcement directly — no shell scripts. The coverage check logic is inline in the Makefile per the spec.
-- Each project in the repo has its own coverage threshold stored as a GitHub repo variable (Settings → Variables → Actions). Configure the `coverage-check` CI step with an `env` block that passes the repo variable (e.g., `COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD_PYTHON }}`). **No hardcoded defaults in ci.yml** — the Makefile default (90%) is the fallback for local runs only.
-- Thresholds are **monotonically increasing** (ratchet) — they never go down.
-- For Python repos, create/update `.coveragerc` per the spec (but remove `[tool.coverage]` from `pyproject.toml` if `.coveragerc` is the canonical location, or vice versa — don't have both).
-- For .NET repos, create/update `coverlet.runsettings` per the spec.
-- Delete any old coverage shell scripts that the Makefile target replaces.
+#### 3d. Coverage (CRITICAL — JSON file is the single source of truth)
+
+**Read REPO-STANDARDS-SPEC §3 in full before doing anything in this step.** The two non-negotiables:
+
+1. **`make test` is FAIL-FAST AND collects coverage AND enforces the threshold** (§3 [TEST-FAIL-FAST]). Every test sub-target inherits both rules. There is no "test without coverage" mode. Use the test runner's fail-fast flag (table in §3 [TEST-FAIL-FAST]).
+2. **Thresholds live in `coverage-thresholds.json`** at the repo root (§3.3 [COVERAGE-THRESHOLDS-JSON]). NOT GitHub repo variables. NOT env vars. NOT hardcoded in ci.yml.
+
+What this skill must do:
+
+- **Create `coverage-thresholds.json`** at the repo root if it doesn't exist. Use the template at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json`. Set `default_threshold` per the §3.1 repo-type table. For multi-project repos, list each project under `projects` with its current measured threshold (ratchet from current measured coverage, never above).
+- **Migrate existing thresholds.** If you find:
+  - `vars.COVERAGE_THRESHOLD*` references in `ci.yml` → read each value from `gh variable list`, write them into `coverage-thresholds.json`, and **delete the env block** from ci.yml.
+  - GitHub repo variables `COVERAGE_THRESHOLD*` → after migration, instruct the user to delete them from Settings → Variables → Actions (this skill cannot delete them automatically).
+  - Hardcoded `COVERAGE_THRESHOLD ?= 90` style defaults in the Makefile → replace with `COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json` and update `_coverage_check` to read the JSON via `jq`.
+  - Old coverage shell scripts (`scripts/check_coverage.sh`, etc.) → delete them; the Makefile `_coverage_check` target replaces them.
+- **`_coverage_check` Makefile target** must read `coverage-thresholds.json` with `jq` and assert measured ≥ threshold. Reference the language-specific commented blocks in `templates/Makefile`. **Tests MUST FAIL non-zero** when below threshold.
+- **`ci.yml` has NO `coverage-check` step and NO `COVERAGE_THRESHOLD` env vars.** `make test` runs coverage and enforcement inline; the CI workflow only calls `make test`. Verify after editing.
+- **Thresholds are monotonically increasing (ratchet).** When coverage improves, bump the JSON value in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified.
+- For .NET repos, create/update `coverlet.runsettings` per the spec template at `templates/coverage-calc/coverlet.runsettings`.
+- For Python repos, configure coverage in `pyproject.toml` `[tool.coverage]` (Basilisk-aware setup). Do NOT also create `.coveragerc` — pick one location.
+- For TypeScript/Jest repos, use `templates/coverage-calc/jest.coverage.config.js`.
 
 #### 3e. Linter configs
 Apply the exact linter configuration from the spec for each detected language. **Merge into existing files; delete superseded files:**
 - Rust: `Cargo.toml` workspace lints, `rustfmt.toml`
 - TypeScript: `eslint.config.mjs` (flat config), `.prettierrc.json`, `tsconfig.json` strict baseline — merge with existing tsconfig if present, don't clobber project-specific fields like `outDir`, `rootDir`, `include`. Delete old-format equivalents (`.eslintrc.json`, `.eslintrc.js`, `.prettierrc.yaml`, etc.) after migration.
-- Python: **Basilisk is the primary linter/type checker for all Python projects.** Ensure Basilisk is configured as the main linting tool. Additionally configure `pyproject.toml` ruff + pyright sections as a secondary layer — merge with existing pyproject.toml, don't clobber `[project]` or other tool sections. Delete superseded `.flake8`, `setup.cfg [flake8]` sections, etc.
+- Python: **Basilisk is the PRIMARY linter AND PRIMARY type checker for every Python project — non-negotiable (§4.6 [LINT-PYTHON-BASILISK]).** Configure `[tool.basilisk]` in `pyproject.toml` and run it FIRST in `make lint` (before ruff and pyright). Configure `[tool.ruff]` (with `select = ["ALL"]`) and `[tool.pyright]` as the secondary layer. Merge with existing `pyproject.toml` — don't clobber `[project]` or other tool sections. Delete superseded `.flake8`, `setup.cfg [flake8]`, `tox.ini` lint sections, etc.
 - Dart/Flutter: `analysis_options.yaml`
 - Go: `.golangci.yml` (delete `.golangci.yaml` if it existed)
 - C#: `Directory.Build.props` with `Microsoft.CodeAnalysis.NetAnalyzers` (all CA* and IDE* rules enabled as errors). If the repo is missing individual analyzer rules, add them one by one to the `.csproj` or `Directory.Build.props` — do NOT use .editorconfig for this. Only configure static code analysis rules, not style/formatting settings (CSharpier handles formatting).
@@ -186,7 +206,7 @@ Apply the correct formatter for each detected language:
 - **C#:** CSharpier (`dotnet csharpier`)
 - **F#:** Fantomas (`dotnet fantomas`)
 - **Rust:** `cargo fmt` / `cargo fmt --check`
-- **Python:** Basilisk first for linting (work in progress), then ruff format as the formatter. Basilisk is the primary tool; ruff format handles auto-formatting.
+- **Python:** Basilisk runs FIRST for linting AND type checking (§4.6 [LINT-PYTHON-BASILISK] — non-negotiable). ruff format is the auto-formatter; pyright runs as a secondary type-check safety net.
 - **TypeScript/JavaScript:** Prettier (`npx prettier --write .` / `npx prettier --check .`)
 - **Dart/Flutter:** `dart format` / `dart format --set-exit-if-changed`
 - **Go:** `gofmt` / `goimports`
@@ -308,12 +328,16 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 
 ## Rules
 
+- ⚠️ **Token discipline.** Read files with `offset`/`limit` when you only need a slice. Prefer `Grep` for known symbols. Don't dump whole templates into context to "see what's there" — you already have the spec. Write less. Delete more. Alert the user if context is loaded with files unrelated to the task.
+- **TESTS ARE FAIL-FAST.** Every `make test` and every test sub-target MUST stop at the first failing test (§3 [TEST-FAIL-FAST]). Use the runner's fail-fast flag (cargo test default, `pytest -x`, `jest --bail`, `vitest --bail=1`, `flutter test --fail-fast`, `go test -failfast`, `dotnet test -- xunit.stopOnFail=true`). Never use `--no-fail-fast`.
+- **TESTS ALWAYS COMPUTE COVERAGE.** Every `make test` target MUST collect coverage AND assert measured ≥ threshold inline. There is no "test without coverage" mode. Reject any Makefile pattern that defines `make test` without coverage enforcement.
+- **THRESHOLDS LIVE IN `coverage-thresholds.json` ONLY.** Never set thresholds via env vars, never via GitHub repo variables, never hardcoded in `ci.yml`. The JSON file at the repo root is the single source of truth (§3.3 [COVERAGE-THRESHOLDS-JSON]). Ratchet only — never lower.
 - **NEVER run `git commit`, `git push`, or any git write command.**
 - **NEVER skip the spec.** Every config file must match the spec exactly (with only the documented substitutions like `{{REPO_NAME}}`).
 - **NEVER copy templates verbatim.** Templates are starting points. Strip all language/tool references that don't apply to the target repo. Fill all placeholders. The output must be immediately usable with zero irrelevant content.
 - **All GH Actions jobs get `timeout-minutes: 10`** by default. Only deviate with an explicit comment justifying the exception.
 - **CI MUST check formatting and fail hard on violations.** The CI lint step must run `make fmt-check`. Any formatting diff = pipeline failure, no exceptions.
-- **Basilisk is the primary linter/type checker for all Python projects.** Always configure Basilisk first, then layer on ruff format as the auto-formatter.
+- **Basilisk is the PRIMARY linter AND PRIMARY type checker for every Python project — non-negotiable.** Always configure Basilisk in `pyproject.toml [tool.basilisk]` first and wire it into `make lint` BEFORE ruff/pyright. Then layer on ruff format as the auto-formatter and pyright as a secondary type-check safety net. See §4.6 [LINT-PYTHON-BASILISK].
 - **MERGE, don't clobber.** When an existing file partially meets the spec, update it in place. When an equivalent exists under a wrong name, rename it. Only create from scratch when nothing equivalent exists.
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.
 - When remediating an existing repo, preserve any project-specific settings that don't conflict with the spec (e.g., extra Makefile targets, additional CI jobs, custom tsconfig paths).

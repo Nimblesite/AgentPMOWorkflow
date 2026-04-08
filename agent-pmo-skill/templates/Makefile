@@ -81,9 +81,12 @@ coverage:
 	@echo "==> Coverage report..."
 	$(MAKE) _coverage
 
-## coverage-check: Assert thresholds (exits non-zero if below)
+## coverage-check: Assert thresholds (exits non-zero if below).
+##                  NOTE: `make test` already runs this. This target exists only
+##                  for re-running the assertion against an existing coverage file
+##                  without re-executing the test suite.
 coverage-check:
-	@echo "==> Checking coverage thresholds..."
+	@echo "==> Checking coverage thresholds (reads coverage-thresholds.json)..."
 	$(MAKE) _coverage_check
 
 ## setup: Post-create dev environment setup (used by devcontainer)
@@ -348,10 +351,11 @@ setup:
 # _build:
 # 	go build ./...
 #
+# # Fail-fast: -failfast stops at the first failing test in a package.
 # _test:
-# 	go test -covermode=atomic -coverprofile=coverage.out ./...
+# 	go test -failfast -covermode=atomic -coverprofile=coverage.out ./...
 # 	go tool cover -func=coverage.out
-# 	$(MAKE) coverage-check
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	gofmt -l . | grep . && exit 1 || true
@@ -373,13 +377,15 @@ setup:
 # 	@echo "==> HTML report: coverage.html"
 #
 # _coverage_check:
-# 	@PCT=$$(go tool cover -func=coverage.out | awk '/^total:/{print $$3}' | tr -d '%'); \
+# 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
+# 	THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
+# 	PCT=$$(go tool cover -func=coverage.out | awk '/^total:/{print $$3}' | tr -d '%'); \
 # 	PCT_INT=$$(echo "$$PCT" | awk '{printf "%d", $$1}'); \
-# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
-# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
-# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	echo "Line coverage: $${PCT}% (threshold: $${THRESHOLD}%)"; \
+# 	if [ "$$PCT_INT" -lt "$${THRESHOLD}" ]; then \
+# 	  echo "FAIL: $${PCT}% < $${THRESHOLD}%"; exit 1; \
 # 	else \
-# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	  echo "OK: $${PCT}% >= $${THRESHOLD}%"; \
 # 	fi
 #
 # _setup:
@@ -392,13 +398,13 @@ setup:
 help:
 	@echo "Available targets:"
 	@echo "  build          - Compile/assemble all artifacts"
-	@echo "  test           - Run full test suite with coverage"
+	@echo "  test           - FAIL-FAST tests + coverage + threshold enforcement (only test entry point)"
 	@echo "  lint           - Run all linters (errors mode)"
 	@echo "  fmt            - Format all code in-place"
 	@echo "  fmt-check      - Check formatting (no modification)"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  check          - lint + test (pre-commit)"
 	@echo "  ci             - lint + test + build (full CI)"
-	@echo "  coverage       - Generate and open coverage report"
-	@echo "  coverage-check - Assert coverage thresholds"
+	@echo "  coverage       - Generate and open coverage HTML report"
+	@echo "  coverage-check - Re-assert coverage thresholds (read coverage-thresholds.json)"
 	@echo "  setup          - Post-create dev environment setup"

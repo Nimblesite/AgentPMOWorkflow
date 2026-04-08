@@ -1,6 +1,11 @@
 # {{REPO_NAME}} — Agent Instructions
 
-⚠️ CRITICAL: **Reduce token usage.** Check file size before loading. Write less. Delete fluff and dead code. Alert user when context is loaded with pointless files. ⚠️ 
+> ⚠️ **TOKEN DISCIPLINE — read first.** Tokens are not free. Before reading any file, check its
+> size. Prefer `Grep` for known symbols over reading whole files. Read only the lines you
+> actually need (`offset`/`limit`). Write less code, not more. Delete fluff, dead code, unused imports, and stale comments
+> aggressively. If the user loads context with files that are not relevant to the task, **call
+> it out** ("the context contains X.md and Y.ts which appear unrelated to this task — proceed
+> anyway?"). Bloated context degrades reasoning. ⚠️
 
 > Read this entire file before writing any code.
 > These rules are NON-NEGOTIABLE. Violations will be rejected in review.
@@ -34,6 +39,8 @@ If the TMC server is available:
 - **Functions < 20 lines.** Refactor aggressively. If a function exceeds 20 lines, split it.
 - **Files < 500 lines.** If a file exceeds 500 lines, extract modules.
 - **100% test coverage is the goal.** Never delete or skip tests. Never remove assertions.
+- **`make test` is FAIL-FAST.** Every test target — `make test` and any sub-target — MUST stop at the first failing test. Never use `--no-fail-fast`, never use a "run all then report" mode. Failing fast saves CI minutes and stops AI agents from idling while a doomed run grinds through 500 cascading failures. See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
+- **`make test` ALWAYS computes coverage AND enforces the threshold.** There is no "test without coverage" mode. The threshold lives in `coverage-thresholds.json` at the repo root — NOT in env vars, NOT in GitHub repo variables, NOT in CI YAML. Tests FAIL when measured coverage < threshold. Thresholds only ratchet UP. See REPO-STANDARDS-SPEC §3.3 [COVERAGE-THRESHOLDS-JSON].
 - **Prefer E2E/integration tests.** Unit tests are acceptable only for isolating problems.
 - **Heavy logging everywhere.** See Logging Standards section below.
 - **No suppressing linter warnings.** Fix the code, not the linter.
@@ -134,6 +141,9 @@ If the TMC server is available:
 ```
 
 ### Python
+- **Basilisk is the PRIMARY linter AND type checker for every Python project.** Not optional. Not "if available". Configure it first, configure it always. See [Basilisk Type Checker Configuration](https://basilisk-python.dev/docs/configuration/).
+- ruff + pyright sit underneath as a secondary safety net. Basilisk is the source of truth for type errors and lint rules.
+- ruff format is the auto-formatter (`make fmt` runs Basilisk lint, then ruff format).
 - No `Any` in type annotations — use specific types
 - Type annotations on every function parameter and return type
 - No bare `except:` — always catch specific exception types
@@ -141,7 +151,9 @@ If the TMC server is available:
 - Use `Result[T, E]` pattern (returns tuple or custom type) — no raising
 
 #### Mandatory Linting
-- **Basilisk**: [Type Checker Configuration](https://basilisk-python.dev/docs/configuration/)
+- **Basilisk** (primary linter + type checker): [Configuration docs](https://basilisk-python.dev/docs/configuration/)
+- **ruff** (secondary lint + auto-format): configured in `pyproject.toml [tool.ruff]`
+- **pyright** (secondary type check): configured in `pyproject.toml [tool.pyright]`
 
 ## Testing Rules
 
@@ -153,13 +165,12 @@ If the TMC server is available:
 - **E2E tests: black-box only.** Only interact via public APIs, UI commands, or CLI. Never call internal methods or manipulate internal state from a test.
 - **VSCode extension E2E:** interact only via `vscode.commands.executeCommand`. Never call provider methods directly.
 
-# Website (If One Exists)
+## Website (if one exists)
 
-**Optimise for SEO and AI**: always pay attention to this then when writing content
+**Optimise for SEO and AI search.** Apply both guides below when writing any web content:
 
-[Top ways to ensure your content performs well in Google's AI experiences on Search](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
-
-[Search Engine Optimization (SEO) Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+- [Succeeding in Google's AI search experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
+- [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
 ## Build Commands (exact — cross-platform via GNU Make)
 
@@ -167,19 +178,26 @@ All `make` targets work on Linux, macOS, and Windows. The Makefile uses OS detec
 
 ```bash
 make build          # compile everything
-make test           # run tests with coverage
+make test           # FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point)
 make lint           # run all linters
 make fmt            # format all code
 make fmt-check      # check formatting (CI uses this)
 make clean          # remove build artifacts
 make check          # lint + test (pre-commit)
 make ci             # lint + test + build (full CI simulation)
-make coverage       # generate and open coverage report
-make coverage-check # assert coverage thresholds
+make coverage       # generate and open coverage report (HTML viewer for humans)
 make website-build  # build the website/static site
 make website-run    # run the website locally (dev server)
 make setup          # post-create dev environment setup
 ```
+
+**`make test` is the only test entry point.** It:
+1. Runs the test runner with its **fail-fast** flag (stops at the first failing test).
+2. Collects coverage.
+3. Asserts measured coverage ≥ threshold from `coverage-thresholds.json`.
+4. Exits non-zero on any failure (test failure OR coverage shortfall).
+
+There is no `make test-fast`, no `make test-no-coverage`, no `make test-unit-only` outside of CI parity. If you need to debug a single test, invoke the test runner directly — that is not a Makefile target.
 
 ## Repo Structure
 
