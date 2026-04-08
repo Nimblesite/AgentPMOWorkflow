@@ -23,8 +23,14 @@ else
   MKDIR = mkdir -p
 endif
 
-# Coverage threshold (override in CI via env var or per-repo)
-COVERAGE_THRESHOLD ?= 90
+# =============================================================================
+# Coverage thresholds — read from `coverage-thresholds.json` at the repo root.
+# See REPO-STANDARDS-SPEC §3.3 [COVERAGE-THRESHOLDS-JSON].
+# DO NOT hardcode a threshold here. DO NOT read from a CI env var.
+# DO NOT reference GitHub repo variables. The JSON file is the single source.
+# `_coverage_check` parses this file with `jq` and asserts measured % >= threshold.
+# =============================================================================
+COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 
 # =============================================================================
 # PRIMARY TARGETS (uniform interface — do not rename)
@@ -35,9 +41,13 @@ build:
 	@echo "==> Building..."
 	$(MAKE) _build
 
-## test: Run full test suite with coverage
+## test: Run full test suite — FAIL-FAST + coverage + threshold enforcement.
+##       Stops at the first failing test. Coverage is collected and asserted
+##       against `coverage-thresholds.json`. Non-zero exit if measured < threshold.
+##       This is the ONLY test target. There is no "test without coverage" mode.
+##       See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
 test:
-	@echo "==> Testing..."
+	@echo "==> Testing (fail-fast + coverage)..."
 	$(MAKE) _test
 
 ## lint: Run all linters (fails on any warning)
@@ -97,8 +107,9 @@ setup:
 #
 # _test:
 # 	rustup component add llvm-tools-preview 2>/dev/null || true
+# 	# Fail-fast: cargo test stops on first failure by default. DO NOT pass --no-fail-fast.
 # 	cargo llvm-cov --workspace --all-targets --lcov --output-path lcov.info
-# 	$(MAKE) coverage-check
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	cargo fmt --all --check
@@ -117,17 +128,20 @@ setup:
 # 	cargo llvm-cov report --html --output-dir target/llvm-cov/html
 # 	@echo "==> HTML report: target/llvm-cov/html/index.html"
 #
+# # Reads default_threshold from coverage-thresholds.json, asserts measured >= threshold.
 # _coverage_check:
-# 	@LH=$$(grep '^LH:' lcov.info | awk -F: '{sum+=$$2} END{print sum+0}'); \
+# 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
+# 	THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
+# 	LH=$$(grep '^LH:' lcov.info | awk -F: '{sum+=$$2} END{print sum+0}'); \
 # 	LF=$$(grep '^LF:' lcov.info | awk -F: '{sum+=$$2} END{print sum+0}'); \
 # 	if [ "$$LF" -eq 0 ]; then echo "FAIL: No lines in lcov.info"; exit 1; fi; \
 # 	PCT=$$(awk "BEGIN{printf \"%.1f\", $$LH/$$LF*100}"); \
 # 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $$LH/$$LF*100}"); \
-# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
-# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
-# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	echo "Line coverage: $${PCT}% (threshold: $${THRESHOLD}%)"; \
+# 	if [ "$$PCT_INT" -lt "$${THRESHOLD}" ]; then \
+# 	  echo "FAIL: $${PCT}% < $${THRESHOLD}%"; exit 1; \
 # 	else \
-# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	  echo "OK: $${PCT}% >= $${THRESHOLD}%"; \
 # 	fi
 #
 # _setup:
@@ -139,9 +153,11 @@ setup:
 # _build:
 # 	npm run build
 #
+# # Fail-fast: Jest --bail / Vitest --bail=1. The npm "test:coverage" script MUST
+# # include the bail flag (e.g. "jest --coverage --bail").
 # _test:
 # 	npm run test:coverage
-# 	$(MAKE) coverage-check
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	npm run fmt:check
@@ -161,7 +177,8 @@ setup:
 # 	open coverage/index.html || xdg-open coverage/index.html
 #
 # _coverage_check:
-# 	npx c8 check-coverage --lines $(COVERAGE_THRESHOLD)
+# 	@THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
+# 	npx c8 check-coverage --lines $$THRESHOLD
 #
 # _setup:
 # 	npm ci
@@ -172,10 +189,11 @@ setup:
 # _build:
 # 	python -m build
 #
+# # Fail-fast: pytest -x stops on first failure (alias for --maxfail=1).
 # _test:
-# 	python -m pytest tests/ --cov=. --cov-report=lcov:lcov.info \
+# 	python -m pytest -x tests/ --cov=. --cov-report=lcov:lcov.info \
 # 	  --cov-report=term-missing --cov-config=.coveragerc
-# 	$(MAKE) coverage-check
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	ruff format --check .
@@ -194,11 +212,12 @@ setup:
 # 	$(RM) dist build *.egg-info htmlcov .coverage coverage.xml lcov.info
 #
 # _coverage:
-# 	python -m pytest tests/ --cov=. --cov-report=html --cov-config=.coveragerc
+# 	python -m pytest -x tests/ --cov=. --cov-report=html --cov-config=.coveragerc
 # 	@echo "==> HTML report: htmlcov/index.html"
 #
 # _coverage_check:
-# 	python -m coverage report --fail-under=$(COVERAGE_THRESHOLD)
+# 	@THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
+# 	python -m coverage report --fail-under=$$THRESHOLD
 #
 # _setup:
 # 	pip install -r requirements.txt
@@ -209,9 +228,10 @@ setup:
 # _build:
 # 	flutter build apk --debug || dart compile exe lib/main.dart
 #
+# # Fail-fast: --fail-fast stops at the first failing test.
 # _test:
-# 	flutter test --coverage
-# 	$(MAKE) coverage-check
+# 	flutter test --coverage --fail-fast
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	dart format --set-exit-if-changed .
@@ -231,18 +251,20 @@ setup:
 # 	@echo "==> HTML report: coverage/html/index.html"
 #
 # _coverage_check:
-# 	@LCOV_FILE="coverage/lcov.info"; \
+# 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
+# 	THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
+# 	LCOV_FILE="coverage/lcov.info"; \
 # 	if [ ! -f "$$LCOV_FILE" ]; then echo "FAIL: $$LCOV_FILE not found"; exit 1; fi; \
 # 	LH=$$(grep '^LH:' "$$LCOV_FILE" | awk -F: '{sum+=$$2} END{print sum+0}'); \
 # 	LF=$$(grep '^LF:' "$$LCOV_FILE" | awk -F: '{sum+=$$2} END{print sum+0}'); \
 # 	if [ "$$LF" -eq 0 ]; then echo "FAIL: No lines in lcov.info"; exit 1; fi; \
 # 	PCT=$$(awk "BEGIN{printf \"%.1f\", $$LH/$$LF*100}"); \
 # 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $$LH/$$LF*100}"); \
-# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
-# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
-# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	echo "Line coverage: $${PCT}% (threshold: $${THRESHOLD}%)"; \
+# 	if [ "$$PCT_INT" -lt "$${THRESHOLD}" ]; then \
+# 	  echo "FAIL: $${PCT}% < $${THRESHOLD}%"; exit 1; \
 # 	else \
-# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	  echo "OK: $${PCT}% >= $${THRESHOLD}%"; \
 # 	fi
 #
 # _setup:
@@ -255,6 +277,8 @@ setup:
 # _build:
 # 	dotnet build --configuration Release
 #
+# # Fail-fast: xunit.stopOnFail=true stops at the first failing test (xUnit).
+# # For NUnit/MSTest see their docs for the equivalent runsettings.
 # _test:
 # 	$(RM) TestResults
 # 	dotnet test $$(find . -maxdepth 1 -name '*.sln' | head -1) \
@@ -262,8 +286,9 @@ setup:
 # 	  --settings coverlet.runsettings \
 # 	  --collect:"XPlat Code Coverage" \
 # 	  --results-directory TestResults \
-# 	  --verbosity normal
-# 	$(MAKE) coverage-check
+# 	  --verbosity normal \
+# 	  -- xunit.stopOnFail=true
+# 	$(MAKE) _coverage_check
 #
 # _lint:
 # 	dotnet build --configuration Release -warnaserror
@@ -289,17 +314,22 @@ setup:
 # 	  -reporttypes:Html
 # 	@echo "==> HTML report: coverage/html/index.html"
 #
+# # Reads `coverage-thresholds.json`. For multi-project repos, iterates over
+# # `.projects` and asserts each project's measured coverage >= its threshold.
+# # For single-project repos, falls back to `.default_threshold`.
 # _coverage_check:
-# 	@COBERTURA=$$(find TestResults -name 'coverage.cobertura.xml' | head -1); \
+# 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
+# 	COBERTURA=$$(find TestResults -name 'coverage.cobertura.xml' | head -1); \
 # 	if [ -z "$$COBERTURA" ]; then echo "FAIL: No coverage.cobertura.xml found"; exit 1; fi; \
+# 	THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
 # 	LINE_RATE=$$(grep -oP 'line-rate="\K[^"]+' "$$COBERTURA" | head -1); \
 # 	PCT=$$(awk "BEGIN{printf \"%.1f\", $${LINE_RATE:-0}*100}"); \
 # 	PCT_INT=$$(awk "BEGIN{printf \"%d\", $${LINE_RATE:-0}*100}"); \
-# 	echo "Line coverage: $${PCT}% (threshold: $(COVERAGE_THRESHOLD)%)"; \
-# 	if [ "$$PCT_INT" -lt "$(COVERAGE_THRESHOLD)" ]; then \
-# 	  echo "FAIL: $${PCT}% < $(COVERAGE_THRESHOLD)%"; exit 1; \
+# 	echo "Line coverage: $${PCT}% (threshold: $${THRESHOLD}%)"; \
+# 	if [ "$$PCT_INT" -lt "$${THRESHOLD}" ]; then \
+# 	  echo "FAIL: $${PCT}% < $${THRESHOLD}%"; exit 1; \
 # 	else \
-# 	  echo "OK: $${PCT}% >= $(COVERAGE_THRESHOLD)%"; \
+# 	  echo "OK: $${PCT}% >= $${THRESHOLD}%"; \
 # 	fi
 #
 # _setup:

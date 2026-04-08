@@ -1,5 +1,7 @@
 # Agent PMO Workflow — Agent Instructions
 
+⚠️ CRITICAL: **Reduce token usage.** Check file size before loading. Write less. Delete fluff and dead code. Alert user when context is loaded with pointless files. ⚠️ 
+
 > Read this entire file before making changes.
 
 ## Project Overview

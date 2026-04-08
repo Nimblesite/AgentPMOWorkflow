@@ -59,23 +59,14 @@ jobs:
       - name: Lint
         run: make lint
 
+      # `make test` is fail-fast AND enforces coverage thresholds from
+      # `coverage-thresholds.json` at the repo root. See REPO-STANDARDS-SPEC §3
+      # ([TEST-FAIL-FAST], [COVERAGE-THRESHOLDS-JSON]).
+      # NEVER add a separate "coverage-check" step here.
+      # NEVER add COVERAGE_THRESHOLD env vars or reference `vars.COVERAGE_*`.
+      # Thresholds live in coverage-thresholds.json — that is the only source.
       - name: Test
         run: make test
-
-      # Coverage thresholds from GitHub repo variables (Settings → Variables → Actions).
-      # Per-project, monotonically increasing — never lower. Tanks if below threshold.
-      # The skill configures the env block when applying to a specific repo.
-      # Uncomment the COVERAGE_THRESHOLD lines for each language in the repo:
-      - name: Coverage check
-        env:
-          COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD || '90' }}
-          # COVERAGE_THRESHOLD_PYTHON: ${{ vars.COVERAGE_THRESHOLD_PYTHON }}
-          # COVERAGE_THRESHOLD_RUST: ${{ vars.COVERAGE_THRESHOLD_RUST }}
-          # COVERAGE_THRESHOLD_TYPESCRIPT: ${{ vars.COVERAGE_THRESHOLD_TYPESCRIPT }}
-          # COVERAGE_THRESHOLD_DOTNET: ${{ vars.COVERAGE_THRESHOLD_DOTNET }}
-          # COVERAGE_THRESHOLD_GO: ${{ vars.COVERAGE_THRESHOLD_GO }}
-          # COVERAGE_THRESHOLD_DART: ${{ vars.COVERAGE_THRESHOLD_DART }}
-        run: make coverage-check
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4

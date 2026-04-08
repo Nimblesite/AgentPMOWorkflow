@@ -18,7 +18,9 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
    them for the target repo — stripping irrelevant language sections, filling placeholders, and
    removing examples for tools/languages not present. See §16.2.
 3. **Fail fast, fail loud.** Lint before test. Test before build. Coverage threshold blocks merge.
-   Zero warnings allowed — all linters run in errors-as-warnings mode.
+   Zero warnings allowed — all linters run in errors-as-warnings mode. **Every `make test` target
+   MUST stop at the first failing test** (see §3.0). Pipelines that run all tests after a failure
+   waste CI minutes and force agents to wait for an outcome they already know.
 4. **No git in Claude sessions.** Skills and CLAUDE.md rules prohibit git commands.
    CI and GitHub Actions do the git work.
 5. **Multi-language repos are the norm.** Standards are designed so each language
@@ -111,11 +113,13 @@ endif
 | Target | What it does |
 |--------|-------------|
 | `make build` | Compile/assemble all artifacts |
-| `make test` | Run full test suite with coverage collection and coverage report generation |
+| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See §3.0. |
 | `make lint` | Run all linters in error mode (non-zero exit on any warning) |
 | `make fmt` | Format all code in-place |
 | `make clean` | Delete all build artifacts |
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
+
+**`make test` is the ONLY test entry point.** Any sub-targets (`test-unit`, `test-integration`, `test-e2e`, etc.) MUST also be fail-fast AND MUST collect coverage. There is no "test without coverage" mode. There is no "run everything to see what fails" mode. See §3.0.
 
 ### 1.2 Standard Makefile Template
 
@@ -176,6 +180,56 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
 
 ## 3. Coverage Standards
 
+### [TEST-FAIL-FAST] Every `make test` target is fail-fast AND collects coverage
+
+> ⚠️ **NON-NEGOTIABLE.** Read this section in full before touching any Makefile or test config. ⚠️
+
+**Two rules apply to every test target in every repo:**
+
+1. **FAIL FAST.** The test runner MUST stop at the first failing test. Use the runner's
+   fail-fast/exit-on-first-failure flag (table below). Never use a "run everything, report at the
+   end" mode.
+2. **COVERAGE IS MANDATORY.** Every test target collects coverage AND enforces the threshold
+   (`make coverage-check` runs as the final step of `make test`, or coverage is collected inline
+   and asserted before the target exits). There is no "tests without coverage" mode.
+
+**Why fail-fast is non-negotiable:**
+
+- **CI minutes are expensive.** Running 30 minutes of tests after the first failure on line 12
+  burns money for zero new information.
+- **Agents wait for green.** When an AI agent runs `make test`, it blocks until the command
+  exits. If the runner keeps grinding through 500 tests after the first failure, the agent sits
+  idle for the entire duration even though it already knows the run is doomed. Fail-fast cuts
+  the feedback loop from minutes to seconds.
+- **The first failure is usually the cause.** Subsequent failures are often cascades from the
+  first one. Stopping early forces you to fix the root cause instead of triaging noise.
+
+**Per-language fail-fast flags:**
+
+| Language | Test runner | Fail-fast flag |
+|----------|-------------|----------------|
+| Rust | `cargo test` | `cargo test -- --fail-fast` (use `--no-fail-fast` ONLY if you know why) |
+| Rust (nextest) | `cargo nextest run` | `--fail-fast` (default) |
+| TypeScript / Jest | `jest` | `--bail` |
+| TypeScript / Vitest | `vitest` | `--bail=1` |
+| Python / pytest | `pytest` | `-x` (or `--maxfail=1`) |
+| Dart / Flutter | `flutter test` / `dart test` | `--fail-fast` |
+| C# / .NET (xUnit) | `dotnet test` | `-- xunit.stopOnFail=true` (or `RunConfiguration.StopOnFail` in `.runsettings`) |
+| F# | Same as C# | Same as C# |
+| Go | `go test` | `-failfast` |
+
+If a runner has no native fail-fast flag, wrap it in a script that exits non-zero on the first
+failing test name parsed from output. Do not skip this rule.
+
+**Coverage is part of the same target.** `make test` does:
+1. Run tests fail-fast with coverage instrumentation enabled.
+2. On test success, run `make coverage-check` (or inline check) to assert thresholds.
+3. Exit non-zero if either step fails.
+
+There is no `make test-no-coverage`. There is no `make test-fast`. The standard target is the
+only target. If you need to debug a single test, call the runner directly — that is not a
+Makefile target.
+
 ### 3.1 Thresholds by Repo Type
 
 | Repo type | Line coverage | Branch coverage |
@@ -198,20 +252,62 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
 | F# | Same as C# | Same as C# |
 | Go | Built-in `go tool cover` | Built-in |
 
-### 3.3 Coverage check (Makefile-based)
+### [COVERAGE-THRESHOLDS-JSON] 3.3 Coverage thresholds live in `coverage-thresholds.json`
 
-Coverage enforcement is handled directly in the Makefile `_coverage_check` target — no shell scripts.
-Each language implementation extracts line coverage and compares it to `COVERAGE_THRESHOLD` (default: 90).
-The CI `coverage-check` step runs `make coverage-check`.
+**Every repo MUST have a `coverage-thresholds.json` file at the project root** (or per
+sub-project for multi-project repos — see below). This file is the **single source of truth**
+for coverage thresholds. The Makefile `_coverage_check` target reads this file and the
+CI workflow reads this file. **No GitHub repo variables. No env-var-based thresholds. No
+hardcoded numbers in CI YAML.**
 
-**Per-project thresholds:** Each project in a repo has its own coverage threshold stored as a
-GitHub repo variable (Settings → Variables → Actions). The Makefile default is 90%.
-In CI, the skill configures the `coverage-check` step to pass the repo variable as an env var
-(e.g., `COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD_PYTHON }}`).
+**Why a JSON file (not GitHub repo variables):**
+
+- **Versioned with the code.** A threshold change is a PR — visible, reviewable, blamed,
+  reverted like any other code change. GitHub variables are invisible state hidden in
+  Settings → Variables, editable by anyone with repo admin, with no audit trail.
+- **Local runs match CI.** `make test` reads the same file CI reads. No `COVERAGE_THRESHOLD=85`
+  env hack to remember.
+- **Per-project granularity, in one place.** Multi-project repos list every project and its
+  threshold in one file instead of `COVERAGE_THRESHOLD_PROJECT_A`, `COVERAGE_THRESHOLD_PROJECT_B`,
+  …  variables sprawling across the org.
+- **Branch-aware.** A feature branch can ratchet a threshold up in the same PR that improves
+  coverage. GH variables can't.
+
+**File format** (canonical example: `/Users/christianfindlay/Documents/Code/ai_cms/DataProvider/coverage-thresholds.json`):
+
+```json
+{
+  "default_threshold": 90,
+  "projects": {
+    "path/to/project-a": {
+      "threshold": 88,
+      "include": "[Project.A]*,[Project.A.Shared]*"
+    },
+    "path/to/project-b": {
+      "threshold": 75
+    }
+  }
+}
+```
+
+- **`default_threshold`** (integer, required): Fallback used when a project has no entry, and
+  the default for single-project repos.
+- **`projects`** (object, optional): Map of project path → `{ "threshold": int, "include":
+  string }`. The `include` field is language-specific (e.g., coverlet assembly filters for
+  .NET); omit it for languages that don't need it.
+
+**Single-project repos** still create the file with at least `default_threshold`.
+
+**Tests MUST FAIL if the threshold is not met.** The `_coverage_check` target reads
+`coverage-thresholds.json`, computes line coverage, and exits non-zero if measured coverage
+< threshold for any project. The pipeline fails. The PR is blocked. There is no warning mode.
 
 **Ratchet rule:** Thresholds are **monotonically increasing** — they never go down. When
-coverage improves past the current threshold, bump the GitHub variable up to match. This
-ensures coverage never regresses.
+coverage improves past the current threshold, bump the number in `coverage-thresholds.json`
+in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified in the
+PR description.
+
+**Template:** [`templates/coverage/coverage-thresholds.json`](templates/coverage/coverage-thresholds.json)
 
 ### 3.4 .coveragerc (Python)
 
@@ -700,15 +796,20 @@ LOGGING (§6)
 [ ] No PII or secrets in log output
 
 CI
-[ ] ci.yml has a single `ci` job with sequential steps: lint → test → coverage-check → build
+[ ] ci.yml has a single `ci` job with sequential steps: lint → test → build
 [ ] ci.yml has concurrency cancel-in-progress
 [ ] ci.yml: lint step runs `make lint` which includes `make fmt-check` (formatting failures = hard fail)
-[ ] ci.yml: coverage-check step after test
+[ ] ci.yml: `make test` is the only test invocation — it MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`. No separate `coverage-check` step is required because `make test` already does it.
+[ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
 
 COVERAGE
-[ ] Per-project COVERAGE_THRESHOLD set as GitHub repo variable (ratchet — never decreases)
-[ ] Makefile `_coverage_check` target exists and works
+[ ] `coverage-thresholds.json` exists at the repo root (or per sub-project) with `default_threshold` set
+[ ] No GitHub repo variables used for coverage thresholds (deprecated — JSON file only)
+[ ] No hardcoded `COVERAGE_THRESHOLD` values in `ci.yml`
+[ ] Makefile `_coverage_check` target reads `coverage-thresholds.json` and FAILS the build below threshold
+[ ] `make test` collects coverage AND enforces the threshold (fails non-zero below)
+[ ] `make test` (and every test sub-target) runs the test runner with its fail-fast flag (§3.0 [TEST-FAIL-FAST])
 [ ] Coverage tool installed (language-appropriate)
 
 LINTING
@@ -881,9 +982,13 @@ What this means in practice:
 | `{{REPO_NAME}}` | Repository directory name |
 | `{{PRIMARY_LANGUAGE}}` | `rust` / `typescript` / `python` / `dart` / `csharp` / `fsharp` / `go` |
 | `{{REPO_TYPE}}` | `library` / `cli` / `application` / `vscode-extension` / `static-site` |
-| `{{COVERAGE_THRESHOLD}}` | Integer from §3.1 table |
 | `{{DESCRIPTION}}` | One-line repo description |
 | `{{CANONICAL_FILE}}` | `CLAUDE.md` or `AGENTS.md` (determined by §10.3 agent detection) |
+
+Note: coverage thresholds are NOT substituted into templates. They live in
+`coverage-thresholds.json` (§3.3 [COVERAGE-THRESHOLDS-JSON]). The skill creates that file once,
+populated from §3.1 defaults, and never bakes a number into a Makefile, CI workflow, or any
+other file.
 
 ---
 
@@ -939,6 +1044,7 @@ templates/
 ├── opencode.json
 ├── coverage/
 │   ├── .coveragerc
+│   ├── coverage-thresholds.json
 │   └── coverlet.runsettings
 ├── devcontainer/
 │   ├── csharp.devcontainer.json
