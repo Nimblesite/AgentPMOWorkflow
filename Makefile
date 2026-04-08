@@ -20,13 +20,18 @@ else
   RMFILE = rm -f
 endif
 
-.PHONY: build dashboard test test-fsharp test-mock test-local test-e2e lint fmt fmt-check clean check ci \
+.PHONY: build dashboard test _test_fsharp _test_e2e lint fmt clean ci \
         install-skill-claude install-skill-claude-unix install-skill-claude-windows \
         uninstall-skill-claude uninstall-skill-claude-unix uninstall-skill-claude-windows \
         website-build website-run setup help
 
 # =============================================================================
-# PRIMARY TARGETS (cross-platform — dotnet, npx, gh are already portable)
+# PRIMARY TARGETS — exactly 7 (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):
+#   build, test, lint, fmt, clean, ci, setup
+#
+# Banned (do not add): fmt-check, check, coverage, coverage-check,
+#                      test-fast, test-no-coverage, test-fsharp, test-e2e, etc.
+# Internal helpers (private, underscore-prefixed) chain inside the public targets.
 # =============================================================================
 
 build:
@@ -38,39 +43,34 @@ dashboard:
 	@dotnet fsi dashboard/repo-report.fsx
 	@echo "==> Done. Report at dashboard/repo-report.html"
 
-test: test-fsharp test-e2e
+# test: ONLY public test target. Runs F# mock fixture tests (which generate the
+# report HTML), then Playwright E2E tests against the generated HTML.
+# Both stages exit non-zero on the first failure.
+test: _test_fsharp _test_e2e
 
-test-fsharp: test-mock
-
-test-mock:
-	@echo "==> Running F# mock fixture tests (generates report)..."
+_test_fsharp:
+	@echo "==> Running F# mock fixture tests (fail-fast; generates report)..."
 	dotnet fsi dashboard/test-report.fsx
 
-test-local: build test-e2e
-	@echo "==> Local tests passed (report generated from config.json, validated by Playwright)"
+_test_e2e:
+	@echo "==> Running Playwright E2E tests (fail-fast)..."
+	cd dashboard && npx playwright test --max-failures=1
 
-test-e2e:
-	@echo "==> Running Playwright E2E tests..."
-	cd dashboard && npx playwright test
-
+# lint: validates Playwright test config. F# scripts have no formatter, so the
+# format-check step is a no-op. If a formatter ever lands, prepend its --check
+# invocation HERE — never as a separate `fmt-check` target.
 lint:
-	@echo "==> Linting..."
+	@echo "==> Linting (F# format check is a no-op; no formatter for fsx)..."
 	cd dashboard && npx playwright test --list
 
 fmt:
 	@echo "==> Formatting..."
 	@echo "    No auto-formatter configured for F# scripts."
 
-fmt-check:
-	@echo "==> Checking format..."
-	@echo "    No format check configured for F# scripts."
-
 clean:
 	@echo "==> Cleaning..."
 	$(RM) dashboard/test-results
 	$(RM) dashboard/playwright-report
-
-check: lint test
 
 ci: lint test build
 
@@ -157,22 +157,20 @@ uninstall-skill-claude-windows:
 # HELP
 # =============================================================================
 help:
-	@echo "Available targets:"
-	@echo "  build            - Generate the HTML dashboard report"
-	@echo "  dashboard        - Refresh the dashboard manually"
-	@echo "  test             - Run all tests (F# + Playwright E2E)"
-	@echo "  test-fsharp      - Run F# tests (alias for test-mock)"
-	@echo "  test-mock        - Run F# mock fixture tests (generates report for E2E)"
-	@echo "  test-local       - Generate report from config.json + run Playwright E2E"
-	@echo "  test-e2e         - Run Playwright E2E tests"
-	@echo "  lint             - Validate Playwright test configuration"
-	@echo "  fmt              - Format code (no-op for F# scripts)"
-	@echo "  fmt-check        - Check formatting (no-op for F# scripts)"
-	@echo "  clean            - Remove test artifacts"
-	@echo "  check            - lint + test (pre-commit)"
-	@echo "  ci               - lint + test + build (full CI)"
-	@echo "  setup            - Install dependencies + configure (auto-detects OS)"
-	@echo "  website-build    - Build the website via 11ty"
-	@echo "  website-run      - Serve the website locally with 11ty"
+	@echo "Standard targets (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):"
+	@echo "  build  - Generate the HTML dashboard report"
+	@echo "  test   - F# fixture tests + Playwright E2E (fail-fast). ONLY test entry point."
+	@echo "  lint   - Validate Playwright test config (F# format check is a no-op)"
+	@echo "  fmt    - Format code (no-op for F# scripts)"
+	@echo "  clean  - Remove test artifacts"
+	@echo "  ci     - lint + test + build (full CI simulation)"
+	@echo "  setup  - Install dependencies + configure (auto-detects OS)"
+	@echo ""
+	@echo "Repo-specific helpers:"
+	@echo "  dashboard              - Refresh the dashboard manually"
+	@echo "  website-build          - Build the website via 11ty"
+	@echo "  website-run            - Serve the website locally with 11ty"
 	@echo "  install-skill-claude   - Install agent-pmo skill for Claude Code"
 	@echo "  uninstall-skill-claude - Remove the agent-pmo skill"
+	@echo ""
+	@echo "Banned (do not add): fmt-check, check, coverage, coverage-check, test-fast, test-fsharp, test-e2e"

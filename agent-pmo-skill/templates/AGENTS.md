@@ -1,14 +1,22 @@
 # {{REPO_NAME}} — Agent Instructions
 
-> ⚠️ **TOKEN DISCIPLINE — read first.** Tokens are not free. Before reading any file, check its
-> size. Prefer `Grep` for known symbols over reading whole files. Read only the lines you
-> actually need (`offset`/`limit`). Write less code, not more. Delete fluff, dead code, unused imports, and stale comments
-> aggressively. If the user loads context with files that are not relevant to the task, **call
-> it out** ("the context contains X.md and Y.ts which appear unrelated to this task — proceed
-> anyway?"). Bloated context degrades reasoning. ⚠️
+> ⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`.
+> Smallest diff that solves the problem. Delete dead code, unused imports, stale comments.
+> Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
 
-> Read this entire file before writing any code.
-> These rules are NON-NEGOTIABLE. Violations will be rejected in review.
+> Read this file in full. Rules below are NON-NEGOTIABLE — violations are rejected in review.
+
+<!--
+TEMPLATE NOTE FOR THE AGENT APPLYING THIS FILE (delete after rendering):
+This file is a multi-language STARTING POINT. Before writing it to a target repo:
+- Strip every language section, package, mandatory-package list, and table row that
+  does not apply to {{languages}}. A Python repo MUST NOT mention Rust, Dart, C#, Go, etc.
+- Fill every {{placeholder}} with real content. NO {{...}} tokens in the rendered file.
+- Remove the example logging-library rows for languages not used.
+- Remove this HTML comment.
+- The test: a developer reading the rendered file should see ZERO references to
+  languages, tools, or frameworks not used in this repo.
+-->
 
 ## Project Overview
 
@@ -21,200 +29,116 @@
 
 ## Too Many Cooks (Multi-Agent Coordination)
 
-If the TMC server is available:
-1. Register immediately: descriptive name, intent, files you will touch
-2. Before editing any file: lock it via TMC
-3. Broadcast your plan before starting work
-4. Check messages every few minutes
-5. Release locks immediately when done
-6. Never edit a locked file — wait or find another approach
+If the TMC server is available: register on start (name, intent, files), lock files before editing, broadcast your plan, check messages periodically, release locks when done. Never edit a locked file — wait or take another approach.
 
 ## Hard Rules — Universal (no exceptions)
 
-- **DO NOT use git commands.** No `git add`, `git commit`, `git push`, `git checkout`, `git merge`, `git rebase`, or any other git command. CI and GitHub Actions handle git.
-- **ZERO DUPLICATION.** Before writing any code, search the codebase for existing implementations. Move code, don't copy it.
-- **NO THROWING EXCEPTIONS.** Return `Result<T,E>`, `Option<T>`, or the language equivalent. Exceptions are only for unrecoverable bugs (panic-level).
-- **NO REGEX on structured data.** Never parse JSON, YAML, TOML, code, or any structured format with regex. Use proper parsers, AST tools, or library functions.
-- **NO PLACEHOLDERS.** If something isn't implemented, leave a loud compilation error (`todo!()`, `raise NotImplementedError`, `failwith "TODO"`). Never write code that silently does nothing.
-- **Functions < 20 lines.** Refactor aggressively. If a function exceeds 20 lines, split it.
-- **Files < 500 lines.** If a file exceeds 500 lines, extract modules.
-- **100% test coverage is the goal.** Never delete or skip tests. Never remove assertions.
-- **`make test` is FAIL-FAST.** Every test target — `make test` and any sub-target — MUST stop at the first failing test. Never use `--no-fail-fast`, never use a "run all then report" mode. Failing fast saves CI minutes and stops AI agents from idling while a doomed run grinds through 500 cascading failures. See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
-- **`make test` ALWAYS computes coverage AND enforces the threshold.** There is no "test without coverage" mode. The threshold lives in `coverage-thresholds.json` at the repo root — NOT in env vars, NOT in GitHub repo variables, NOT in CI YAML. Tests FAIL when measured coverage < threshold. Thresholds only ratchet UP. See REPO-STANDARDS-SPEC §3.3 [COVERAGE-THRESHOLDS-JSON].
-- **Prefer E2E/integration tests.** Unit tests are acceptable only for isolating problems.
-- **Heavy logging everywhere.** See Logging Standards section below.
-- **No suppressing linter warnings.** Fix the code, not the linter.
-- **Pure functions** over statements
-- **Every spec section MUST have a unique, hierarchical, non-numeric ID.** Format: `[GROUP-TOPIC]` or `[GROUP-TOPIC-DETAIL]` (e.g., `[AUTH-TOKEN-VERIFY]`, `[CI-TIMEOUT]`). The first word is the **group** — all sections in the same group MUST be adjacent in the spec's TOC. NEVER use sequential numbers like `[SPEC-001]`. All code, tests, and design docs that implement or relate to a spec section MUST reference its ID in a comment (e.g., `// Implements [AUTH-TOKEN-VERIFY]`). This enables cross-referencing across specs, code, and tests — grep `[AUTH-` to find every auth spec, its code, and its tests.
+- **NO git commands.** No `add`, `commit`, `push`, `checkout`, `merge`, `rebase`, etc. CI handles git.
+- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it.
+- **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
+- **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
+- **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
+- **Functions < 20 lines. Files < 500 lines.** Refactor when over.
+- **Never delete or skip tests. Never remove assertions.** 100% coverage is the goal.
+- **`make test` is FAIL-FAST.** Stops at first failing test. Never `--no-fail-fast`. Saves CI minutes; stops agents idling on doomed runs. See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
+- **`make test` ALWAYS computes coverage AND enforces it.** Threshold lives in `coverage-thresholds.json` at the repo root — NOT env vars, NOT gh repo variables, NOT CI YAML. Below threshold = pipeline fails. Ratchet only. See §3.3 [COVERAGE-THRESHOLDS-JSON].
+- **Prefer E2E/integration tests.** Unit tests only for isolating problems.
+- **Heavy structured logging everywhere.** See Logging below.
+- **No linter suppressions.** Fix the code.
+- **Pure functions over statements.**
+- **Spec IDs are hierarchical, non-numeric: `[GROUP-TOPIC]` / `[GROUP-TOPIC-DETAIL]`** (e.g., `[AUTH-TOKEN-VERIFY]`, `[CI-TIMEOUT]`). Same-group sections sit adjacent in the TOC. NO sequential numbers (`[SPEC-001]`). Code/tests/docs that implement a spec section MUST reference its ID in a comment so `grep [AUTH-` finds spec → code → tests in one shot.
 
 ## Logging Standards
 
-- **Use a structured logging library.** Never use `print`, `console.log`, `println!`, or `Debug.WriteLine` for diagnostics. Use a proper structured logging library appropriate to the language (see table below).
-- **Log at entry/exit of all significant operations.** Use appropriate levels: `error`, `warn`, `info`, `debug`, `trace`.
-- **Logging must be throughout the app.** Every service, handler, and non-trivial operation should log. Silent failures are forbidden.
-- **VS Code extensions:** Write detailed logs to a file in the extension's state folder (`.vsixname/` in the workspace root). Basic errors and diagnostics MUST also appear in the extension's VS Code Output Channel so users can see them without hunting for files.
-- **SaaS / server apps:** Log to the database for persistence and queryability. Log calls that write to the database or file MUST be async or run on a background thread — never block the request path with I/O logging.
-- **NEVER log personal data.** No names, emails, addresses, phone numbers, IP addresses (unless required for security audit with explicit consent), or any PII.
-- **NEVER log secrets.** No API keys, tokens, passwords, connection strings, or credentials. If you need to confirm a key is loaded, log a truncated hash or just `"API key: present"`.
-- **Structured fields over string interpolation.** Log `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`. This enables filtering and aggregation.
-
-### Logging Libraries by Language
-
-| Language | Library | Notes |
-|----------|---------|-------|
-| Rust | `tracing` | With `tracing-subscriber` for output |
-| TypeScript/Node | `pino` | JSON structured logging; use `pino-pretty` for dev |
-| Python | `structlog` | Wraps stdlib `logging` with structured output |
-| Dart/Flutter | `dart_logging` | Mandatory package (see Dart section) |
-| C# | `Microsoft.Extensions.Logging` | Library left open |
-| F# | `Microsoft.Extensions.Logging` | Library left open |
-| Go | `log/slog` | stdlib structured logging (Go 1.21+) |
+- **Structured logging library only.** Never `print`/`console.log`/`println!`/`Debug.WriteLine`. Library per language: Rust `tracing`, TS `pino`, Python `structlog`, Dart `dart_logging`, C#/F# `Microsoft.Extensions.Logging`, Go `log/slog`.
+- **Log at entry/exit of significant operations.** Levels: `error|warn|info|debug|trace`. Silent failures are forbidden.
+- **Structured fields, not string interpolation.** `{ userId: 42, action: "checkout" }` — never `"user 42 did checkout"`.
+- **VS Code extensions:** detailed logs to a file in the extension's state folder (`.vsixname/` in workspace root) AND to the VS Code Output Channel.
+- **SaaS / server apps:** persist to database, but database/file writes MUST be async — never block the request path.
+- **NEVER log PII** (names, emails, phone, IPs unless audit with consent).
+- **NEVER log secrets.** Log `"key: present"` or a truncated hash, never the value.
 
 ## Hard Rules — Language-Specific
 
+> Keep ONLY the section(s) for the language(s) this repo actually uses. Delete the rest.
+
 ### Rust
-- No `unwrap()` — use `?` or explicit `match`
-- No `expect()` in production code (tests may use it)
-- No `panic!()`, `todo!()`, `unimplemented!()`, `unreachable!()` in production code
-- No `unsafe {}` blocks without documented justification reviewed by a human
-- No `allow(clippy::...)` attributes without documented justification
-- All public items must have doc comments (`///`)
-- Use `thiserror` for error types; `anyhow` only in application code (not libraries)
+- No `unwrap()`/`expect()` in production (tests OK for `expect`).
+- No `panic!`/`todo!`/`unimplemented!`/`unreachable!` in production.
+- No `unsafe {}` or `allow(clippy::...)` without documented justification.
+- All public items have `///` doc comments.
+- `thiserror` for library errors; `anyhow` only in application code.
 
 ### TypeScript
-- No `any` — use `unknown` and narrow explicitly
-- No `!` (non-null assertion) — use optional chaining or explicit guards
-- No implicit `any` — all function parameters and return types must be annotated
-- No `// @ts-ignore` or `// @ts-nocheck`
-- No `as Type` casts without a comment explaining why it's safe
-- Strict mode always on (`tsconfig.json` must have `"strict": true`)
-- No throwing — return `Result<T, E>` using a Result type library or discriminated union
+- No `any` (use `unknown` and narrow). No `!` non-null assertion. No `// @ts-ignore`/`@ts-nocheck`.
+- No implicit `any` — annotate every parameter and return type.
+- No `as Type` casts without a comment explaining safety.
+- `tsconfig.json` MUST have `"strict": true`.
+- No throwing — return `Result<T,E>` (library or discriminated union).
 
 ### Dart/Flutter
-- No `late` keyword — it hides null-safety violations
-- No `!` (bang operator) — use `?` and handle the null case
-- No `dynamic` — use proper types or generics
-- No `as Type` casts — use `is` checks and smart casts
-- No `.then()` on futures — use `async`/`await`
-- State management: SUDF (Single Unidirectional Data Flow) only (No Provider, Riverpod or Bloc)
-- For complex interdependent reactive observability, use the Signals package
-- Tests: write tests that double as integration tests AND widget tests. The test headers should point to shared test code. Follow [this guide](https://www.christianfindlay.com/blog/flutter-integration-tests). In widget testing mode, some tests should produce goldens, and you need to inject mocks for network calls etc.
-- Only use unit tests for isolating issues.
+- No `late`, no `!`, no `dynamic`, no `as Type` casts (use `is` + smart casts), no `.then()` (use `async`/`await`).
+- State management: SUDF only. No Provider/Riverpod/Bloc. Use Signals for complex reactive observability.
+- Tests double as integration + widget tests with shared headers — see [this guide](https://www.christianfindlay.com/blog/flutter-integration-tests). Widget tests produce goldens and inject mocks for network calls.
+- Unit tests only for isolating issues.
 
-#### Mandatory Packages
-- **Logging**: [dart_logging](https://pub.dev/packages/dart_logging)
-- **Linting**: [austerity](https://pub.dev/packages/austerity) configure it in the analysis options
-- **Results/Monads**: [nadz package](https://pub.dev/packages/nadz) (Result<T,E>)
-- **State Management**: [reflux](https://pub.dev/packages/reflux) or [ioc_container](https://pub.dev/packages/ioc_container)
+**Mandatory packages:** [dart_logging](https://pub.dev/packages/dart_logging) (logging), [austerity](https://pub.dev/packages/austerity) (lint, in analysis_options), [nadz](https://pub.dev/packages/nadz) (Result<T,E>), [reflux](https://pub.dev/packages/reflux) or [ioc_container](https://pub.dev/packages/ioc_container) (state).
 
 ### C# / F#
-- No throwing exceptions — return `Result<T,E>` or `Option<T>`
-- No `!` null-forgiving operator
-- No `as` casts — use pattern matching
-- No `dynamic`
-- Nullable reference types enabled everywhere
-- C#: records for immutable data
-- F#: prefer discriminated unions, pipe operators, computation expressions
-- Install common packages in the build props
-- Avoid classes. Use static methods as pure functions
+- No exceptions for control flow — return `Result<T,E>`. No `!` null-forgiving. No `as` casts (use pattern matching). No `dynamic`. Nullable reference types ON everywhere.
+- C#: records for immutable data. F#: discriminated unions + pipes + computation expressions.
+- Avoid classes. Static methods as pure functions.
+- Common packages live in `Directory.Build.props`.
 
-#### Mandatory Packages (C# Only)
-- **Results/Monads**: [Outcome](https://www.nuget.org/packages/Outcome) (Result<T,E>) and the Exhaustion analyzer package that comes with it
-- Always include these 3 in the Directory.Build.props
-```xml
-<ItemGroup>
-    <!-- Microsoft .NET Analyzers -->
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-
-    <!-- Result types for Railway Oriented Programming -->
-    <PackageReference Include="Outcome" Version="1.0.0" />
-
-    <!-- Exhaustive pattern matching analyzer -->
-    <PackageReference Include="Exhaustion" Version="1.0.0">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-</ItemGroup>
-```
+**Mandatory C# packages** (in `Directory.Build.props`): `Microsoft.CodeAnalysis.NetAnalyzers` (analyzers as errors), [Outcome](https://www.nuget.org/packages/Outcome) (Result<T,E>), `Exhaustion` (exhaustive pattern-matching analyzer that ships with Outcome).
 
 ### Python
-- **Basilisk is the PRIMARY linter AND type checker for every Python project.** Not optional. Not "if available". Configure it first, configure it always. See [Basilisk Type Checker Configuration](https://basilisk-python.dev/docs/configuration/).
-- ruff + pyright sit underneath as a secondary safety net. Basilisk is the source of truth for type errors and lint rules.
-- ruff format is the auto-formatter (`make fmt` runs Basilisk lint, then ruff format).
-- No `Any` in type annotations — use specific types
-- Type annotations on every function parameter and return type
-- No bare `except:` — always catch specific exception types
-- No global mutable state
-- Use `Result[T, E]` pattern (returns tuple or custom type) — no raising
-
-#### Mandatory Linting
-- **Basilisk** (primary linter + type checker): [Configuration docs](https://basilisk-python.dev/docs/configuration/)
-- **ruff** (secondary lint + auto-format): configured in `pyproject.toml [tool.ruff]`
-- **pyright** (secondary type check): configured in `pyproject.toml [tool.pyright]`
+- **Basilisk is the PRIMARY linter AND type checker.** Non-negotiable. Configure `[tool.basilisk]` in `pyproject.toml` and run it FIRST in `make lint` — see [Basilisk docs](https://basilisk-python.dev/docs/configuration/) and REPO-STANDARDS-SPEC §4.6 [LINT-PYTHON-BASILISK].
+- Secondary layer: `[tool.ruff]` (lint + auto-format) and `[tool.pyright]` (type-check safety net).
+- No `Any` in annotations. Annotate every parameter and return. No bare `except:`. No global mutable state. Use `Result[T,E]` — never raise.
 
 ## Testing Rules
 
-- **Never delete a failing test.** Fix the code or fix the test expectation — never delete.
-- **Never skip a test** (`@pytest.mark.skip`, `xit`, `test.skip`, `#[ignore]`) without a ticket number and expiry date in the skip reason.
-- **Assertions must be specific.** `assert True` or `assert.ok(true)` without a condition is illegal.
-- **No try/catch in tests** that swallows the exception and asserts success.
-- **Tests must be deterministic.** No sleep(), no relying on timing, no random state.
-- **E2E tests: black-box only.** Only interact via public APIs, UI commands, or CLI. Never call internal methods or manipulate internal state from a test.
-- **VSCode extension E2E:** interact only via `vscode.commands.executeCommand`. Never call provider methods directly.
+- **Never delete a failing test.** Fix the code or the expectation.
+- **Never skip a test** without a ticket number AND expiry date in the skip reason.
+- **Specific assertions only.** `assert True` / `assert.ok(true)` is illegal.
+- **No try/catch in tests that swallows exceptions and asserts success.**
+- **Deterministic.** No `sleep()`, no timing dependencies, no random state.
+- **E2E tests: black-box only** — public APIs, UI, or CLI. Never reach into internals.
+- **VS Code extension E2E:** interact only via `vscode.commands.executeCommand`.
 
 ## Website (if one exists)
 
-**Optimise for SEO and AI search.** Apply both guides below when writing any web content:
-
+**Optimise for SEO + AI search.** When writing web content, apply:
 - [Succeeding in Google's AI search experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
 - [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
-## Build Commands (exact — cross-platform via GNU Make)
+## Build Commands
 
-All `make` targets work on Linux, macOS, and Windows. The Makefile uses OS detection to select portable commands. On Windows, install GNU Make via `choco install make` or use the one bundled with Git for Windows.
+Cross-platform GNU Make. On Windows: `choco install make` or use the one in Git for Windows.
 
 ```bash
-make build          # compile everything
-make test           # FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point)
-make lint           # run all linters
-make fmt            # format all code
-make fmt-check      # check formatting (CI uses this)
-make clean          # remove build artifacts
-make check          # lint + test (pre-commit)
-make ci             # lint + test + build (full CI simulation)
-make coverage       # generate and open coverage report (HTML viewer for humans)
-make website-build  # build the website/static site
-make website-run    # run the website locally (dev server)
-make setup          # post-create dev environment setup
+make build   # compile everything
+make test    # FAIL-FAST tests + coverage + threshold (ONLY test entry point)
+make lint    # all linters AND format check (any diff = failure)
+make fmt     # format in place
+make clean   # remove build artifacts
+make ci      # lint + test + build (full CI simulation)
+make setup   # post-create dev environment setup
 ```
 
-**`make test` is the only test entry point.** It:
-1. Runs the test runner with its **fail-fast** flag (stops at the first failing test).
-2. Collects coverage.
-3. Asserts measured coverage ≥ threshold from `coverage-thresholds.json`.
-4. Exits non-zero on any failure (test failure OR coverage shortfall).
+**There are exactly 7 targets. No others. Specifically banned:**
+- ❌ `make fmt-check` — `make lint` does this. Format diffs are lint failures.
+- ❌ `make check` — does not exist.
+- ❌ `make coverage` / `make coverage-check` — `make test` already produces AND enforces coverage.
+- ❌ `make test-fast`, `make test-no-coverage`, `make test-unit`, etc. — `make test` is the only test entry point.
 
-There is no `make test-fast`, no `make test-no-coverage`, no `make test-unit-only` outside of CI parity. If you need to debug a single test, invoke the test runner directly — that is not a Makefile target.
+**`make test`** runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
+
+**`make lint`** runs every linter AND every formatter in `--check` mode in one pass. Any formatting diff is a lint failure that blocks CI.
 
 ## Repo Structure
 
-```
-{{repo_root}/
-├── .devcontainer/       # Dev container config
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml
-│   │   ├── release.yml
-│   │   └── deploy-pages.yml  (if applicable)
-│   └── pull_request_template.md
-├── [...]                # Source code
-├── .gitignore
-├── AGENTS.md            # Agent instructions (this file, or pointer)
-├── CLAUDE.md            # Claude instructions (this file, or pointer)
-└── Makefile
-```
+{{Replace with the actual directory layout for this repo. Show only directories that exist.}}
 
-{{Add repo-specific architecture notes below}}
+{{Add repo-specific architecture notes below.}}

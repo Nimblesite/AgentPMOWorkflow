@@ -56,13 +56,17 @@ jobs:
       # - run: flutter pub get
       # Rust: cargo install cargo-llvm-cov
 
+      # `make lint` runs all linters AND checks formatting in one pass.
+      # NEVER add a separate "Format check" / "make fmt-check" step — that target
+      # is banned (REPO-STANDARDS-SPEC §1.1 [MAKE-BANNED]).
       - name: Lint
         run: make lint
 
       # `make test` is fail-fast AND enforces coverage thresholds from
       # `coverage-thresholds.json` at the repo root. See REPO-STANDARDS-SPEC §3
       # ([TEST-FAIL-FAST], [COVERAGE-THRESHOLDS-JSON]).
-      # NEVER add a separate "coverage-check" step here.
+      # NEVER add a separate "Coverage" / "coverage-check" step — those targets
+      # are banned (§1.1 [MAKE-BANNED]).
       # NEVER add COVERAGE_THRESHOLD env vars or reference `vars.COVERAGE_*`.
       # Thresholds live in coverage-thresholds.json — that is the only source.
       - name: Test

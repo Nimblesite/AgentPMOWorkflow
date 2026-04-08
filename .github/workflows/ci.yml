@@ -34,11 +34,13 @@ jobs:
         working-directory: dashboard
         run: npx playwright install --with-deps chromium
 
-      - name: Run F# tests (generates the report)
-        run: make test-fsharp
-
-      - name: Run Playwright E2E tests (tests the report)
-        run: make test-e2e
+      # `make test` runs F# fixture tests (which generate the report HTML)
+      # then Playwright E2E tests against the generated HTML, fail-fast.
+      # NEVER add separate `test-fsharp`/`test-e2e` steps — those targets are
+      # banned (REPO-STANDARDS-SPEC §1.1 [MAKE-BANNED]). Sub-suites are private
+      # `_test_*` recipes inside `_test`.
+      - name: Test
+        run: make test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

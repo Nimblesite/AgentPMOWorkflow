@@ -37,7 +37,7 @@ Dedup Progress:
 
 Before deciding what to touch, understand what is tested.
 
-1. Run `make test` and `make coverage-check` to confirm green baseline
+1. Run `make test` to confirm green baseline. `make test` is fail-fast AND enforces the coverage threshold from `coverage-thresholds.json` (REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST], [COVERAGE-THRESHOLDS-JSON]). It exits non-zero on any test failure OR coverage shortfall.
 2. Note the current coverage percentage — this is the floor. It must not drop.
 3. Identify which files/modules have coverage and which do not. Only files WITH coverage are candidates for dedup.
 
@@ -82,28 +82,29 @@ For each change, follow this cycle: **change → test → verify coverage → co
 
 #### 5a. Remove dead code
 - Delete dead code identified in Step 2
-- After each deletion: run `make test` and `make coverage-check`
-- If tests fail or coverage drops: **revert immediately** and investigate
+- After each deletion: run `make test` (fail-fast + coverage + threshold all in one)
+- If `make test` exits non-zero (test failure OR coverage drop): **revert immediately** and investigate
 - Dead code removal should never break tests or drop coverage
 
 #### 5b. Merge duplicate code
 - For each duplicate pair: extract the shared logic into a single function/module
 - Update all call sites to use the shared version
-- After each merge: run `make test` and `make coverage-check`
+- After each merge: run `make test`
 - If tests fail: **revert immediately**. The duplicates may have subtle differences you missed.
 - If coverage drops: the shared code must have equivalent test coverage. Add tests if needed before proceeding.
 
 #### 5c. Remove duplicate tests
 - Delete the redundant test (keep the more thorough one)
-- After each deletion: run `make coverage-check`
-- If coverage drops: **revert immediately**. The "duplicate" test was covering something the other wasn't.
+- After each deletion: run `make test`
+- If coverage drops below threshold, `make test` exits non-zero — **revert immediately**. The "duplicate" test was covering something the other wasn't.
 
 ### Step 6 — Final verification
 
-1. Run `make test` — all tests must still pass
-2. Run `make coverage-check` — coverage must be >= the baseline from Step 1
-3. Run `make lint` and `make fmt-check` — code must be clean
-4. Report: what was removed, what was merged, final coverage vs baseline
+1. Run `make lint` — all linters and the format check must pass
+2. Run `make test` — tests must pass AND coverage must remain ≥ the baseline from Step 1
+3. Report: what was removed, what was merged, final coverage vs baseline
+
+(Do NOT run `make fmt-check`, `make coverage-check`, or `make check` — those targets are banned by REPO-STANDARDS-SPEC §1.1 [MAKE-BANNED]. Their checks are folded into `make lint` and `make test`.)
 
 ## Rules
 

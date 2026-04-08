@@ -117,13 +117,14 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
             <span class="terminal-title">~ make (any repo)</span>
           </div>
           <div class="terminal-body">
-<pre><span class="terminal-dim"># Same targets, every repo:</span>
+<pre><span class="terminal-dim"># Same 7 targets, every repo:</span>
 <span class="terminal-prompt">$ </span><span class="terminal-cmd">make build</span>   <span class="terminal-dim"># compile</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># test + coverage</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + typecheck</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make check</span>   <span class="terminal-dim"># lint + test</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># full CI pipeline</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># fail-fast tests + coverage + threshold</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + format check + typecheck</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code in place</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make clean</span>   <span class="terminal-dim"># remove artifacts</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># lint + test + build</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make setup</span>   <span class="terminal-dim"># bootstrap dev env</span>
 
 <span class="terminal-ok">✓ Agent knows how to work in any repo</span>
 <span class="terminal-ok">✓ Zero project-specific setup</span></pre>

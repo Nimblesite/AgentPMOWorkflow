@@ -4,7 +4,7 @@
 # All targets are language-agnostic. Add language-specific helpers below.
 # =============================================================================
 
-.PHONY: build test lint fmt fmt-check clean check ci coverage coverage-check setup
+.PHONY: build test lint fmt clean ci setup
 
 # -----------------------------------------------------------------------------
 # OS Detection — portable commands for Linux, macOS, and Windows
@@ -28,12 +28,20 @@ endif
 # See REPO-STANDARDS-SPEC §3.3 [COVERAGE-THRESHOLDS-JSON].
 # DO NOT hardcode a threshold here. DO NOT read from a CI env var.
 # DO NOT reference GitHub repo variables. The JSON file is the single source.
-# `_coverage_check` parses this file with `jq` and asserts measured % >= threshold.
+# The internal `_coverage_check` recipe (called by `_test`) parses this file
+# with `jq` and asserts measured % >= threshold.
 # =============================================================================
 COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 
 # =============================================================================
-# PRIMARY TARGETS (uniform interface — do not rename)
+# PRIMARY TARGETS — these 7 are the ENTIRE public interface. Do not add others.
+#
+# BANNED — never add these targets back:
+#   - fmt-check       → `make lint` runs the formatter in --check mode
+#   - check           → does not exist; use `make ci` or `make lint && make test`
+#   - coverage        → `make test` already produces coverage
+#   - coverage-check  → `make test` already enforces the threshold
+#   - test-fast / test-no-coverage / test-unit → `make test` is the ONLY test target
 # =============================================================================
 
 ## build: Compile/assemble all artifacts
@@ -41,18 +49,18 @@ build:
 	@echo "==> Building..."
 	$(MAKE) _build
 
-## test: Run full test suite — FAIL-FAST + coverage + threshold enforcement.
-##       Stops at the first failing test. Coverage is collected and asserted
-##       against `coverage-thresholds.json`. Non-zero exit if measured < threshold.
-##       This is the ONLY test target. There is no "test without coverage" mode.
-##       See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
+## test: FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point).
+##       Stops at the first failing test. Collects coverage. Asserts measured %
+##       against `coverage-thresholds.json`. Exits non-zero on any failure.
+##       See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST] and §3.3 [COVERAGE-THRESHOLDS-JSON].
 test:
-	@echo "==> Testing (fail-fast + coverage)..."
+	@echo "==> Testing (fail-fast + coverage + threshold)..."
 	$(MAKE) _test
 
-## lint: Run all linters (fails on any warning)
+## lint: Run all linters AND check formatting in one pass.
+##       Format diffs are lint failures. There is no separate `fmt-check` target.
 lint:
-	@echo "==> Linting..."
+	@echo "==> Linting (includes format check)..."
 	$(MAKE) _lint
 
 ## fmt: Format all code in-place
@@ -60,34 +68,13 @@ fmt:
 	@echo "==> Formatting..."
 	$(MAKE) _fmt
 
-## fmt-check: Check formatting without modifying
-fmt-check:
-	@echo "==> Checking format..."
-	$(MAKE) _fmt_check
-
 ## clean: Remove all build artifacts
 clean:
 	@echo "==> Cleaning..."
 	$(MAKE) _clean
 
-## check: lint + test (pre-commit)
-check: lint test
-
 ## ci: lint + test + build (full CI simulation)
 ci: lint test build
-
-## coverage: Generate coverage report
-coverage:
-	@echo "==> Coverage report..."
-	$(MAKE) _coverage
-
-## coverage-check: Assert thresholds (exits non-zero if below).
-##                  NOTE: `make test` already runs this. This target exists only
-##                  for re-running the assertion against an existing coverage file
-##                  without re-executing the test suite.
-coverage-check:
-	@echo "==> Checking coverage thresholds (reads coverage-thresholds.json)..."
-	$(MAKE) _coverage_check
 
 ## setup: Post-create dev environment setup (used by devcontainer)
 setup:
@@ -97,8 +84,17 @@ setup:
 
 # =============================================================================
 # LANGUAGE-SPECIFIC IMPLEMENTATIONS
-# Override _build, _test, _lint, _fmt, _fmt_check, _clean, _coverage,
-# _coverage_check in a language section below.
+# Override these private recipes in a language section below:
+#   _build, _test, _lint, _fmt, _clean, _setup
+# Plus the internal helper called by _test (do not expose as a public target):
+#   _coverage_check
+#
+# Rules for the language sections:
+#   - `_lint` MUST run the formatter in --check mode FIRST, then run linters.
+#     Format diffs are lint failures. No separate `_fmt_check`.
+#   - `_test` MUST use the test runner's fail-fast flag AND call `_coverage_check`
+#     after the runner exits. There is no separate `coverage` or `coverage-check`
+#     public target.
 # For multi-language repos, chain them: _test: test-rust test-ts test-dotnet
 # =============================================================================
 
@@ -108,12 +104,14 @@ setup:
 # _build:
 # 	cargo build --release
 #
+# # Fail-fast: cargo test stops on first failure by default. NEVER pass --no-fail-fast.
+# # _coverage_check is internal; called as the last line of _test.
 # _test:
 # 	rustup component add llvm-tools-preview 2>/dev/null || true
-# 	# Fail-fast: cargo test stops on first failure by default. DO NOT pass --no-fail-fast.
 # 	cargo llvm-cov --workspace --all-targets --lcov --output-path lcov.info
 # 	$(MAKE) _coverage_check
 #
+# # Format check FIRST (any diff = lint failure), then linters.
 # _lint:
 # 	cargo fmt --all --check
 # 	cargo clippy --release --all-targets -- -D warnings
@@ -121,17 +119,11 @@ setup:
 # _fmt:
 # 	cargo fmt --all
 #
-# _fmt_check:
-# 	cargo fmt --all --check
-#
 # _clean:
 # 	cargo clean
 #
-# _coverage:
-# 	cargo llvm-cov report --html --output-dir target/llvm-cov/html
-# 	@echo "==> HTML report: target/llvm-cov/html/index.html"
-#
-# # Reads default_threshold from coverage-thresholds.json, asserts measured >= threshold.
+# # Internal helper called by _test. Reads default_threshold from
+# # coverage-thresholds.json, asserts measured >= threshold.
 # _coverage_check:
 # 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
 # 	THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
@@ -162,22 +154,17 @@ setup:
 # 	npm run test:coverage
 # 	$(MAKE) _coverage_check
 #
+# # Format check FIRST (any diff = lint failure), then lint + typecheck.
 # _lint:
 # 	npm run fmt:check
 # 	npm run lint
+# 	npm run typecheck
 #
 # _fmt:
 # 	npm run fmt
 #
-# _fmt_check:
-# 	npm run fmt:check
-#
 # _clean:
 # 	$(RM) out dist coverage .vscode-test
-#
-# _coverage:
-# 	@echo "==> HTML report: coverage/index.html"
-# 	open coverage/index.html || xdg-open coverage/index.html
 #
 # _coverage_check:
 # 	@THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
@@ -187,7 +174,7 @@ setup:
 # 	npm ci
 
 # --- PYTHON ---
-# Prerequisites: pip install pytest pytest-cov
+# Prerequisites: pip install basilisk pytest pytest-cov ruff pyright
 #
 # _build:
 # 	python -m build
@@ -195,11 +182,17 @@ setup:
 # # Fail-fast: pytest -x stops on first failure (alias for --maxfail=1).
 # _test:
 # 	python -m pytest -x tests/ --cov=. --cov-report=lcov:lcov.info \
-# 	  --cov-report=term-missing --cov-config=.coveragerc
+# 	  --cov-report=term-missing
 # 	$(MAKE) _coverage_check
 #
+# # Order is non-negotiable (REPO-STANDARDS-SPEC §4.6 [LINT-PYTHON-BASILISK]):
+# #   1. Format check (any diff = lint failure)
+# #   2. Basilisk (PRIMARY linter + type checker)
+# #   3. ruff (secondary lint)
+# #   4. pyright (secondary type-check safety net)
 # _lint:
 # 	ruff format --check .
+# 	basilisk lint .
 # 	ruff check .
 # 	pyright .
 #
@@ -207,16 +200,8 @@ setup:
 # 	ruff format .
 # 	ruff check --fix .
 #
-# _fmt_check:
-# 	ruff format --check .
-# 	ruff check .
-#
 # _clean:
 # 	$(RM) dist build *.egg-info htmlcov .coverage coverage.xml lcov.info
-#
-# _coverage:
-# 	python -m pytest -x tests/ --cov=. --cov-report=html --cov-config=.coveragerc
-# 	@echo "==> HTML report: htmlcov/index.html"
 #
 # _coverage_check:
 # 	@THRESHOLD=$$(jq -r '.default_threshold' "$(COVERAGE_THRESHOLDS_FILE)"); \
@@ -226,7 +211,7 @@ setup:
 # 	pip install -r requirements.txt
 
 # --- DART/FLUTTER ---
-# Prerequisites: brew install lcov (for genhtml)
+# Prerequisites: brew install lcov (for genhtml, optional local viewer)
 #
 # _build:
 # 	flutter build apk --debug || dart compile exe lib/main.dart
@@ -236,6 +221,7 @@ setup:
 # 	flutter test --coverage --fail-fast
 # 	$(MAKE) _coverage_check
 #
+# # Format check FIRST (any diff = lint failure), then analyzer.
 # _lint:
 # 	dart format --set-exit-if-changed .
 # 	flutter analyze --fatal-infos
@@ -243,15 +229,8 @@ setup:
 # _fmt:
 # 	dart format .
 #
-# _fmt_check:
-# 	dart format --set-exit-if-changed .
-#
 # _clean:
 # 	flutter clean || $(RM) build
-#
-# _coverage:
-# 	genhtml coverage/lcov.info -o coverage/html
-# 	@echo "==> HTML report: coverage/html/index.html"
 #
 # _coverage_check:
 # 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
@@ -293,15 +272,13 @@ setup:
 # 	  -- xunit.stopOnFail=true
 # 	$(MAKE) _coverage_check
 #
+# # Format check FIRST (CSharpier diff = lint failure), then build with -warnaserror.
 # _lint:
-# 	dotnet build --configuration Release -warnaserror
 # 	dotnet csharpier . --check
+# 	dotnet build --configuration Release -warnaserror
 #
 # _fmt:
 # 	dotnet csharpier .
-#
-# _fmt_check:
-# 	dotnet csharpier . --check
 #
 # _clean:
 # ifeq ($(OS),Windows_NT)
@@ -309,13 +286,6 @@ setup:
 # else
 # 	find . -type d \( -name bin -o -name obj \) -exec rm -rf {} +
 # endif
-#
-# _coverage:
-# 	reportgenerator \
-# 	  -reports:"TestResults/**/coverage.cobertura.xml" \
-# 	  -targetdir:coverage/html \
-# 	  -reporttypes:Html
-# 	@echo "==> HTML report: coverage/html/index.html"
 #
 # # Reads `coverage-thresholds.json`. For multi-project repos, iterates over
 # # `.projects` and asserts each project's measured coverage >= its threshold.
@@ -340,11 +310,9 @@ setup:
 # 	dotnet tool restore
 
 # --- F# ---
-# Same as C#/.NET above; add Fantomas for formatting:
-# _fmt:
-# 	dotnet fantomas .
-# _fmt_check:
-# 	dotnet fantomas . --check
+# Same as C#/.NET above; substitute Fantomas in _lint and _fmt:
+# _lint:  dotnet fantomas . --check && dotnet build --configuration Release -warnaserror
+# _fmt:   dotnet fantomas .
 
 # --- GO ---
 #
@@ -357,6 +325,7 @@ setup:
 # 	go tool cover -func=coverage.out
 # 	$(MAKE) _coverage_check
 #
+# # Format check FIRST (gofmt diff = lint failure), then linters.
 # _lint:
 # 	gofmt -l . | grep . && exit 1 || true
 # 	golangci-lint run
@@ -365,16 +334,9 @@ setup:
 # 	gofmt -w .
 # 	golangci-lint run --fix
 #
-# _fmt_check:
-# 	gofmt -l . | grep . && exit 1 || true
-#
 # _clean:
 # 	go clean ./...
 # 	$(RM) coverage.out coverage.html
-#
-# _coverage:
-# 	go tool cover -html=coverage.out -o coverage.html
-# 	@echo "==> HTML report: coverage.html"
 #
 # _coverage_check:
 # 	@if [ ! -f "$(COVERAGE_THRESHOLDS_FILE)" ]; then echo "FAIL: $(COVERAGE_THRESHOLDS_FILE) not found"; exit 1; fi; \
@@ -396,15 +358,13 @@ setup:
 # HELP
 # =============================================================================
 help:
-	@echo "Available targets:"
-	@echo "  build          - Compile/assemble all artifacts"
-	@echo "  test           - FAIL-FAST tests + coverage + threshold enforcement (only test entry point)"
-	@echo "  lint           - Run all linters (errors mode)"
-	@echo "  fmt            - Format all code in-place"
-	@echo "  fmt-check      - Check formatting (no modification)"
-	@echo "  clean          - Remove build artifacts"
-	@echo "  check          - lint + test (pre-commit)"
-	@echo "  ci             - lint + test + build (full CI)"
-	@echo "  coverage       - Generate and open coverage HTML report"
-	@echo "  coverage-check - Re-assert coverage thresholds (read coverage-thresholds.json)"
-	@echo "  setup          - Post-create dev environment setup"
+	@echo "Targets:"
+	@echo "  build  - Compile/assemble all artifacts"
+	@echo "  test   - FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point)"
+	@echo "  lint   - All linters AND format check (any diff = failure)"
+	@echo "  fmt    - Format all code in-place"
+	@echo "  clean  - Remove build artifacts"
+	@echo "  ci     - lint + test + build (full CI simulation)"
+	@echo "  setup  - Post-create dev environment setup"
+	@echo ""
+	@echo "Banned (do not add): fmt-check, check, coverage, coverage-check, test-fast, test-no-coverage"

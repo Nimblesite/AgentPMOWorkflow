@@ -108,22 +108,37 @@ endif
 - The inline `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make test` (which includes coverage enforcement) via WSL or Git Bash.
 - Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
 
-### 1.1 Required Targets (identical across all repos)
+### [MAKE-TARGETS] 1.1 Required Targets (exactly 7, identical across all repos)
+
+Every repo's Makefile exposes EXACTLY these 7 public targets. No more, no fewer.
 
 | Target | What it does |
 |--------|-------------|
 | `make build` | Compile/assemble all artifacts |
-| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See §3.0. |
-| `make lint` | Run all linters in error mode (non-zero exit on any warning) |
+| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See §3 [TEST-FAIL-FAST]. |
+| `make lint` | Run all linters AND check formatting in one pass. Format diffs are lint failures. |
 | `make fmt` | Format all code in-place |
 | `make clean` | Delete all build artifacts |
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
+| `make setup` | Post-create dev environment setup (devcontainer hook) |
 
-**`make test` is the ONLY test entry point.** Any sub-targets (`test-unit`, `test-integration`, `test-e2e`, etc.) MUST also be fail-fast AND MUST collect coverage. There is no "test without coverage" mode. There is no "run everything to see what fails" mode. See §3.0.
+### [MAKE-BANNED] Banned target names — must NOT exist
+
+These targets are explicitly forbidden. The agent-pmo skill MUST delete them when remediating an existing repo.
+
+| Banned target | Why | Replacement |
+|---------------|-----|-------------|
+| `make fmt-check` | Redundant. `make lint` runs the formatter in `--check` mode. | `make lint` |
+| `make check` | Vague, ambiguous, no canonical meaning. | `make ci` (or `make lint && make test`) |
+| `make coverage` | Redundant. `make test` produces coverage as a side effect. | `make test` (the HTML viewer is a developer tool, not a Make target) |
+| `make coverage-check` | Redundant. `make test` already enforces the threshold. | `make test` |
+| `make test-fast` / `make test-no-coverage` / `make test-unit` / `make test-integration` (as separate top-level targets) | `make test` is the **only** test entry point. Sub-suites are debugged by invoking the test runner directly, not by adding more Make targets. | `make test`, or call the test runner directly for ad-hoc debugging |
+
+**`make test` is the ONLY test entry point.** Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but they MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY` or be callable from the command line. Each sub-recipe MUST be fail-fast AND MUST contribute to coverage. There is no "test without coverage" mode. There is no "run everything to see what fails" mode.
 
 ### 1.2 Standard Makefile Template
 
-**File:** [`templates/Makefile`](templates/Makefile)
+**File:** [`templates/Makefile`](../../agent-pmo-skill/templates/Makefile)
 
 ---
 
@@ -257,9 +272,10 @@ Makefile target.
 
 **Every repo MUST have a `coverage-thresholds.json` file at the project root** (or per
 sub-project for multi-project repos — see below). This file is the **single source of truth**
-for coverage thresholds. The Makefile `_coverage_check` target reads this file and the
-CI workflow reads this file. **No GitHub repo variables. No env-var-based thresholds. No
-hardcoded numbers in CI YAML.**
+for coverage thresholds. The internal Makefile `_coverage_check` recipe (called by `_test`
+inside `make test`) reads this file. CI calls only `make test`. **No GitHub repo variables.
+No env-var-based thresholds. No hardcoded numbers in CI YAML. No public `make coverage-check`
+target — it is banned (§1.1 [MAKE-BANNED]).**
 
 **Why a JSON file (not GitHub repo variables):**
 
@@ -299,9 +315,11 @@ hardcoded numbers in CI YAML.**
 
 **Single-project repos** still create the file with at least `default_threshold`.
 
-**Tests MUST FAIL if the threshold is not met.** The `_coverage_check` target reads
-`coverage-thresholds.json`, computes line coverage, and exits non-zero if measured coverage
-< threshold for any project. The pipeline fails. The PR is blocked. There is no warning mode.
+**Tests MUST FAIL if the threshold is not met.** The internal `_coverage_check` recipe (called
+from `_test` inside `make test`) reads `coverage-thresholds.json`, computes line coverage, and
+exits non-zero if measured coverage < threshold for any project. `make test` exits non-zero.
+The pipeline fails. The PR is blocked. There is no warning mode. There is no separate public
+`make coverage-check` target — that name is banned (§1.1 [MAKE-BANNED]).
 
 **Ratchet rule:** Thresholds are **monotonically increasing** — they never go down. When
 coverage improves past the current threshold, bump the number in `coverage-thresholds.json`
@@ -399,29 +417,27 @@ F# analyzer rules are configured via project files.
 
 ## 5. Formatting Standards
 
-**CI MUST check formatting and fail hard on any violation.** The CI lint step runs `make fmt-check`; any formatting diff = pipeline failure.
+**Format checking lives inside `make lint`.** There is NO `make fmt-check` target — that name is banned (§1.1 [MAKE-BANNED]). The Makefile `_lint` recipe MUST run the formatter in `--check` mode FIRST, before invoking any other linter. Any formatting diff is a lint failure that blocks CI.
 
 ### 5.1 Formatting Tools by Language
 
-| Language | Formatter | Format command | Check command |
+| Language | Formatter | Format command (used by `_fmt`) | Check command (used FIRST in `_lint`) |
 |----------|-----------|---------------|---------------|
 | C# | CSharpier | `dotnet csharpier .` | `dotnet csharpier --check .` |
 | F# | Fantomas | `dotnet fantomas .` | `dotnet fantomas --check .` |
-| Rust | rustfmt | `cargo fmt` | `cargo fmt --check` |
-| Python | Basilisk (lint) → ruff format | `basilisk lint . && ruff format .` | `basilisk lint . && ruff format --check .` |
+| Rust | rustfmt | `cargo fmt --all` | `cargo fmt --all --check` |
+| Python | ruff format | `ruff format .` | `ruff format --check .` |
 | TypeScript/JavaScript | Prettier | `npx prettier --write .` | `npx prettier --check .` |
 | Dart/Flutter | dart format | `dart format .` | `dart format --set-exit-if-changed .` |
 | Go | gofmt + goimports | `gofmt -w . && goimports -w .` | `gofmt -l . \| grep . && exit 1 \|\| true` |
 
 ### 5.2 Python formatting note
 
-**Basilisk is the primary linter for all Python projects.** Run Basilisk first for linting, then use the most common formatter (ruff format) for auto-formatting. The `make fmt` target chains both; `make fmt-check` checks both and fails on any issue.
+ruff format is the auto-formatter. **Basilisk** runs as the PRIMARY linter + type checker after the format check (see §4.6 [LINT-PYTHON-BASILISK]). Order in `_lint`: format check → Basilisk → ruff lint → pyright.
 
 ### 5.3 Multi-language repos
 
-For repos with multiple languages, the Makefile `fmt` and `fmt-check` targets MUST chain all applicable formatters. A single `make fmt-check` validates every language in the repo.
-
----
+For repos with multiple languages, the Makefile `_fmt` recipe chains all applicable formatters and the `_lint` recipe chains all `--check` invocations FIRST, then all linters. A single `make lint` validates formatting + lints every language in the repo.
 
 ---
 
@@ -799,10 +815,12 @@ STRUCTURE
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
 [ ] coverage-thresholds.json               (every repo — single source of truth, §3.3)
-[ ] Makefile has all required targets: build, test, lint, fmt, fmt-check, clean, check, ci, coverage, coverage-check, setup
+[ ] Makefile has EXACTLY these 7 public targets: build, test, lint, fmt, clean, ci, setup (§1.1 [MAKE-TARGETS])
+[ ] Makefile has NO banned targets: fmt-check, check, coverage, coverage-check, test-fast, test-no-coverage, test-unit, test-integration (§1.1 [MAKE-BANNED] — DELETE if found)
+[ ] Makefile `_lint` recipe runs the formatter in `--check` mode FIRST (format diff = lint failure)
 [ ] Makefile has OS detection block (§1.0 cross-platform support)
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
-[ ] Makefile `_coverage_check` target (language-specific inline check)
+[ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
 [ ] Canonical instruction file has all required sections (CLAUDE.md or AGENTS.md per §10.3)
 [ ] Non-canonical instruction file is a pointer to canonical file (§10.4)
 [ ] .clinerules/00-read-instructions.md (pointer → canonical file)
@@ -820,10 +838,10 @@ LOGGING (§6)
 [ ] No PII or secrets in log output
 
 CI
-[ ] ci.yml has a single `ci` job with sequential steps: lint → test → build
+[ ] ci.yml has a single `ci` job with sequential steps: `make lint` → `make test` → `make build`
 [ ] ci.yml has concurrency cancel-in-progress
-[ ] ci.yml: lint step runs `make lint` which includes `make fmt-check` (formatting failures = hard fail)
-[ ] ci.yml: `make test` is the only test invocation — it MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`. No separate `coverage-check` step is required because `make test` already does it.
+[ ] ci.yml: `make lint` is the ONLY format/lint invocation. It runs the formatter in `--check` mode FIRST. No separate `make fmt-check` step (banned, §1.1 [MAKE-BANNED])
+[ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`. NO separate `coverage-check` step (banned)
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
 
@@ -957,9 +975,10 @@ A skill built from this spec operates in two modes:
 2. For each MISSING item: add it (using templates from [`templates/`](templates/))
 3. For each WRONG item:
    - CI job names wrong → rename to `lint`, `test`, `build`
-   - Makefile target names wrong → add aliases or rename
+   - Makefile target names wrong → rename. Then **DELETE every banned target** (§1.1 [MAKE-BANNED]): `fmt-check`, `check`, `coverage`, `coverage-check`, `test-fast`, `test-no-coverage`, `test-unit`, `test-integration`, etc. Move any logic they contain into the right home (`fmt-check` → into `_lint`; `coverage-check` → into `_test`; `check` → just delete, `make ci` covers it). Update `.PHONY`. Update CI YAML and any scripts/docs that called the old targets.
    - `make test` not fail-fast → add the test runner's fail-fast flag (§3 [TEST-FAIL-FAST])
-   - `make test` not enforcing coverage → wire `_coverage_check` into the `_test` recipe so `make test` exits non-zero below threshold
+   - `make test` not enforcing coverage → call `_coverage_check` from inside the `_test` recipe so `make test` exits non-zero below threshold
+   - `make lint` not running format check first → make the formatter `--check` invocation the FIRST line of `_lint`
    - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage (§3.3 [COVERAGE-THRESHOLDS-JSON])
    - `.gitignore` missing tool dirs → append standard tool patterns
    - Canonical instruction file missing sections → append missing sections (detect primary agent per §10.2 first)

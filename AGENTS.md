@@ -1,12 +1,8 @@
 # Agent PMO Workflow — Agent Instructions
 
-> ⚠️ **TOKEN DISCIPLINE — read first.** Tokens are not free. Before reading any file, check its
-> size. Prefer `Grep` for known symbols over reading whole files. Read only the lines you
-> actually need (`offset`/`limit`). Write less code, not more — the right diff is the smallest
-> diff that solves the problem. Delete fluff, dead code, unused imports, and stale comments
-> aggressively. If the user loads context with files that are not relevant to the task, **call
-> it out** ("the context contains X.md and Y.ts which appear unrelated to this task — proceed
-> anyway?"). Bloated context degrades reasoning. ⚠️
+> ⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`.
+> Smallest diff that solves the problem. Delete dead code, unused imports, stale comments.
+> Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
 
 > Read this entire file before making changes.
 
@@ -81,23 +77,30 @@ These are the authoritative docs for configuring AI coding agents. When working 
 
 ## Build Commands
 
+This repo follows the standard 7-target Makefile interface (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):
+
 ```bash
-make build            # generate the HTML dashboard report
-make test             # run all tests (F# + Playwright E2E)
-make test-fsharp      # run F# tests (alias for test-mock)
-make test-mock        # run F# mock fixture tests (generates report for E2E)
-make test-local       # generate report from config.json + run Playwright E2E
-make test-e2e         # run Playwright E2E tests only
-make lint             # validate Playwright test configuration
-make fmt              # format code (no-op for F# scripts)
-make fmt-check        # check formatting (no-op for F# scripts)
-make clean            # remove test artifacts
-make check            # lint + test
-make ci               # lint + test + build
+make build   # generate the HTML dashboard report
+make test    # F# fixture tests + Playwright E2E (fail-fast). ONLY test entry point.
+make lint    # validate Playwright test config (F# format check is a no-op)
+make fmt     # format code (no-op for F# scripts)
+make clean   # remove test artifacts
+make ci      # lint + test + build (full CI simulation)
+make setup   # install dependencies + configure (auto-detects OS)
+```
+
+Repo-specific helpers (not in the standard 7):
+
+```bash
+make dashboard              # refresh the dashboard manually
+make website-build          # build the website via 11ty
+make website-run            # serve the website locally with 11ty
 make install-skill-claude   # install agent-pmo skill for Claude Code
 make uninstall-skill-claude # remove the agent-pmo skill
-make help             # list all available targets
+make help                   # list all available targets
 ```
+
+**Banned targets** — must not exist (§1.1 [MAKE-BANNED]): `fmt-check`, `check`, `coverage`, `coverage-check`, `test-fast`, `test-no-coverage`, `test-fsharp`, `test-e2e`, `test-mock`, `test-local`, etc. The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes called from `_test`. To debug a single test, invoke `dotnet fsi dashboard/test-report.fsx` or `cd dashboard && npx playwright test ...` directly — those are not Make targets.
 
 ## PMO Dashboard (`dashboard/`)
 
