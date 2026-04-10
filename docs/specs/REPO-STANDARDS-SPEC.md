@@ -10,16 +10,16 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
 
 ---
 
-## 0. Design Principles
+## [DESIGN] Design Principles
 
 1. **Docs are the source of truth.** The specs folder holds docs that SPECIFY the behavior of the system. The plans folder holds docs that specify how to achieve some goal. All plan docs MUST have a TODO list with checkboxes at the bottom of the document. We use these instead of inbuilt agent TODO lists because it allows us to track TODOs across agents and sessions
 2. **Templates are starting points, not copy-paste targets.** Every config file required by this spec
    has a template in [`templates/`](templates/). The skill uses these as a baseline but MUST customize
    them for the target repo — stripping irrelevant language sections, filling placeholders, and
-   removing examples for tools/languages not present. See §16.2.
-3. **Fail fast, fail loud.** Lint before test. Test before build. Coverage threshold blocks merge.
+   removing examples for tools/languages not present. See [MODES-CUSTOMIZE].
+3. **Fail fast, fail loud.** Lint before test. Coverage threshold blocks merge.
    Zero warnings allowed — all linters run in errors-as-warnings mode. **Every `make test` target
-   MUST stop at the first failing test** (see §3.0). Pipelines that run all tests after a failure
+   MUST stop at the first failing test** (see [TEST-RULES]). Pipelines that run all tests after a failure
    waste CI minutes and force agents to wait for an outcome they already know.
 4. **No git in Claude sessions.** Skills and CLAUDE.md rules prohibit git commands.
    CI and GitHub Actions do the git work.
@@ -47,7 +47,7 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
    ## CI/CD
    ### [CI-TIMEOUT] Job timeout policy
    ### [CI-LINT] Lint job configuration
-   ### [CI-COVERAGE] Coverage enforcement
+   ### [CI-RELEASE] Release workflow
 
    ## Linting
    ### [LINT-ESLINT] ESLint configuration
@@ -71,12 +71,12 @@ Source: Analysis of 20 repos from `project_status/repo-report.html`
 
 ---
 
-## 1. Universal Makefile Standard
+## [MAKE] Universal Makefile Standard
 
 Every repo MUST have a root `Makefile` with **exactly** these target names.
 Language-specific work is delegated internally; the external interface never changes.
 
-### 1.0 Cross-Platform Requirements (Linux, macOS, Windows)
+### [MAKE-CROSS-PLATFORM] Cross-Platform Requirements (Linux, macOS, Windows)
 
 Every Makefile MUST support Linux, macOS, and Windows. Add OS detection at the top:
 
@@ -108,43 +108,31 @@ endif
 - The inline `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make test` (which includes coverage enforcement) via WSL or Git Bash.
 - Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
 
-### [MAKE-TARGETS] 1.1 Required Targets (exactly 7, identical across all repos)
+### [MAKE-TARGETS] Required Targets (exactly 7, identical across all repos)
 
 Every repo's Makefile exposes EXACTLY these 7 public targets. No more, no fewer.
 
 | Target | What it does |
 |--------|-------------|
 | `make build` | Compile/assemble all artifacts |
-| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See §3 [TEST-FAIL-FAST]. |
+| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See [TEST-RULES]. |
 | `make lint` | Run all linters AND check formatting in one pass. Format diffs are lint failures. |
 | `make fmt` | Format all code in-place |
 | `make clean` | Delete all build artifacts |
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
 | `make setup` | Post-create dev environment setup (devcontainer hook) |
 
-### [MAKE-BANNED] Banned target names — must NOT exist
+Any public target not in this list is superfluous. The agent-pmo marker system ([MARKER-CLEANUP]) handles cleanup: if a target or file was stamped by agent-pmo and its source no longer exists, merge any useful logic into the correct target above, then delete it. Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
 
-These targets are explicitly forbidden. The agent-pmo skill MUST delete them when remediating an existing repo.
-
-| Banned target | Why | Replacement |
-|---------------|-----|-------------|
-| `make fmt-check` | Redundant. `make lint` runs the formatter in `--check` mode. | `make lint` |
-| `make check` | Vague, ambiguous, no canonical meaning. | `make ci` (or `make lint && make test`) |
-| `make coverage` | Redundant. `make test` produces coverage as a side effect. | `make test` (the HTML viewer is a developer tool, not a Make target) |
-| `make coverage-check` | Redundant. `make test` already enforces the threshold. | `make test` |
-| `make test-fast` / `make test-no-coverage` / `make test-unit` / `make test-integration` (as separate top-level targets) | `make test` is the **only** test entry point. Sub-suites are debugged by invoking the test runner directly, not by adding more Make targets. | `make test`, or call the test runner directly for ad-hoc debugging |
-
-**`make test` is the ONLY test entry point.** Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but they MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY` or be callable from the command line. Each sub-recipe MUST be fail-fast AND MUST contribute to coverage. There is no "test without coverage" mode. There is no "run everything to see what fails" mode.
-
-### 1.2 Standard Makefile Template
+### [MAKE-TEMPLATE] Standard Makefile Template
 
 **File:** [`templates/Makefile`](../../agent-pmo-skill/templates/Makefile)
 
 ---
 
-## 2. CI/CD Standard
+## [CI] CI/CD Standard
 
-### 2.1 Required Workflow Files
+### [CI-WORKFLOWS] Required Workflow Files
 
 | File | Trigger | Purpose |
 |------|---------|---------|
@@ -154,7 +142,7 @@ These targets are explicitly forbidden. The agent-pmo skill MUST delete them whe
 
 **Website deploys ONLY on release** — never on push to `main`. The website must not get ahead of the actual release. `release.yml` triggers `deploy-pages.yml` via `workflow_dispatch` after the GitHub release is created.
 
-### 2.2 Standard CI Job Names (exact — do not deviate)
+### [CI-JOBS] Standard CI Job Names (exact — do not deviate)
 
 All `ci.yml` files MUST use these exact job names:
 
@@ -170,11 +158,11 @@ security  — vulnerability scanning (cargo audit, npm audit, etc.)
 deploy    — deploy preview/staging (depends on build)
 ```
 
-### 2.3 ci.yml Template
+### [CI-TEMPLATE] ci.yml Template
 
 **File:** [`templates/.github/workflows/ci.yml`](templates/.github/workflows/ci.yml)
 
-### 2.4 release.yml Template
+### [CI-RELEASE] release.yml Template
 
 **File:** [`templates/.github/workflows/release.yml`](templates/.github/workflows/release.yml)
 
@@ -187,15 +175,15 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
 5. **publish** — Push packages/binaries to registries (npm, NuGet, PyPI, pub.dev, crates.io, VS Code Marketplace). Requires secrets configured in repo Settings → Secrets → Actions.
 6. **deploy-pages** — Trigger the `deploy-pages.yml` workflow via `workflow_dispatch`
 
-### 2.5 deploy-pages.yml Template
+### [CI-PAGES] deploy-pages.yml Template
 
 **File:** [`templates/.github/workflows/deploy-pages.yml`](templates/.github/workflows/deploy-pages.yml)
 
 ---
 
-## 3. Coverage Standards
+## [TEST] Coverage Standards
 
-### [TEST-FAIL-FAST] Every `make test` target is fail-fast AND collects coverage
+### [TEST-RULES] Every `make test` is fail-fast AND computes coverage
 
 > ⚠️ **NON-NEGOTIABLE.** Read this section in full before touching any Makefile or test config. ⚠️
 
@@ -246,7 +234,7 @@ There is no `make test-no-coverage`. There is no `make test-fast`. The standard 
 only target. If you need to debug a single test, call the runner directly — that is not a
 Makefile target.
 
-### 3.1 Thresholds by Repo Type
+### [COVERAGE-THRESHOLDS] Thresholds by Repo Type
 
 | Repo type | Line coverage | Branch coverage |
 |-----------|--------------|----------------|
@@ -256,7 +244,7 @@ Makefile target.
 | VS Code / Zed extension | 80% | 70% |
 | Static site / docs only | N/A | N/A |
 
-### 3.2 Coverage Tools by Language
+### [COVERAGE-TOOLS] Coverage Tools by Language
 
 | Language | Tool | Install |
 |----------|------|---------|
@@ -268,14 +256,14 @@ Makefile target.
 | F# | Same as C# | Same as C# |
 | Go | Built-in `go tool cover` | Built-in |
 
-### [COVERAGE-THRESHOLDS-JSON] 3.3 Coverage thresholds live in `coverage-thresholds.json`
+### [COVERAGE-THRESHOLDS-JSON] Coverage thresholds live in `coverage-thresholds.json`
 
 **Every repo MUST have a `coverage-thresholds.json` file at the project root** (or per
 sub-project for multi-project repos — see below). This file is the **single source of truth**
 for coverage thresholds. The internal Makefile `_coverage_check` recipe (called by `_test`
 inside `make test`) reads this file. CI calls only `make test`. **No GitHub repo variables.
 No env-var-based thresholds. No hardcoded numbers in CI YAML. No public `make coverage-check`
-target — it is banned (§1.1 [MAKE-BANNED]).**
+target — coverage enforcement is part of `make test` ([MAKE-TARGETS]).**
 
 **Why a JSON file (not GitHub repo variables):**
 
@@ -319,7 +307,7 @@ target — it is banned (§1.1 [MAKE-BANNED]).**
 from `_test` inside `make test`) reads `coverage-thresholds.json`, computes line coverage, and
 exits non-zero if measured coverage < threshold for any project. `make test` exits non-zero.
 The pipeline fails. The PR is blocked. There is no warning mode. There is no separate public
-`make coverage-check` target — that name is banned (§1.1 [MAKE-BANNED]).
+`make coverage-check` target — coverage enforcement is part of `make test` ([MAKE-TARGETS]).
 
 **Ratchet rule:** Thresholds are **monotonically increasing** — they never go down. When
 coverage improves past the current threshold, bump the number in `coverage-thresholds.json`
@@ -328,21 +316,21 @@ PR description.
 
 **Template:** [`templates/coverage-calc/coverage-thresholds.json`](../../agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json)
 
-### 3.4 coverlet.runsettings (C#/.NET)
+### [COVERAGE-COVERLET] coverlet.runsettings (C#/.NET)
 
 **File:** [`templates/coverage-calc/coverlet.runsettings`](../../agent-pmo-skill/templates/coverage-calc/coverlet.runsettings)
 
-### 3.5 jest.coverage.config.js (TypeScript / Jest)
+### [COVERAGE-JEST] jest.coverage.config.js (TypeScript / Jest)
 
 **File:** [`templates/coverage-calc/jest.coverage.config.js`](../../agent-pmo-skill/templates/coverage-calc/jest.coverage.config.js)
 
 ---
 
-## 4. Linting Standards — Exact Configurations
+## [LINT] Linting Standards — Exact Configurations
 
 Turn all rules on and turn them up to error unless there is a comment explaining why the rule should not be turned on.
 
-### 4.1 Rust — Cargo.toml workspace lints
+### [LINT-RUST] Rust — Cargo.toml workspace lints
 
 The basic principle is to turn ALL lints on and turn them up to ERROR. The only exception would be that the existing configuration already has a documented reason NOT to turn the lint run on.
 
@@ -350,23 +338,23 @@ Every Rust workspace Cargo.toml MUST include these lint sections.
 
 **File:** [`templates/linting/cargo-workspace-lints.toml`](templates/linting/cargo-workspace-lints.toml)
 
-### 4.2 Rust — rustfmt.toml
+### [LINT-RUST-FMT] Rust — rustfmt.toml
 
 **File:** [`templates/linting/rustfmt.toml`](templates/linting/rustfmt.toml)
 
-### 4.3 TypeScript — eslint.config.mjs (flat config, ESLint v9+)
+### [LINT-TS-ESLINT] TypeScript — eslint.config.mjs (flat config, ESLint v9+)
 
 **File:** [`templates/linting/eslint.config.mjs`](templates/linting/eslint.config.mjs)
 
-### 4.4 TypeScript — .prettierrc.json
+### [LINT-TS-PRETTIER] TypeScript — .prettierrc.json
 
 **File:** [`templates/linting/.prettierrc.json`](templates/linting/.prettierrc.json)
 
-### 4.5 TypeScript — tsconfig.json (strict baseline)
+### [LINT-TS-STRICT] TypeScript — tsconfig.json (strict baseline)
 
 **File:** [`templates/linting/tsconfig.json`](templates/linting/tsconfig.json)
 
-### [LINT-PYTHON-BASILISK] 4.6 Python — Basilisk is the PRIMARY linter AND type checker
+### [LINT-PYTHON-BASILISK] Python — Basilisk is the PRIMARY linter AND type checker
 
 > ⚠️ **Non-negotiable for every Python project, in every repo, every time.** ⚠️
 
@@ -395,31 +383,31 @@ secondary layer.
 
 **File:** [`templates/linting/pyproject.toml`](../../agent-pmo-skill/templates/linting/pyproject.toml)
 
-### 4.7 Dart/Flutter — analysis_options.yaml
+### [LINT-DART] Dart/Flutter — analysis_options.yaml
 
 **File:** [`templates/linting/analysis_options.yaml`](templates/linting/analysis_options.yaml)
 
-### 4.8 Go — .golangci.yml
+### [LINT-GO] Go — .golangci.yml
 
 **File:** [`templates/linting/.golangci.yml`](templates/linting/.golangci.yml)
 
-### 4.9 C# — Static Analysis via Directory.Build.props
+### [LINT-CSHARP] C# — Static Analysis via Directory.Build.props
 
 Do not add style rules to the .editorconfig because this can destroy formatting. 
 Do add all code analysis rules, especially null safety rules
 If the repo has a rules config file, use this instead
 
-### 4.10 F# — Analyzer Configuration
+### [LINT-FSHARP] F# — Analyzer Configuration
 
 F# analyzer rules are configured via project files.
 
 ---
 
-## 5. Formatting Standards
+## [FMT] Formatting Standards
 
-**Format checking lives inside `make lint`.** There is NO `make fmt-check` target — that name is banned (§1.1 [MAKE-BANNED]). The Makefile `_lint` recipe MUST run the formatter in `--check` mode FIRST, before invoking any other linter. Any formatting diff is a lint failure that blocks CI.
+**Format checking lives inside `make lint`.** There is no separate `make fmt-check` — only the 7 targets in [MAKE-TARGETS] exist. The `_lint` recipe MUST run the formatter in `--check` mode FIRST, before invoking any other linter. Any formatting diff is a lint failure that blocks CI.
 
-### 5.1 Formatting Tools by Language
+### [FMT-TOOLS] Formatting Tools by Language
 
 | Language | Formatter | Format command (used by `_fmt`) | Check command (used FIRST in `_lint`) |
 |----------|-----------|---------------|---------------|
@@ -431,30 +419,30 @@ F# analyzer rules are configured via project files.
 | Dart/Flutter | dart format | `dart format .` | `dart format --set-exit-if-changed .` |
 | Go | gofmt + goimports | `gofmt -w . && goimports -w .` | `gofmt -l . \| grep . && exit 1 \|\| true` |
 
-### 5.2 Python formatting note
+### [FMT-PYTHON] Python formatting note
 
-ruff format is the auto-formatter. **Basilisk** runs as the PRIMARY linter + type checker after the format check (see §4.6 [LINT-PYTHON-BASILISK]). Order in `_lint`: format check → Basilisk → ruff lint → pyright.
+ruff format is the auto-formatter. **Basilisk** runs as the PRIMARY linter + type checker after the format check (see [LINT-PYTHON-BASILISK]). Order in `_lint`: format check → Basilisk → ruff lint → pyright.
 
-### 5.3 Multi-language repos
+### [FMT-MULTI] Multi-language repos
 
 For repos with multiple languages, the Makefile `_fmt` recipe chains all applicable formatters and the `_lint` recipe chains all `--check` invocations FIRST, then all linters. A single `make lint` validates formatting + lints every language in the repo.
 
 ---
 
-## 6. Logging Standards
+## [LOG] Logging Standards
 
 Every repo MUST use structured logging throughout the application. `print`/`console.log`/`println!`/`Debug.WriteLine` are prohibited for diagnostics.
 
-### 6.1 Universal Logging Rules
+### [LOG-RULES] Universal Logging Rules
 
-1. **Structured logging library required.** See §6.2 for per-language libraries.
+1. **Structured logging library required.** See [LOG-LIBS] for per-language libraries.
 2. **Log at entry/exit of all significant operations.** Use levels: `error`, `warn`, `info`, `debug`, `trace`.
 3. **Structured fields over string interpolation.** Log `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`.
 4. **Async/background logging for I/O sinks.** Any log call that writes to a database or file MUST be async or run on a background thread. Never block the request/UI thread with logging I/O.
 5. **NEVER log personal data.** No PII: names, emails, addresses, phone numbers, IP addresses (unless required for security audit with explicit documented consent).
 6. **NEVER log secrets.** No API keys, tokens, passwords, connection strings, or credentials. To confirm a key is loaded, log a truncated hash or `"API key: present"`.
 
-### 6.2 Logging Libraries by Language
+### [LOG-LIBS] Logging Libraries by Language
 
 | Language | Library | Install |
 |----------|---------|---------|
@@ -466,25 +454,25 @@ Every repo MUST use structured logging throughout the application. `print`/`cons
 | F# | `Microsoft.Extensions.Logging` + `Serilog` | Same as C# |
 | Go | `log/slog` (stdlib) | Built-in (Go 1.21+) |
 
-### 6.3 VS Code Extension Logging
+### [LOG-VSCODE] VS Code Extension Logging
 
 - Write detailed structured logs to a file inside the extension's state folder (`.vsixname/` in the workspace root).
 - Basic errors and diagnostics MUST also be written to the extension's VS Code **Output Channel** so users can see them without hunting for log files.
 - Both sinks (file + Output Channel) must be active simultaneously.
 
-### 6.4 SaaS / Server Application Logging
+### [LOG-SAAS] SaaS / Server Application Logging
 
 - Log to the database for persistence and queryability.
 - Database/file log writes MUST be async or on a background thread — never block the request path.
 - In addition to the database, emit structured logs to stdout/stderr for container orchestrators and log aggregation services.
 
-### 6.5 Repo State Checklist Addition
+### [LOG-CHECKLIST] Repo State Checklist Addition
 
-The §15 checklist gains these items under a new LOGGING section:
+The [CHECKLIST] checklist gains these items under a new LOGGING section:
 
 ```
 LOGGING
-[ ] Structured logging library installed (per §6.2)
+[ ] Structured logging library installed (per [LOG-LIBS])
 [ ] No raw print/console.log/println!/Debug.WriteLine for diagnostics
 [ ] Log calls present at entry/exit of significant operations
 [ ] VS Code extensions: Output Channel + file logging configured
@@ -494,13 +482,13 @@ LOGGING
 
 ---
 
-## 7. .gitignore Standard
+## [GITIGNORE] .gitignore Standard
 
-### 7.1 Universal .gitignore base (all repos)
+### [GITIGNORE-BASE] Universal .gitignore base (all repos)
 
 **File:** [`templates/gitignore/universal.gitignore`](templates/gitignore/universal.gitignore)
 
-### 7.2 Per-language additions (append to repo .gitignore)
+### [GITIGNORE-LANG] Per-language additions (append to repo .gitignore)
 
 | Language | File |
 |----------|------|
@@ -515,9 +503,9 @@ LOGGING
 
 ---
 
-## 8. Dev Container Standard
+## [DEVCONTAINER] Dev Container Standard
 
-### 8.1 Required files
+### [DEVCONTAINER-FILES] Required files
 
 ```
 .devcontainer/
@@ -525,7 +513,7 @@ LOGGING
 └── Dockerfile            # required if not using a pre-built image
 ```
 
-### 8.2 devcontainer.json templates
+### [DEVCONTAINER-TEMPLATES] devcontainer.json templates
 
 | Language | File |
 |----------|------|
@@ -537,25 +525,25 @@ LOGGING
 | F# | [`templates/devcontainer/fsharp.devcontainer.json`](templates/devcontainer/fsharp.devcontainer.json) |
 | Go | [`templates/devcontainer/go.devcontainer.json`](templates/devcontainer/go.devcontainer.json) |
 
-### 8.3 Setup
+### [DEVCONTAINER-SETUP] Setup
 
 Dev environment setup is handled by `make setup` (defined in the Makefile). All devcontainer.json templates use `"postCreateCommand": "make setup"`.
 
 ---
 
-## 9. PR Template Standard
+## [PR-TEMPLATE] PR Template Standard
 
-### 9.1 .github/pull_request_template.md
+### [PR-TEMPLATE-FILE] .github/pull_request_template.md
 
 **File:** [`templates/.github/pull_request_template.md`](templates/.github/pull_request_template.md)
 
 ---
 
-## 10. Agent Instructions Standard (Agent-Agnostic)
+## [AGENT] Agent Instructions Standard (Agent-Agnostic)
 
 The rules content (hard rules, logging standards, testing, build commands, architecture) is **agent-neutral**. The file it lives in depends on which AI coding agent the target repo primarily uses.
 
-### 10.0 Critical Reference Documentation [AGENT-DOCS]
+### [AGENT-DOCS] Critical Reference Documentation
 
 Before manipulating ANY agent instruction or skill files, the skill MUST read the official documentation for the target agent. Each agent has its own syntax, file locations, and conventions. **Do not guess — read the docs first.**
 
@@ -591,11 +579,11 @@ The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **o
 | **Reads `AGENTS.md`** | No (needs `@AGENTS.md` import in `CLAUDE.md`) | Yes (native) | Yes | Yes (auto-detect) | Yes (native) |
 | **Reads `CLAUDE.md`** | Yes (native) | No | No | No | Yes (fallback) |
 
-### 10.1 Canonical Template
+### [AGENT-TEMPLATE] Canonical Template
 
 **File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language. This is the authoritative template for project instructions regardless of which agent consumes them.
 
-### 10.2 Canonical File Identification (Do This First) [AGENT-CANONICAL]
+### [AGENT-CANONICAL] Canonical File Identification (Do This First)
 
 **Before placing or modifying any file, identify the canonical file.**
 
@@ -607,7 +595,7 @@ The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **o
 
 **If a canonical file exists, merge into it — never replace it.** Read it, identify gaps against the standard, and merge missing content in. Preserve the file's existing structure and repo-specific context. Tighten: cut redundant prose and bloat while adding what's missing. The file should get better and leaner, not longer. All other agent files (pointer files) are created or updated to point at the canonical file.
 
-### 10.3 File Placement Rules [AGENT-PLACEMENT]
+### [AGENT-PLACEMENT] File Placement Rules
 
 When creating from scratch (no canonical file found in [AGENT-CANONICAL]), determine the canonical file by the primary agent:
 
@@ -636,7 +624,7 @@ When `AGENTS.md` is canonical:
 - **Cursor/Windsurf**: `.cursorrules`/`.windsurfrules` says "read {{CANONICAL_FILE}}" in plain text
 - **OpenCode**: `opencode.json` `"instructions"` array references the canonical file
 
-### 10.4 Pointer Files [AGENT-POINTERS]
+### [AGENT-POINTERS] Pointer Files
 
 Every repo gets pointer files for agents that are NOT the primary agent. Each pointer redirects to the canonical file.
 
@@ -656,11 +644,11 @@ Every repo gets pointer files for agents that are NOT the primary agent. Each po
 
 ---
 
-## 11. Skills Standard (Agent-Agnostic)
+## [SKILL] Skills Standard (Agent-Agnostic)
 
 Skills are portable, on-demand instruction packages. The templates in `templates/skills/` are written in a generic SKILL.md format. When applying to a target repo, the skill MUST convert them to the target agent's native format and directory structure.
 
-### 11.0 CRITICAL — Read the target agent's skill docs first
+### [SKILL-DOCS] CRITICAL — Read the target agent's skill docs first
 
 Before placing or converting any skill files, the agent MUST read the official skill documentation for the target agent (see [AGENT-DOCS] Agent Skill Docs table). Each agent has different:
 - **Directory locations** (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/`)
@@ -668,7 +656,7 @@ Before placing or converting any skill files, the agent MUST read the official s
 - **Size constraints** (Cline: keep under 5,000 tokens; others vary)
 - **Discovery conventions** (some walk up directories, some only check project root)
 
-### 11.1 Skill placement by agent [SKILL-PLACEMENT]
+### [SKILL-PLACEMENT] Skill placement by agent
 
 | Agent | Primary skill directory | Also scanned |
 |---|---|---|
@@ -683,7 +671,7 @@ When placing skills:
 2. **Cross-compatible directories are acceptable.** Copilot, Cline, and OpenCode all scan `.agents/skills/` as a fallback. If the repo uses multiple agents, placing skills in `.agents/skills/` covers the most agents with one copy.
 3. **The SKILL.md format is universal.** All agents use the same `SKILL.md` with YAML frontmatter (`name`, `description`) plus markdown body. The skill content itself is portable.
 
-### 11.2 Required skills
+### [SKILL-REQUIRED] Required skills
 
 | Skill | Template |
 |-------|----------|
@@ -693,13 +681,13 @@ When placing skills:
 
 ---
 
-## 12. Branch Strategy Standard
+## [BRANCH] Branch Strategy Standard
 
-### 12.1 Default branch
+### [BRANCH-DEFAULT] Default branch
 
 All repos: `main` (never `master`)
 
-### 12.2 Branch naming
+### [BRANCH-NAMING] Branch naming
 
 | Type | Pattern | Example |
 |------|---------|---------|
@@ -709,7 +697,7 @@ All repos: `main` (never `master`)
 | Release | `release/[semver]` | `release/1.2.0` |
 | Claude agent | `claude/[slug]-[random5]` | `claude/refactor-XYZab` |
 
-### 12.3 Rules
+### [BRANCH-RULES] Rules
 
 - All changes via PR — no direct pushes to `main`
 - CI must pass before merge
@@ -718,11 +706,11 @@ All repos: `main` (never `master`)
 
 ---
 
-## 13. GitHub Repository Settings
+## [GITHUB-SETTINGS] GitHub Repository Settings
 
 Every repo MUST have these GitHub settings applied. The authoritative reference is [`templates/.github/common-repo-settings.md`](templates/.github/common-repo-settings.md).
 
-### 13.1 Merge Settings
+### [GITHUB-MERGE] Merge Settings
 
 | Setting | Value |
 |---|---|
@@ -734,7 +722,7 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 | Squash merge commit title | **PR_TITLE** |
 | Squash merge commit message | **PR_BODY** |
 
-### 13.2 Features
+### [GITHUB-FEATURES] Features
 
 | Setting | Value |
 |---|---|
@@ -743,7 +731,7 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 | Projects | **false** |
 | Discussions | **true** (public repos only) |
 
-### 13.3 Branch Protection
+### [GITHUB-PROTECTION] Branch Protection
 
 If no branch protection exists, add a ruleset requiring:
 - PRs to `main` (no direct pushes)
@@ -751,7 +739,7 @@ If no branch protection exists, add a ruleset requiring:
 
 If protection already exists, leave it alone.
 
-### 13.4 Applying Settings via `gh` CLI
+### [GITHUB-CLI] Applying Settings via `gh` CLI
 
 ```bash
 REPO="OWNER/REPO"
@@ -771,7 +759,7 @@ gh api -X PATCH "repos/$REPO" \
 
 ---
 
-## 14. package.json Scripts Standard (TypeScript/Node repos)
+## [PKG-SCRIPTS] package.json Scripts Standard (TypeScript/Node repos)
 
 Every `package.json` MUST define these script names.
 
@@ -781,7 +769,7 @@ The Makefile delegates to these. `make lint` calls `npm run lint && npm run fmt:
 
 ---
 
-## 15. Repo State Assessment Checklist
+## [CHECKLIST] Repo State Assessment Checklist
 
 A skill assessing a repo runs through this checklist. Each item is either PRESENT (✓), MISSING (✗), or WRONG (△).
 
@@ -799,7 +787,7 @@ STRUCTURE
 [ ] Makefile `setup` target configured
 [ ] Skills in agent-native directory ([SKILL-PLACEMENT]: .claude/, .agents/, .github/, .cline/, or .opencode/)
 [ ] Required skills present: ci-prep, code-dedup, submit-pr
-[ ] All agent-pmo managed files have `agent-pmo:<hash>` marker (§16)
+[ ] All agent-pmo managed files have `agent-pmo:<hash>` marker ([MARKER])
 [ ] No orphaned agent-pmo files (marked files whose source template no longer exists)
 [ ] .gitignore (comprehensive)
 [ ] .prettierrc.json                       (TypeScript repos)
@@ -809,11 +797,11 @@ STRUCTURE
 [ ] analysis_options.yaml                  (Dart/Flutter repos)
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
-[ ] coverage-thresholds.json               (every repo — single source of truth, §3.3)
-[ ] Makefile has EXACTLY these 7 public targets: build, test, lint, fmt, clean, ci, setup (§1.1 [MAKE-TARGETS])
-[ ] Makefile has NO banned targets: fmt-check, check, coverage, coverage-check, test-fast, test-no-coverage, test-unit, test-integration (§1.1 [MAKE-BANNED] — DELETE if found)
+[ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
+[ ] Makefile has EXACTLY these 7 public targets: build, test, lint, fmt, clean, ci, setup ([MAKE-TARGETS])
+[ ] Makefile has ONLY the 7 required targets — no extras ([MARKER-CLEANUP] for orphans)
 [ ] Makefile `_lint` recipe runs the formatter in `--check` mode FIRST (format diff = lint failure)
-[ ] Makefile has OS detection block (§1.0 cross-platform support)
+[ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
 [ ] Canonical instruction file has all required sections (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT])
@@ -824,8 +812,8 @@ STRUCTURE
 [ ] .github/copilot-instructions.md (pointer → canonical file)
 [ ] opencode.json (instructions array referencing canonical file)
 
-LOGGING (§6)
-[ ] Structured logging library installed (per §6.2)
+LOGGING ([LOG])
+[ ] Structured logging library installed (per [LOG-LIBS])
 [ ] No raw print/console.log/println!/Debug.WriteLine for diagnostics
 [ ] Log calls present at entry/exit of significant operations
 [ ] VS Code extensions: Output Channel + file logging configured
@@ -835,8 +823,8 @@ LOGGING (§6)
 CI
 [ ] ci.yml has a single `ci` job with sequential steps: `make lint` → `make test` → `make build`
 [ ] ci.yml has concurrency cancel-in-progress
-[ ] ci.yml: `make lint` is the ONLY format/lint invocation. It runs the formatter in `--check` mode FIRST. No separate `make fmt-check` step (banned, §1.1 [MAKE-BANNED])
-[ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`. NO separate `coverage-check` step (banned)
+[ ] ci.yml: `make lint` is the ONLY format/lint invocation. It runs the formatter in `--check` mode FIRST.
+[ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`.
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
 
@@ -846,7 +834,7 @@ COVERAGE
 [ ] No hardcoded `COVERAGE_THRESHOLD` values in `ci.yml`
 [ ] Makefile `_coverage_check` target reads `coverage-thresholds.json` and FAILS the build below threshold
 [ ] `make test` collects coverage AND enforces the threshold (fails non-zero below)
-[ ] `make test` (and every test sub-target) runs the test runner with its fail-fast flag (§3.0 [TEST-FAIL-FAST])
+[ ] `make test` (and every test sub-target) runs the test runner with its fail-fast flag ([TEST-RULES] [TEST-RULES])
 [ ] Coverage tool installed (language-appropriate)
 
 LINTING
@@ -870,7 +858,7 @@ BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
 
-GITHUB REPO SETTINGS (§13)
+GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Squash merge only (merge commit and rebase disabled)
 [ ] Auto merge enabled
 [ ] Delete branch on merge enabled
@@ -884,7 +872,7 @@ IDE
 
 ---
 
-## 16. File Markers
+## [MARKER] File Markers
 
 ### [MARKER-FORMAT] Agent-PMO file marker
 
@@ -921,17 +909,17 @@ Where `<short-hash>` is the 7-character abbreviated commit hash from the AgentPM
 5. When re-running agent-pmo on a repo, update the hash in existing markers to the current commit.
 6. **NEVER stamp a file with the `agent-pmo:` marker unless its source template or skill exists at an exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` RIGHT NOW.** Before stamping ANY file, verify the source exists by reading it. If you cannot read the source file at the expected path, the file MUST NOT be created and MUST NOT be stamped. This is non-negotiable. A marker is a claim of provenance — stamping a file that has no source in the standards repo is a lie.
 
-### [MARKER-CLEANUP] Orphaned file cleanup
+### [MARKER-CLEANUP] Orphaned artifact cleanup
 
-During the deduplication check (§17 Step 4), the agent MUST scan for files with an `agent-pmo:` marker that correspond to templates or skills that **no longer exist** in the source standards repo. If a marked file in the target repo has no corresponding source in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`, the file is orphaned and MUST be deleted.
+Any artifact (file, Makefile target, CI step) stamped with an `agent-pmo:` marker whose source template or skill no longer exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` is orphaned.
 
 **Process:**
 
-1. Find all files in the target repo containing `agent-pmo:` markers.
-2. For each marked file, determine which template or skill it originated from.
-3. Check whether that template or skill still exists in the standards repo.
-4. If the source no longer exists, delete the orphaned file from the target repo.
-5. Report all orphaned files deleted.
+1. Scan the target repo for all `agent-pmo:` markers.
+2. For each, verify the source still exists in the standards repo.
+3. If orphaned: merge any useful logic into the correct standard artifact (e.g. an orphaned Makefile target's logic into one of the 7 required targets), then delete the orphan.
+4. If merging is not safe or the purpose is unclear, alert the user instead of deleting.
+5. Report all orphaned artifacts handled.
 
 This ensures that when skills or templates are removed from the standards repo (e.g., the `fmt`, `lint`, and `test` skills were consolidated into `ci-prep`), target repos get cleaned up automatically on the next agent-pmo run.
 
@@ -945,7 +933,7 @@ The commit hash in the marker enables traceability:
 
 ---
 
-## 17. Mint vs Remediate Modes
+## [MODES] Mint vs Remediate Modes
 
 A skill built from this spec operates in two modes:
 
@@ -958,30 +946,30 @@ A skill built from this spec operates in two modes:
 5. Detect primary agent ([AGENT-CANONICAL]) and determine canonical file ([AGENT-PLACEMENT])
 6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, add Claude-specific skill links to CLAUDE.md.
 7. Create all pointer files from [AGENT-POINTERS], substituting `{{CANONICAL_FILE}}` with the detected canonical file
-8. Create all skills from §11 templates — **see §17.2 Template Customization Rule**
-9. Stamp every created file with the `agent-pmo:<hash>` marker per §16
-10. Ensure `_coverage_check` Makefile target reads `coverage-thresholds.json` and is wired into `make test` (§3 [TEST-FAIL-FAST])
-11. Create `coverage-thresholds.json` at the repo root with `default_threshold` set per the §3.1 repo-type table (§3.3 [COVERAGE-THRESHOLDS-JSON])
-12. Verify `make test` runs the test runner with its fail-fast flag (§3 [TEST-FAIL-FAST] table)
+8. Create all skills from [SKILL] templates — **see [MODES-CUSTOMIZE] Template Customization Rule**
+9. Stamp every created file with the `agent-pmo:<hash>` marker per [MARKER]
+10. Ensure `_coverage_check` Makefile target reads `coverage-thresholds.json` and is wired into `make test` ([TEST-RULES])
+11. Create `coverage-thresholds.json` at the repo root with `default_threshold` set per the [COVERAGE-THRESHOLDS] repo-type table ([COVERAGE-THRESHOLDS-JSON])
+12. Verify `make test` runs the test runner with its fail-fast flag ([TEST-RULES] table)
 
 ### REMEDIATE mode (existing repo)
 
-1. Run the checklist from §15 against the repo
+1. Run the checklist from [CHECKLIST] against the repo
 2. For each MISSING item: add it (using templates from [`templates/`](templates/))
 3. For each WRONG item:
    - CI job names wrong → rename to `lint`, `test`, `build`
-   - Makefile target names wrong → rename. Then **DELETE every banned target** (§1.1 [MAKE-BANNED]): `fmt-check`, `check`, `coverage`, `coverage-check`, `test-fast`, `test-no-coverage`, `test-unit`, `test-integration`, etc. Move any logic they contain into the right home (`fmt-check` → into `_lint`; `coverage-check` → into `_test`; `check` → just delete, `make ci` covers it). Update `.PHONY`. Update CI YAML and any scripts/docs that called the old targets.
-   - `make test` not fail-fast → add the test runner's fail-fast flag (§3 [TEST-FAIL-FAST])
+   - Makefile has extra public targets beyond the 7 in [MAKE-TARGETS] → merge useful logic into the correct standard target, then delete the extra. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts. Update `.PHONY`, CI YAML, and any scripts/docs that referenced deleted targets.
+   - `make test` not fail-fast → add the test runner's fail-fast flag ([TEST-RULES])
    - `make test` not enforcing coverage → call `_coverage_check` from inside the `_test` recipe so `make test` exits non-zero below threshold
    - `make lint` not running format check first → make the formatter `--check` invocation the FIRST line of `_lint`
-   - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage (§3.3 [COVERAGE-THRESHOLDS-JSON])
+   - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage ([COVERAGE-THRESHOLDS-JSON])
    - `.gitignore` missing tool dirs → append standard tool patterns
    - Canonical instruction file missing sections → append missing sections (detect primary agent per [AGENT-CANONICAL] first)
    - Default branch is `master` → note for human action (cannot change remotely)
 4. Report what was changed vs what needs human action
 5. When two configs serve the same purpose, **merge them into the normative file and delete the old one** (e.g., merge `.eslintrc.js` into `eslint.config.mjs`, then delete `.eslintrc.js`). Merging and renaming to the standard name is expected — do not leave duplicates.
 
-### 17.2 Template Customization Rule (CRITICAL)
+### [MODES-CUSTOMIZE] Template Customization Rule (CRITICAL)
 
 **Templates are STARTING POINTS, not copy-paste targets.** Every template that contains language-specific examples, multi-language listings, or placeholder content MUST be tailored to the target repo before writing it. The repo must be **ready to go immediately** — no irrelevant languages, no generic examples, no placeholder text left behind.
 
@@ -1027,8 +1015,8 @@ What this means in practice:
 | `{{CANONICAL_FILE}}` | `CLAUDE.md` or `AGENTS.md` (determined by [AGENT-PLACEMENT] agent detection) |
 
 Note: coverage thresholds are NOT substituted into templates. They live in
-`coverage-thresholds.json` (§3.3 [COVERAGE-THRESHOLDS-JSON]). The skill creates that file once,
-populated from §3.1 defaults, and never bakes a number into a Makefile, CI workflow, or any
+`coverage-thresholds.json` ([COVERAGE-THRESHOLDS-JSON]). The skill creates that file once,
+populated from [COVERAGE-THRESHOLDS] defaults, and never bakes a number into a Makefile, CI workflow, or any
 other file.
 
 ---
@@ -1084,7 +1072,7 @@ templates/
 ├── Makefile
 ├── opencode.json
 ├── coverage-calc/
-│   ├── coverage-thresholds.json   # Single source of truth for thresholds (§3.3)
+│   ├── coverage-thresholds.json   # Single source of truth for thresholds ([COVERAGE-THRESHOLDS-JSON])
 │   ├── coverlet.runsettings
 │   └── jest.coverage.config.js
 ├── devcontainer/

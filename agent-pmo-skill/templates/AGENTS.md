@@ -40,8 +40,8 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 - **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
 - **Functions < 20 lines. Files < 500 lines.** Refactor when over.
 - **Never delete or skip tests. Never remove assertions.** 100% coverage is the goal.
-- **`make test` is FAIL-FAST.** Stops at first failing test. Never `--no-fail-fast`. Saves CI minutes; stops agents idling on doomed runs. See REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST].
-- **`make test` ALWAYS computes coverage AND enforces it.** Threshold lives in `coverage-thresholds.json` at the repo root — NOT env vars, NOT gh repo variables, NOT CI YAML. Below threshold = pipeline fails. Ratchet only. See §3.3 [COVERAGE-THRESHOLDS-JSON].
+- **`make test` is FAIL-FAST.** Stops at first failing test. Never `--no-fail-fast`. Saves CI minutes; stops agents idling on doomed runs. See REPO-STANDARDS-SPEC [TEST-RULES].
+- **`make test` ALWAYS computes coverage AND enforces it.** Threshold lives in `coverage-thresholds.json` at the repo root — NOT env vars, NOT gh repo variables, NOT CI YAML. Below threshold = pipeline fails. Ratchet only. See [COVERAGE-THRESHOLDS-JSON].
 - **Prefer E2E/integration tests.** Unit tests only for isolating problems.
 - **Heavy structured logging everywhere.** See Logging below.
 - **No linter suppressions.** Fix the code.
@@ -93,7 +93,7 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 **Mandatory C# packages** (in `Directory.Build.props`): `Microsoft.CodeAnalysis.NetAnalyzers` (analyzers as errors), [Outcome](https://www.nuget.org/packages/Outcome) (Result<T,E>), `Exhaustion` (exhaustive pattern-matching analyzer that ships with Outcome).
 
 ### Python
-- **Basilisk is the PRIMARY linter AND type checker.** Non-negotiable. Configure `[tool.basilisk]` in `pyproject.toml` and run it FIRST in `make lint` — see [Basilisk docs](https://basilisk-python.dev/docs/configuration/) and REPO-STANDARDS-SPEC §4.6 [LINT-PYTHON-BASILISK].
+- **Basilisk is the PRIMARY linter AND type checker.** Non-negotiable. Configure `[tool.basilisk]` in `pyproject.toml` and run it FIRST in `make lint` — see [Basilisk docs](https://basilisk-python.dev/docs/configuration/) and REPO-STANDARDS-SPEC [LINT-PYTHON-BASILISK].
 - Secondary layer: `[tool.ruff]` (lint + auto-format) and `[tool.pyright]` (type-check safety net).
 - No `Any` in annotations. Annotate every parameter and return. No bare `except:`. No global mutable state. Use `Result[T,E]` — never raise.
 
@@ -127,13 +127,7 @@ make ci      # lint + test + build (full CI simulation)
 make setup   # post-create dev environment setup
 ```
 
-**There are exactly 7 targets. No others. Specifically banned:**
-- ❌ `make fmt-check` — `make lint` does this. Format diffs are lint failures.
-- ❌ `make check` — does not exist.
-- ❌ `make coverage` / `make coverage-check` — `make test` already produces AND enforces coverage.
-- ❌ `make test-fast`, `make test-no-coverage`, `make test-unit`, etc. — `make test` is the only test entry point.
-
-**`make test`** runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
+**There are exactly 7 targets. No others.** `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
 
 **`make lint`** runs every linter AND every formatter in `--check` mode in one pass. Any formatting diff is a lint failure that blocks CI.
 

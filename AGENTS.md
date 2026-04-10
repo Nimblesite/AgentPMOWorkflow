@@ -30,7 +30,7 @@ This is NOT an application codebase. Most work here is editing docs, specs, temp
 - **Do not modify tests.** Fix the code until tests pass.
 - **Run tests after changes.** `make test` — keep fixing until green.
 - **Docs are the source of truth.** Specs define behavior. Plans define how to achieve goals. All plan docs must have a TODO checklist.
-- **Templates are starting points, not copy-paste targets.** See `docs/specs/REPO-STANDARDS-SPEC.md` §16.2 for the customization rule.
+- **Templates are starting points, not copy-paste targets.** See `docs/specs/REPO-STANDARDS-SPEC.md` [MODES-CUSTOMIZE] for the customization rule.
 
 ## Portfolio-Wide Coding Standards
 
@@ -79,7 +79,7 @@ Open standard: https://agents.md — agent-specific docs below.
 
 ## Build Commands
 
-This repo follows the standard 7-target Makefile interface (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):
+This repo follows the standard 7-target Makefile interface (REPO-STANDARDS-SPEC [MAKE-TARGETS]):
 
 ```bash
 make build   # generate the HTML dashboard report
@@ -102,7 +102,7 @@ make uninstall-skill-claude # remove the agent-pmo skill
 make help                   # list all available targets
 ```
 
-**Banned targets** — must not exist (§1.1 [MAKE-BANNED]): `fmt-check`, `check`, `coverage`, `coverage-check`, `test-fast`, `test-no-coverage`, `test-fsharp`, `test-e2e`, `test-mock`, `test-local`, etc. The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes called from `_test`. To debug a single test, invoke `dotnet fsi dashboard/test-report.fsx` or `cd dashboard && npx playwright test ...` directly — those are not Make targets.
+Only the 7 standard targets above plus repo-specific helpers exist. The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes called from `_test`. To debug a single test, invoke `dotnet fsi dashboard/test-report.fsx` or `cd dashboard && npx playwright test ...` directly — those are not Make targets.
 
 ## PMO Dashboard (`dashboard/`)
 

@@ -72,7 +72,7 @@ The hierarchy depth varies by repo: two words for simple repos (`[AUTH-LOGIN]`),
 
 Examples of valid spec IDs (note how groups cluster):
 - `[AUTH-LOGIN]`, `[AUTH-TOKEN-VERIFY]`, `[AUTH-TOKEN-REFRESH]` — all in the AUTH group
-- `[CI-TIMEOUT]`, `[CI-LINT]`, `[CI-COVERAGE]` — all in the CI group
+- `[CI-TIMEOUT]`, `[CI-LINT]`, `[CI-RELEASE]` — all in the CI group
 - `[LINT-ESLINT]`, `[LINT-RUFF]` — all in the LINT group
 - `[FEAT-DARK-MODE]`, `[FEAT-SEARCH-FILTER]` — all in the FEAT group
 

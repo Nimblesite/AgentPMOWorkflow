@@ -16,7 +16,7 @@ Before touching ANY code, verify these conditions. If any fail, stop and report 
 3. Verify the project uses **static typing**. Check for:
    - Rust, Go, C#, F#, Dart, Java, Kotlin: typed by default — proceed
    - TypeScript: `tsconfig.json` must have `"strict": true` — proceed
-   - Python: must have **Basilisk** configured as the primary type checker in `pyproject.toml [tool.basilisk]` (per REPO-STANDARDS-SPEC §4.6 [LINT-PYTHON-BASILISK]). pyright is acceptable as a secondary check but Basilisk is the primary requirement.
+   - Python: must have **Basilisk** configured as the primary type checker in `pyproject.toml [tool.basilisk]` (per REPO-STANDARDS-SPEC [LINT-PYTHON-BASILISK]). pyright is acceptable as a secondary check but Basilisk is the primary requirement.
    - **Untyped JavaScript or untyped Python: STOP. Refuse to dedup.** Print: "This codebase has no static type checking. Deduplication without types is reckless — too high a risk of silent breakage. Add type checking first."
 
 ## Steps
@@ -37,7 +37,7 @@ Dedup Progress:
 
 Before deciding what to touch, understand what is tested.
 
-1. Run `make test` to confirm green baseline. `make test` is fail-fast AND enforces the coverage threshold from `coverage-thresholds.json` (REPO-STANDARDS-SPEC §3 [TEST-FAIL-FAST], [COVERAGE-THRESHOLDS-JSON]). It exits non-zero on any test failure OR coverage shortfall.
+1. Run `make test` to confirm green baseline. `make test` is fail-fast AND enforces the coverage threshold from `coverage-thresholds.json` (REPO-STANDARDS-SPEC [TEST-RULES], [COVERAGE-THRESHOLDS-JSON]). It exits non-zero on any test failure OR coverage shortfall.
 2. Note the current coverage percentage — this is the floor. It must not drop.
 3. Identify which files/modules have coverage and which do not. Only files WITH coverage are candidates for dedup.
 
@@ -104,7 +104,7 @@ For each change, follow this cycle: **change → test → verify coverage → co
 2. Run `make test` — tests must pass AND coverage must remain ≥ the baseline from Step 1
 3. Report: what was removed, what was merged, final coverage vs baseline
 
-(Do NOT run `make fmt-check`, `make coverage-check`, or `make check` — those targets are banned by REPO-STANDARDS-SPEC §1.1 [MAKE-BANNED]. Their checks are folded into `make lint` and `make test`.)
+(Only the 7 standard targets exist — `make lint` and `make test` cover formatting and coverage checks respectively.)
 
 ## Rules
 
