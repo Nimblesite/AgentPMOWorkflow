@@ -295,6 +295,16 @@ If the target repo has a `.vscode/` directory or `.vscode/settings.json`, colori
    - `titleBar.inactiveForeground` — same as active foreground but with ~80% opacity (append `cc` to the hex)
 4. If no brand colors can be found anywhere in the repo, **skip this step** and note it in the report. Do NOT invent colors.
 
+#### 3j. VS Code recommended extensions
+
+Merge recommended extensions into `.vscode/extensions.json`. Templates at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/vscode/`:
+
+- Always include `universal.extensions.json` (`nimblesite.commandtree`, `nimblesite.too-many-cooks`).
+- If the repo has a web API (REST, GraphQL, or any HTTP server), also include `webapi.extensions.json` (`nimblesite.napper`).
+- If `.vscode/extensions.json` already exists, **merge** — add missing recommendations, keep existing entries.
+- De-duplicate the final `recommendations` array.
+- If no `.vscode/` directory exists, create it with the file.
+
 ### Step 4 — Deduplication check (CRITICAL)
 
 After all changes, run this checklist to catch any bloat introduced:
