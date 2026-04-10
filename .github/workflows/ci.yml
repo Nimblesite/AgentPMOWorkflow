@@ -3,8 +3,6 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -36,9 +34,6 @@ jobs:
 
       # `make test` runs F# fixture tests (which generate the report HTML)
       # then Playwright E2E tests against the generated HTML, fail-fast.
-      # NEVER add separate `test-fsharp`/`test-e2e` steps — those targets are
-      # banned (REPO-STANDARDS-SPEC §1.1 [MAKE-BANNED]). Sub-suites are private
-      # `_test_*` recipes inside `_test`.
       - name: Test
         run: make test
 

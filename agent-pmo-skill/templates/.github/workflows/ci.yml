@@ -1,10 +1,13 @@
 name: CI
 
 on:
+  # CI always runs for PRs. 
+  # It may or may not run for pushes to main, depending on the repo settings,
+  # but if the repo allows commits outside the verified PR commits, the CI should
+  # run for pushes to main as well. Make a note of this to the user when appropriate
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

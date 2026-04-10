@@ -29,8 +29,6 @@ endif
 # PRIMARY TARGETS — exactly 7 (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):
 #   build, test, lint, fmt, clean, ci, setup
 #
-# Banned (do not add): fmt-check, check, coverage, coverage-check,
-#                      test-fast, test-no-coverage, test-fsharp, test-e2e, etc.
 # Internal helpers (private, underscore-prefixed) chain inside the public targets.
 # =============================================================================
 
@@ -172,5 +170,3 @@ help:
 	@echo "  website-run            - Serve the website locally with 11ty"
 	@echo "  install-skill-claude   - Install agent-pmo skill for Claude Code"
 	@echo "  uninstall-skill-claude - Remove the agent-pmo skill"
-	@echo ""
-	@echo "Banned (do not add): fmt-check, check, coverage, coverage-check, test-fast, test-fsharp, test-e2e"
