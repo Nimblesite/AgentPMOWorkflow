@@ -33,17 +33,6 @@ endif
 # =============================================================================
 COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 
-# =============================================================================
-# PRIMARY TARGETS — these 7 are the ENTIRE public interface. Do not add others.
-#
-# BANNED — never add these targets back:
-#   - fmt-check       → `make lint` runs the formatter in --check mode
-#   - check           → does not exist; use `make ci` or `make lint && make test`
-#   - coverage        → `make test` already produces coverage
-#   - coverage-check  → `make test` already enforces the threshold
-#   - test-fast / test-no-coverage / test-unit → `make test` is the ONLY test target
-# =============================================================================
-
 ## build: Compile/assemble all artifacts
 build:
 	@echo "==> Building..."
@@ -57,15 +46,15 @@ test:
 	@echo "==> Testing (fail-fast + coverage + threshold)..."
 	$(MAKE) _test
 
-## lint: Run all linters AND check formatting in one pass.
-##       Format diffs are lint failures. There is no separate `fmt-check` target.
+## lint: Run all linters/analyzers (read-only). Does NOT format.
 lint:
-	@echo "==> Linting (includes format check)..."
+	@echo "==> Linting..."
 	$(MAKE) _lint
 
-## fmt: Format all code in-place
+## fmt: Format all code in-place. Pass CHECK=1 for read-only check (CI use).
+##      e.g. `make fmt CHECK=1`
 fmt:
-	@echo "==> Formatting..."
+	@echo "==> Formatting$(if $(CHECK), (check mode),)..."
 	$(MAKE) _fmt
 
 ## clean: Remove all build artifacts
@@ -90,8 +79,8 @@ setup:
 #   _coverage_check
 #
 # Rules for the language sections:
-#   - `_lint` MUST run the formatter in --check mode FIRST, then run linters.
-#     Format diffs are lint failures. No separate `_fmt_check`.
+#   - `_lint` runs linters/analyzers only — NO formatting, NO format checks.
+#   - `_fmt` formats in-place. When CHECK=1 is set, run in read-only check mode instead.
 #   - `_test` MUST use the test runner's fail-fast flag AND call `_coverage_check`
 #     after the runner exits. There is no separate `coverage` or `coverage-check`
 #     public target.
@@ -361,10 +350,11 @@ help:
 	@echo "Targets:"
 	@echo "  build  - Compile/assemble all artifacts"
 	@echo "  test   - FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point)"
-	@echo "  lint   - All linters AND format check (any diff = failure)"
-	@echo "  fmt    - Format all code in-place"
+	@echo "  lint   - All linters/analyzers (read-only, no formatting)"
+	@echo "  fmt    - Format all code in-place (CHECK=1 for read-only CI check)"
 	@echo "  clean  - Remove build artifacts"
 	@echo "  ci     - lint + test + build (full CI simulation)"
 	@echo "  setup  - Post-create dev environment setup"
 	@echo ""
 	@echo "Banned (do not add): fmt-check, check, coverage, coverage-check, test-fast, test-no-coverage"
+	@echo "  (Use 'make fmt CHECK=1' instead of a separate fmt-check target)"

@@ -167,7 +167,7 @@ Any public target not in this list is superfluous. For each extra target:
 **Other Makefile rules:**
 - Merge required targets into existing `Makefile`, or create one if none exists.
 - **Cross-platform ([MAKE-CROSS-PLATFORM]):** Ensure the Makefile has the OS detection block at the top (`ifeq ($(OS),Windows_NT)` ... `endif`) and uses `$(RM)`/`$(MKDIR)` instead of `rm -rf`/`mkdir -p`. Platform-specific targets (symlinks, scheduled tasks, etc.) must have both Unix and Windows variants.
-- `_lint` MUST run the formatter in `--check` mode FIRST. Format diffs are lint failures.
+- `_lint` runs linters/analyzers only. `_fmt` handles formatting. They do not overlap.
 - `_test` MUST use the test runner's fail-fast flag AND call `_coverage_check` as its last line.
 - Uncomment language-specific implementation recipes for each detected language.
 - For multi-language repos, chain implementations as described in the spec.
@@ -177,7 +177,7 @@ Any public target not in this list is superfluous. For each extra target:
 - Update/rename the identified existing workflow (from Step 2b), or create `ci.yml` only if no equivalent exists.
 - Same for `release.yml` and `deploy-pages.yml`.
 - Uncomment the language setup sections that apply.
-- **Default to a single `ci` job with sequential steps**: `make lint → make test → make build`. `make lint` runs the formatter in `--check` mode first AND every linter. `make test` is fail-fast AND enforces coverage thresholds inline ([TEST-RULES], [COVERAGE-THRESHOLDS-JSON]). Only the 7 targets in [MAKE-TARGETS] exist — no extra steps. Only split into separate parallel jobs when individual tasks are expensive enough (e.g., 5+ minutes each) that the runner overhead is justified.
+- **Default to a single `ci` job with sequential steps**: `make lint → make test → make build`. Each target is independent — lint analyzes, test runs tests with coverage, build compiles. Only the 7 targets in [MAKE-TARGETS] exist. Only split into separate parallel jobs when individual tasks are 5+ minutes each.
 - **CRITICAL: Every job in every workflow MUST have `timeout-minutes: 10`** unless there is a documented reason it genuinely needs longer. If a job needs longer than 10 minutes, keep `timeout-minutes` at the required value and add a comment directly above it explaining WHY it must exceed 10 minutes. Example:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
@@ -217,20 +217,21 @@ Apply the exact linter configuration from the spec for each detected language. *
 - F#: Analyzer configuration via project files
 
 #### 3f. Formatting
-**Formatting lives inside `make lint`.** There is no separate `make fmt-check` — only the 7 targets in [MAKE-TARGETS]. The `_lint` recipe MUST run the formatter in `--check` mode FIRST, before any other linter. Any formatting diff is a lint failure that blocks CI.
+`make fmt`, `make lint`, and `make test` are three separate, non-overlapping targets:
+- **`make fmt`** — format code in-place.
+- **`make lint`** — run linters/analyzers (read-only). Does NOT format.
+- **`make test`** — run tests fail-fast with coverage and threshold enforcement.
 
-The `make fmt` target formats all code in-place. There is no separate check-only public target.
-
-Formatter per language (used by `_fmt` to write, and by the FIRST line of `_lint` to check):
+Formatter per language (`_fmt` only):
 - **C#:** CSharpier — `dotnet csharpier .` / `dotnet csharpier --check .`
 - **F#:** Fantomas — `dotnet fantomas .` / `dotnet fantomas --check .`
 - **Rust:** `cargo fmt --all` / `cargo fmt --all --check`
-- **Python:** ruff format — `ruff format .` / `ruff format --check .`. Then Basilisk runs as the PRIMARY linter + type checker ([LINT-PYTHON-BASILISK] — non-negotiable), then ruff lint, then pyright as the secondary type-check safety net.
+- **Python:** `_fmt`: `ruff format .`. `_lint`: Basilisk (primary linter + type checker, [LINT-PYTHON-BASILISK]) → ruff lint → pyright.
 - **TypeScript/JavaScript:** Prettier — `npx prettier --write .` / `npx prettier --check .`
 - **Dart/Flutter:** `dart format .` / `dart format --set-exit-if-changed .`
 - **Go:** `gofmt -w .` / `gofmt -l . | grep . && exit 1 || true`
 
-For multi-language repos, `_fmt` chains all applicable formatters and `_lint` chains all `--check` invocations FIRST, then all linters. A single `make lint` validates formatting + lints every language in the repo and **tanks hard on failure** — no warnings, no soft fails.
+For multi-language repos, `_fmt` chains all formatters and `_lint` chains all linters/analyzers. They do not overlap. No warnings, no soft fails.
 
 #### 3g. GitHub repository settings
 Apply the standard GitHub repo settings defined in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. This applies to **both new and existing repos**.
@@ -319,7 +320,7 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 ### Step 5 — Verify (but do NOT commit)
 
 1. List all files created, modified, renamed, or deleted (including any extra Makefile targets merged/removed).
-2. If possible, run `make lint` and `make test` to validate the setup works. `make lint` runs the formatter check first; `make test` is fail-fast and enforces coverage. Do NOT run `make fmt-check`, `make check`, `make coverage`, or `make coverage-check` — those targets MUST NOT exist after this skill runs. Report any errors so the user can address them.
+2. If possible, run `make lint` and `make test` to validate the setup works. Report any errors so the user can address them.
 3. **LICENSE CHECK — if no license file was found in Step 2h, emit a BIG, IMPOSSIBLE-TO-MISS warning at the top of the final report.** Use heavy visual emphasis (banner of `=` or `!` characters, uppercase heading, bold). Example:
 
    ```
@@ -355,7 +356,7 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **NEVER copy templates verbatim.** Templates are starting points. Strip all language/tool references that don't apply to the target repo. Fill all placeholders. The output must be immediately usable with zero irrelevant content.
 - **All GH Actions jobs get `timeout-minutes: 10`** by default. Only deviate with an explicit comment justifying the exception.
 - **EXACTLY 7 Makefile targets, NO MORE ([MAKE-TARGETS]):** `build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`. Any extras → merge useful logic into the correct standard target, delete the extra, update callers. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts.
-- **CI MUST check formatting and fail hard on violations.** Format checking lives inside `make lint` (the FIRST thing it does). No separate `make fmt-check` — only the 7 targets in [MAKE-TARGETS].
+- **`make fmt`, `make lint`, `make test` are separate, non-overlapping targets.** Do not conflate them.
 - **Basilisk is the PRIMARY linter AND PRIMARY type checker for every Python project — non-negotiable.** Always configure Basilisk in `pyproject.toml [tool.basilisk]` first and wire it into `make lint` BEFORE ruff/pyright. Then layer on ruff format as the auto-formatter and pyright as a secondary type-check safety net. See [LINT-PYTHON-BASILISK].
 - **MERGE, don't clobber.** When an existing file partially meets the spec, update it in place. When an equivalent exists under a wrong name, rename it. Only create from scratch when nothing equivalent exists.
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.

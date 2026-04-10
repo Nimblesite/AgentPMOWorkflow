@@ -116,7 +116,7 @@ Every repo's Makefile exposes EXACTLY these 7 public targets. No more, no fewer.
 |--------|-------------|
 | `make build` | Compile/assemble all artifacts |
 | `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See [TEST-RULES]. |
-| `make lint` | Run all linters AND check formatting in one pass. Format diffs are lint failures. |
+| `make lint` | Run all linters/analyzers (read-only). Does NOT format — that's `make fmt`. |
 | `make fmt` | Format all code in-place |
 | `make clean` | Delete all build artifacts |
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
@@ -147,7 +147,7 @@ Any public target not in this list is superfluous. The agent-pmo marker system (
 All `ci.yml` files MUST use these exact job names:
 
 ```
-lint      — runs all linters/format checks
+lint      — runs all linters/analyzers (no formatting)
 test      — runs all tests + coverage collection
 build     — compiles artifacts (depends on test)
 ```
@@ -405,11 +405,17 @@ F# analyzer rules are configured via project files.
 
 ## [FMT] Formatting Standards
 
-**Format checking lives inside `make lint`.** There is no separate `make fmt-check` — only the 7 targets in [MAKE-TARGETS] exist. The `_lint` recipe MUST run the formatter in `--check` mode FIRST, before invoking any other linter. Any formatting diff is a lint failure that blocks CI.
+`make fmt`, `make lint`, and `make test` are three separate, non-overlapping targets:
+
+- **`make fmt`** — format code in-place. Nothing else.
+- **`make lint`** — run all linters/analyzers (read-only). Does NOT format or verify formatting.
+- **`make test`** — run tests fail-fast with coverage and threshold enforcement.
+
+Do not mix their responsibilities.
 
 ### [FMT-TOOLS] Formatting Tools by Language
 
-| Language | Formatter | Format command (used by `_fmt`) | Check command (used FIRST in `_lint`) |
+| Language | Formatter | `_fmt` (format in-place) | `_fmt` check mode (CI verification) |
 |----------|-----------|---------------|---------------|
 | C# | CSharpier | `dotnet csharpier .` | `dotnet csharpier --check .` |
 | F# | Fantomas | `dotnet fantomas .` | `dotnet fantomas --check .` |
@@ -421,11 +427,11 @@ F# analyzer rules are configured via project files.
 
 ### [FMT-PYTHON] Python formatting note
 
-ruff format is the auto-formatter. **Basilisk** runs as the PRIMARY linter + type checker after the format check (see [LINT-PYTHON-BASILISK]). Order in `_lint`: format check → Basilisk → ruff lint → pyright.
+ruff format is the formatter (`make fmt`). `make lint` runs: Basilisk (primary linter + type checker, see [LINT-PYTHON-BASILISK]) → ruff lint → pyright.
 
 ### [FMT-MULTI] Multi-language repos
 
-For repos with multiple languages, the Makefile `_fmt` recipe chains all applicable formatters and the `_lint` recipe chains all `--check` invocations FIRST, then all linters. A single `make lint` validates formatting + lints every language in the repo.
+For multi-language repos, `_fmt` chains all formatters and `_lint` chains all linters/analyzers. They do not overlap.
 
 ---
 
@@ -800,7 +806,7 @@ STRUCTURE
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
 [ ] Makefile has EXACTLY these 7 public targets: build, test, lint, fmt, clean, ci, setup ([MAKE-TARGETS])
 [ ] Makefile has ONLY the 7 required targets — no extras ([MARKER-CLEANUP] for orphans)
-[ ] Makefile `_lint` recipe runs the formatter in `--check` mode FIRST (format diff = lint failure)
+[ ] Makefile `_lint` runs linters/analyzers only (no formatting)
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
@@ -823,7 +829,7 @@ LOGGING ([LOG])
 CI
 [ ] ci.yml has a single `ci` job with sequential steps: `make lint` → `make test` → `make build`
 [ ] ci.yml has concurrency cancel-in-progress
-[ ] ci.yml: `make lint` is the ONLY format/lint invocation. It runs the formatter in `--check` mode FIRST.
+[ ] ci.yml: `make lint` runs linters/analyzers only
 [ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`.
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
@@ -961,7 +967,7 @@ A skill built from this spec operates in two modes:
    - Makefile has extra public targets beyond the 7 in [MAKE-TARGETS] → merge useful logic into the correct standard target, then delete the extra. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts. Update `.PHONY`, CI YAML, and any scripts/docs that referenced deleted targets.
    - `make test` not fail-fast → add the test runner's fail-fast flag ([TEST-RULES])
    - `make test` not enforcing coverage → call `_coverage_check` from inside the `_test` recipe so `make test` exits non-zero below threshold
-   - `make lint` not running format check first → make the formatter `--check` invocation the FIRST line of `_lint`
+   - `make lint` doing formatting work → remove; formatting belongs in `make fmt`
    - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage ([COVERAGE-THRESHOLDS-JSON])
    - `.gitignore` missing tool dirs → append standard tool patterns
    - Canonical instruction file missing sections → append missing sections (detect primary agent per [AGENT-CANONICAL] first)

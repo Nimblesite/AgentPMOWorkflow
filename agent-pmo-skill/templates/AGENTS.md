@@ -120,7 +120,7 @@ Cross-platform GNU Make. On Windows: `choco install make` or use the one in Git 
 ```bash
 make build   # compile everything
 make test    # FAIL-FAST tests + coverage + threshold (ONLY test entry point)
-make lint    # all linters AND format check (any diff = failure)
+make lint    # all linters/analyzers (no formatting)
 make fmt     # format in place
 make clean   # remove build artifacts
 make ci      # lint + test + build (full CI simulation)
@@ -129,7 +129,7 @@ make setup   # post-create dev environment setup
 
 **There are exactly 7 targets. No others.** `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
 
-**`make lint`** runs every linter AND every formatter in `--check` mode in one pass. Any formatting diff is a lint failure that blocks CI.
+**`make fmt`** formats code in-place. **`make lint`** runs linters/analyzers (read-only, no formatting). **`make test`** runs tests with coverage. Three separate targets — no overlap.
 
 ## Repo Structure
 
