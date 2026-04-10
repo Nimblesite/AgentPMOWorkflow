@@ -8,14 +8,14 @@
 
 ## Project Overview
 
-Agent PMO Workflow — a system for running 20+ AI agents across multiple projects simultaneously. See `AGENT-PMO-WORKFLOW.md` for the full vision. Two components:
+Agent PMO Workflow — a system for running 20+ AI agents across multiple projects simultaneously. See `README.md` for the full vision. Two components:
 
 1. **PMO Dashboard** (`dashboard/`) — F# script that scans repos under `~/Documents/Code/` and generates an HTML status dashboard
 2. **Repo Standards Enforcement** (`agent-pmo-skill/`) — portfolio-wide templates, linter configs, CI workflows, and a skill to apply consistent standards to any repo
 
 ## What This Repo Contains
 
-- **Docs and specs** — markdown files defining the system (`AGENT-PMO-WORKFLOW.md`, `docs/specs/REPO-STANDARDS-SPEC.md`)
+- **Docs and specs** — markdown files defining the system (`README.md`, `docs/specs/REPO-STANDARDS-SPEC.md`)
 - **One F# script** — `dashboard/repo-report.fsx` generates the HTML dashboard
 - **Playwright E2E tests** — `dashboard/tests/repo-report.spec.js` tests the generated HTML
 - **F# tests** — `dashboard/test-report.fsx` unit tests + integration test (generates report from mock repos)
@@ -56,6 +56,8 @@ If the TMC server is available:
 These are the authoritative docs for configuring AI coding agents. When working on templates or the agent-pmo skill, you MUST consult the docs relevant to the target agent.
 
 ### Agent Instruction File Docs
+
+Open standard: https://agents.md — agent-specific docs below.
 
 | Agent | Instruction file docs |
 |---|---|
@@ -169,7 +171,6 @@ AgentPMOWorkflow/
 │   └── specs/
 │       └── REPO-STANDARDS-SPEC.md # Authoritative standards spec
 ├── .env.example
-├── AGENT-PMO-WORKFLOW.md          # Vision doc
 ├── AGENTS.md                      # THIS FILE
 ├── CLAUDE.md                      # Pointer to AGENTS.md
 ├── Dockerfile.dev                 # Dev environment container

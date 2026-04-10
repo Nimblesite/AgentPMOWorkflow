@@ -555,9 +555,11 @@ Dev environment setup is handled by `make setup` (defined in the Makefile). All 
 
 The rules content (hard rules, logging standards, testing, build commands, architecture) is **agent-neutral**. The file it lives in depends on which AI coding agent the target repo primarily uses.
 
-### 10.0 Critical Reference Documentation
+### 10.0 Critical Reference Documentation [AGENT-DOCS]
 
 Before manipulating ANY agent instruction or skill files, the skill MUST read the official documentation for the target agent. Each agent has its own syntax, file locations, and conventions. **Do not guess — read the docs first.**
+
+The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **one file is canonical (holds all rules); every other agent file is a minimal pointer to it.** The skill MUST identify which file is already canonical before touching anything, and MUST NOT modify the canonical file.
 
 #### Agent Instruction File Docs
 
@@ -593,56 +595,48 @@ Before manipulating ANY agent instruction or skill files, the skill MUST read th
 
 **File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language. This is the authoritative template for project instructions regardless of which agent consumes them.
 
-### 10.2 Agent Detection
+### 10.2 Canonical File Identification (Do This First) [AGENT-CANONICAL]
 
-Before placing files, the skill MUST detect which AI coding agent the target repo primarily uses. Check these signals in priority order:
+**Before placing or modifying any file, identify the canonical file.**
 
-| Priority | Signal | Indicates |
-|----------|--------|-----------|
-| 1 | `.claude/settings.json` or `.claude/settings.local.json` exists | Claude Code |
-| 2 | `.claude/skills/` has custom skills (not just template skills) | Claude Code |
-| 3 | `.cursor/` directory exists | Cursor |
-| 4 | `.cline/` or `.clinerules/` with custom rules (not just a pointer) | Cline / Roo |
-| 5 | `.windsurf/` directory exists | Windsurf |
-| 6 | `.github/copilot-instructions.md` with substantial content (not just a pointer) | GitHub Copilot |
-| 7 | `CLAUDE.md` exists with substantial content (not just a pointer) | Claude Code |
-| 8 | `AGENTS.md` exists with substantial content | Agent-neutral (keep as-is) |
-| 9 | None of the above | Default → AGENTS.md |
+| Priority | Condition | Canonical file |
+|----------|-----------|----------------|
+| 1 | `AGENTS.md` exists with substantial content (>10 lines, not a pointer) | `AGENTS.md` |
+| 2 | `CLAUDE.md` exists with substantial content (>10 lines, not a pointer) | `CLAUDE.md` |
+| 3 | Neither exists | Create per [AGENT-PLACEMENT] |
 
-"Substantial content" = more than 10 lines AND not just a redirect/pointer to another file.
+**If a canonical file exists, merge into it — never replace it.** Read it, identify gaps against the standard, and merge missing content in. Preserve the file's existing structure and repo-specific context. Tighten: cut redundant prose and bloat while adding what's missing. The file should get better and leaner, not longer. All other agent files (pointer files) are created or updated to point at the canonical file.
 
-### 10.3 File Placement Rules
+### 10.3 File Placement Rules [AGENT-PLACEMENT]
 
-Based on detection, the skill places the full rules content in the **canonical file** and makes all other agent files into pointers.
+When creating from scratch (no canonical file found in [AGENT-CANONICAL]), determine the canonical file by the primary agent:
 
-| Primary Agent | Canonical file (full content) | All other agent files |
+| Primary Agent | Canonical file | All other agent files |
 |---|---|---|
-| Claude Code | `CLAUDE.md` (AGENTS.md content + Claude addendum) | Pointer → `CLAUDE.md` |
+| Claude Code | `CLAUDE.md` (template content + Claude-specific skill links) | Pointer → `CLAUDE.md` |
 | Cursor | `AGENTS.md` | Pointer → `AGENTS.md` |
 | Cline / Roo | `AGENTS.md` | Pointer → `AGENTS.md` |
 | Windsurf | `AGENTS.md` | Pointer → `AGENTS.md` |
 | GitHub Copilot | `AGENTS.md` | Pointer → `AGENTS.md` |
 | No agent / Unknown | `AGENTS.md` | Pointer → `AGENTS.md` |
 
-When Claude IS the primary agent:
-- `CLAUDE.md` gets the full AGENTS.md template content plus Claude-specific skill links at the bottom
-- `AGENTS.md` becomes a pointer to `CLAUDE.md`
+When `CLAUDE.md` is canonical (whether pre-existing or newly created):
+- `AGENTS.md` is a pointer to `CLAUDE.md`
 - All other agent files point to `CLAUDE.md`
 
-When Claude is NOT the primary agent:
-- `AGENTS.md` gets the full template content (no Claude addendum)
-- `CLAUDE.md` imports `AGENTS.md` using the official `@AGENTS.md` syntax (per Claude Code docs) plus any Claude-specific addendum
+When `AGENTS.md` is canonical:
+- `CLAUDE.md` uses `@AGENTS.md` import syntax (official Claude Code import) plus any Claude-specific addendum
 - All other agent files point to `AGENTS.md`
-- Claude-specific files (`.claude/skills/`) are still placed if Claude Code is used at all (secondary agent), since they don't interfere with other agents
+- Claude-specific files (`.claude/skills/`) are still placed if Claude Code is used at all, since they don't interfere with other agents
 
-**CRITICAL — Pointer syntax is agent-specific.** Each agent has its own way of importing/referencing another file. The skill MUST use the correct syntax per the docs in §10.0:
+**CRITICAL — Pointer syntax is agent-specific.** Each agent has its own way of importing/referencing another file. The skill MUST use the correct syntax per the docs in [AGENT-DOCS]:
 - **Claude Code**: `@AGENTS.md` import in `CLAUDE.md` (official import syntax)
 - **Copilot**: `.github/copilot-instructions.md` says "read AGENTS.md" in plain text
 - **Cline/Roo**: `.clinerules/` file says "read {{CANONICAL_FILE}}" in plain text
 - **Cursor/Windsurf**: `.cursorrules`/`.windsurfrules` says "read {{CANONICAL_FILE}}" in plain text
 - **OpenCode**: `opencode.json` `"instructions"` array references the canonical file
 
-### 10.4 Pointer Files
+### 10.4 Pointer Files [AGENT-POINTERS]
 
 Every repo gets pointer files for agents that are NOT the primary agent. Each pointer redirects to the canonical file.
 
@@ -657,6 +651,7 @@ Every repo gets pointer files for agents that are NOT the primary agent. Each po
 
 **Rules:**
 - NEVER add project rules to pointer files. All rules live in the canonical file.
+- Pointer files MUST be minimal — a single redirect, nothing more. No explanations, no copied rules, no preamble. Strip any existing pointer file down to the bare minimum that causes the agent to read the canonical file.
 - If a new agent tool appears, add a pointer file here — do not create a second set of rules.
 
 ---
@@ -667,13 +662,13 @@ Skills are portable, on-demand instruction packages. The templates in `templates
 
 ### 11.0 CRITICAL — Read the target agent's skill docs first
 
-Before placing or converting any skill files, the agent MUST read the official skill documentation for the target agent (see §10.0 Agent Skill Docs table). Each agent has different:
+Before placing or converting any skill files, the agent MUST read the official skill documentation for the target agent (see [AGENT-DOCS] Agent Skill Docs table). Each agent has different:
 - **Directory locations** (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/`)
 - **Frontmatter requirements** (some require `name` to match directory, some have `compatibility` fields)
 - **Size constraints** (Cline: keep under 5,000 tokens; others vary)
 - **Discovery conventions** (some walk up directories, some only check project root)
 
-### 11.1 Skill placement by agent
+### 11.1 Skill placement by agent [SKILL-PLACEMENT]
 
 | Agent | Primary skill directory | Also scanned |
 |---|---|---|
@@ -802,7 +797,7 @@ STRUCTURE
 [ ] .github/pull_request_template.md
 [ ] .devcontainer/devcontainer.json
 [ ] Makefile `setup` target configured
-[ ] Skills in agent-native directory (§11.1: .claude/, .agents/, .github/, .cline/, or .opencode/)
+[ ] Skills in agent-native directory ([SKILL-PLACEMENT]: .claude/, .agents/, .github/, .cline/, or .opencode/)
 [ ] Required skills present: ci-prep, code-dedup, submit-pr
 [ ] All agent-pmo managed files have `agent-pmo:<hash>` marker (§16)
 [ ] No orphaned agent-pmo files (marked files whose source template no longer exists)
@@ -821,8 +816,8 @@ STRUCTURE
 [ ] Makefile has OS detection block (§1.0 cross-platform support)
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
-[ ] Canonical instruction file has all required sections (CLAUDE.md or AGENTS.md per §10.3)
-[ ] Non-canonical instruction file is a pointer to canonical file (§10.4)
+[ ] Canonical instruction file has all required sections (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT])
+[ ] Non-canonical instruction file is a pointer to canonical file ([AGENT-POINTERS])
 [ ] .clinerules/00-read-instructions.md (pointer → canonical file)
 [ ] .cursorrules (pointer → canonical file)
 [ ] .windsurfrules (pointer → canonical file)
@@ -960,9 +955,9 @@ A skill built from this spec operates in two modes:
 2. Copy all config files verbatim from [`templates/`](templates/) (substituting `{{REPO_NAME}}`, `{{PRIMARY_LANGUAGE}}`, `{{CANONICAL_FILE}}`)
 3. Select devcontainer template for primary language
 4. Select Makefile implementation section for primary language
-5. Detect primary agent (§10.2) and determine canonical file (§10.3)
+5. Detect primary agent ([AGENT-CANONICAL]) and determine canonical file ([AGENT-PLACEMENT])
 6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, add Claude-specific skill links to CLAUDE.md.
-7. Create all pointer files from §10.4, substituting `{{CANONICAL_FILE}}` with the detected canonical file
+7. Create all pointer files from [AGENT-POINTERS], substituting `{{CANONICAL_FILE}}` with the detected canonical file
 8. Create all skills from §11 templates — **see §17.2 Template Customization Rule**
 9. Stamp every created file with the `agent-pmo:<hash>` marker per §16
 10. Ensure `_coverage_check` Makefile target reads `coverage-thresholds.json` and is wired into `make test` (§3 [TEST-FAIL-FAST])
@@ -981,7 +976,7 @@ A skill built from this spec operates in two modes:
    - `make lint` not running format check first → make the formatter `--check` invocation the FIRST line of `_lint`
    - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage (§3.3 [COVERAGE-THRESHOLDS-JSON])
    - `.gitignore` missing tool dirs → append standard tool patterns
-   - Canonical instruction file missing sections → append missing sections (detect primary agent per §10.2 first)
+   - Canonical instruction file missing sections → append missing sections (detect primary agent per [AGENT-CANONICAL] first)
    - Default branch is `master` → note for human action (cannot change remotely)
 4. Report what was changed vs what needs human action
 5. When two configs serve the same purpose, **merge them into the normative file and delete the old one** (e.g., merge `.eslintrc.js` into `eslint.config.mjs`, then delete `.eslintrc.js`). Merging and renaming to the standard name is expected — do not leave duplicates.
@@ -1011,7 +1006,7 @@ What this means in practice:
 
    **The test:** diff the source template against the output. The only differences should be repo-specific additions. If entire steps, URLs, or instructions are missing, the customization is wrong.
 
-2. **Canonical instruction file (CLAUDE.md or AGENTS.md per §10.3):** The template has `{{placeholders}}` and multi-language Hard Rules sections. Strip language-specific rules that don't apply. Fill in all placeholders with real content — project description, architecture, actual languages used.
+2. **Canonical instruction file (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT]):** The template has `{{placeholders}}` and multi-language Hard Rules sections. Strip language-specific rules that don't apply. Fill in all placeholders with real content — project description, architecture, actual languages used.
 
 3. **Makefile:** Uncomment only the language blocks that apply. Delete commented blocks for other languages so the file is clean and unambiguous.
 
@@ -1029,7 +1024,7 @@ What this means in practice:
 | `{{PRIMARY_LANGUAGE}}` | `rust` / `typescript` / `python` / `dart` / `csharp` / `fsharp` / `go` |
 | `{{REPO_TYPE}}` | `library` / `cli` / `application` / `vscode-extension` / `static-site` |
 | `{{DESCRIPTION}}` | One-line repo description |
-| `{{CANONICAL_FILE}}` | `CLAUDE.md` or `AGENTS.md` (determined by §10.3 agent detection) |
+| `{{CANONICAL_FILE}}` | `CLAUDE.md` or `AGENTS.md` (determined by [AGENT-PLACEMENT] agent detection) |
 
 Note: coverage thresholds are NOT substituted into templates. They live in
 `coverage-thresholds.json` (§3.3 [COVERAGE-THRESHOLDS-JSON]). The skill creates that file once,

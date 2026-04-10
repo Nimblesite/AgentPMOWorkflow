@@ -26,14 +26,14 @@ Read the spec directly. Do NOT search the filesystem, scan sibling directories, 
 1. Read `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`. **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
 2. Detect which languages are present in the target repo (look for `Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`, etc.).
 3. Determine repo type (library, CLI, app/service, extension, static site) for coverage thresholds per the spec. All projects default to 90% code coverage target by default
-4. **You are the primary agent.** You know what agent you are — use that directly. Do NOT scan the filesystem to guess. Set up the target repo for yourself:
-   - **Claude Code** → canonical file is `CLAUDE.md`, skills go in `.claude/skills/`, use `@AGENTS.md` import syntax
-   - **OpenAI Codex** → canonical file is `AGENTS.md`, skills go in `.agents/skills/`
-   - **GitHub Copilot** → canonical file is `AGENTS.md`, skills go in `.github/skills/` or `.agents/skills/`, also update `.github/copilot-instructions.md`
-   - **Cline/Roo** → canonical file is `AGENTS.md`, skills go in `.cline/skills/`, also update `.clinerules/00-read-instructions.md`
-   - **OpenCode** → canonical file is `AGENTS.md`, skills go in `.opencode/skills/` or `.agents/skills/`
-5. Report which agent you are and which file will be canonical.
-6. **Read the target agent's official documentation** before touching any instruction or skill files. The spec §10.0 has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess.
+4. **Identify the canonical file.** Check in this order:
+   - If `AGENTS.md` exists with substantial content (>10 lines, not just a pointer) → `AGENTS.md` is canonical.
+   - If `CLAUDE.md` exists with substantial content → `CLAUDE.md` is canonical.
+   - If neither exists, you are the primary agent — determine canonical file per [AGENT-PLACEMENT] and create it from the template, tailored to the repo.
+   - Canonical file by agent when creating from scratch: Claude Code → `CLAUDE.md`; all others → `AGENTS.md`.
+5. **Merge into the canonical file — never replace it.** Read the existing canonical file. Identify what is missing or weaker than the standard (missing sections, vague rules, wrong commands). **Merge the missing content in, preserving the file's existing structure, tone, and repo-specific context.** Do NOT copy-paste the template wholesale. The result must read as a coherent document for this specific repo — not a generic template with the repo name swapped in. Tighten and cut while merging: remove redundant prose, stale comments, and bloat. The canonical file should get better and leaner, not longer.
+6. Report which file is canonical and summarise what was merged in vs. what was already present.
+6. **Read the target agent's official documentation** before touching any instruction or skill files. The spec [AGENT-DOCS] has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess.
 
 ### Step 2 — Audit existing artifacts for equivalents
 
@@ -44,7 +44,7 @@ Before creating anything, **inventory what already exists** so you never create 
 - Check for non-standard documentation folders: `doco/`, `documentation/`, `doc/`, `documents/`. These are common variants that agents and humans create instead of the standard `docs/`.
 - If a non-standard folder exists and `docs/` does not, it must be **renamed** to `docs/` in Step 3.
 - If a non-standard folder exists AND `docs/` also exists, the contents must be **merged** into `docs/` and the non-standard folder deleted.
-- Check whether existing docs are properly organised into `specs/` (documents that specify system behavior) and `plans/` (documents that specify how to achieve goals, with TODO checklists). Markdown files sitting loose in the docs root should be classified and moved into the correct subdirectory.
+- Check whether existing docs are properly organised into `specs/` (documents that specify system behavior) and `plans/` (documents that specify how to achieve goals, with TODO checklists at the bottom of the doc). Markdown files sitting loose in the docs root should be classified and moved into the correct subdirectory.
 
 #### 2b. CI workflows
 - List ALL files in `.github/workflows/`. Look for existing CI workflows under any name (e.g., `build.yml`, `ci-build.yml`, `test.yml`, `checks.yml`, `main.yml`, `pull_request.yml`, `pr.yml`).
@@ -81,7 +81,11 @@ Before creating anything, **inventory what already exists** so you never create 
 - Check for `.coveragerc` vs `pyproject.toml` `[tool.coverage]` — don't have both.
 
 #### 2g. Gitignore
-- If `.gitignore` exists, merge spec patterns into it rather than replacing. Do NOT duplicate patterns already present.
+- Read the existing `.gitignore` in full. Read the relevant template gitignore(s) for detected languages.
+- **Add only patterns that are clearly safe** — OS junk (`.DS_Store`, `Thumbs.db`), build artifacts (dirs like `target/`, `dist/`, `__pycache__/`), secrets (`.env`, `*.pem`, `*.key`), and tooling noise (`.idea/`, coverage artifacts).
+- **Do NOT blindly copy the template.** Err on the side of adding fewer patterns. A missing ignore is recoverable; ignoring something important (source files, config, migration files) can silently hide work.
+- Before adding any pattern, ask: could this match something the repo intentionally tracks? If yes, skip it or flag it for the user.
+- Do NOT duplicate patterns already present. Do NOT replace the existing file.
 
 #### 2h. LICENSE file (CRITICAL — must alert if missing)
 - Check for a `LICENSE`, `LICENSE.md`, `LICENSE.txt`, `LICENCE`, `COPYING`, or `UNLICENSE` file at the repo root.
@@ -99,7 +103,7 @@ Before creating anything, **inventory what already exists** so you never create 
 **Templates in `templates/` are STARTING POINTS, not copy-paste targets.** Every template that contains multi-language examples, generic listings, or placeholder content MUST be tailored to the target repo's actual languages, tools, and architecture. The repo must be ready to use immediately with zero irrelevant content.
 
 When applying any template:
-- **Remove all language/tool sections that don't apply** to the detected languages. A Python repo must not mention `cargo`, `tsconfig`, `dotnet`, or Dart analyzers.
+- **Remove all language/tool sections that don't apply** to the detected languages. A Python only repo must not mention `cargo`, `tsconfig`, `dotnet`, or Dart analyzers.
 - **Replace generic examples with repo-specific ones.** If a skill template lists tools for 7 languages, keep only the ones for this repo's languages.
 - **Fill all placeholders** (`{{REPO_NAME}}`, descriptions, architecture sections) with real content.
 - **Strip unused Makefile blocks, CI language steps, and config files** for languages not present.
@@ -108,7 +112,7 @@ When applying any template:
 
 This applies especially to:
 - **Skills** (`.claude/skills/`): Templates like `code-dedup` and `ci-prep` contain examples for every supported language — strip to only what's relevant.
-- **Canonical instruction file** (CLAUDE.md or AGENTS.md per §10.3): Remove Hard Rules sections for languages not in use. Fill in all `{{placeholders}}`.
+- **Canonical instruction file** (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT]): Remove Hard Rules sections for languages not in use. Fill in all `{{placeholders}}`.
 - **Makefile**: Delete commented blocks for unused languages.
 - **CI workflows**: Remove commented setup steps for unused languages.
 
@@ -313,7 +317,7 @@ After all changes, run this checklist to catch any bloat introduced:
 4. **Formatter configs:** For each language, verify only ONE formatter config exists per tool (e.g., not both `.prettierrc` and `.prettierrc.json`; not both `[tool.black]` and `[tool.ruff.format]` in pyproject.toml).
 5. **Build files:** Verify there aren't competing build systems doing the same thing (e.g., both `Makefile` and `Taskfile.yml` with identical targets).
 6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
-7. **Skills:** Check the agent-native skill directory (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/` per §11.1) — don't create duplicates of skills that already exist. If skills exist in multiple directories, consolidate to the primary agent's directory.
+7. **Skills:** Check the agent-native skill directory (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/` per [SKILL-PLACEMENT]) — don't create duplicates of skills that already exist. If skills exist in multiple directories, consolidate to the primary agent's directory.
 8. **Agent instruction files:** Verify exactly ONE file has the full rules content (either CLAUDE.md or AGENTS.md, not both). All other agent files must be pointers. Check that old pointer filenames (e.g., `.clinerules/00-read-claude-md.md`) are renamed to the new standard (`.clinerules/00-read-instructions.md`).
 9. **Orphaned agent-pmo files (§16):** Search the target repo for all files containing an `agent-pmo:` marker. For each marked file, verify that its corresponding source template or skill still exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`. If the source no longer exists, **delete the orphaned file**. This cleans up files from skills or templates that were removed from the standards repo (e.g., the old `fmt`, `lint`, and `test` skills that were consolidated into `ci-prep`).
 10. **Stale markers:** For files with `agent-pmo:` markers, compare the stamped hash against the current standards repo HEAD. If a file is more than 50 commits behind, flag it for re-application.
@@ -367,8 +371,8 @@ In some cases, multiple files may merge into one file. This is optimal as it red
 - **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.
 - When remediating an existing repo, preserve project-specific settings that don't conflict with the spec (extra CI jobs, custom tsconfig paths, etc.). But **non-spec public Make targets are NOT a "custom setting" to preserve** — they almost always turn out to be a banned alias or a script that should be inlined. When in doubt, ask the user before keeping a non-standard target.
 - If the repo already has a config that's compliant, leave it alone — don't touch files unnecessarily.
-- **Read the agent docs before touching agent files.** The spec §10.0 has the complete URL table. Each agent has different import syntax, file locations, and conventions. Use the correct syntax for the detected agent — never guess.
-- **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per §11.1. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
+- **Read the agent docs before touching agent files.** The spec [AGENT-DOCS] has the complete URL table. Each agent has different import syntax, file locations, and conventions. Use the correct syntax for the detected agent — never guess.
+- **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per [SKILL-PLACEMENT]. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
 - **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.
 - **Every file you create or substantively modify gets an `agent-pmo:<hash>` marker (§16).** This enables orphaned file cleanup and provenance auditing. Never skip the marker.
 - **NEVER stamp a file unless its source exists in the standards repo.** Before creating any file from a template or skill, read the source at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` to confirm it exists. If the source path does not exist, do not create the file. List `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` before creating skills — only create what is actually there.
