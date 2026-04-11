@@ -23,6 +23,17 @@ endif
 .PHONY: build dashboard test _test_fsharp _test_e2e lint fmt clean ci \
         install-skill-claude install-skill-claude-unix install-skill-claude-windows \
         uninstall-skill-claude uninstall-skill-claude-unix uninstall-skill-claude-windows \
+        install-skill-codex install-skill-codex-unix install-skill-codex-windows \
+        uninstall-skill-codex uninstall-skill-codex-unix uninstall-skill-codex-windows \
+        install-skill-copilot install-skill-copilot-unix install-skill-copilot-windows \
+        uninstall-skill-copilot uninstall-skill-copilot-unix uninstall-skill-copilot-windows \
+        install-skill-cline install-skill-cline-unix install-skill-cline-windows \
+        uninstall-skill-cline uninstall-skill-cline-unix uninstall-skill-cline-windows \
+        install-skill-roo install-skill-roo-unix install-skill-roo-windows \
+        uninstall-skill-roo uninstall-skill-roo-unix uninstall-skill-roo-windows \
+        install-skill-opencode install-skill-opencode-unix install-skill-opencode-windows \
+        uninstall-skill-opencode uninstall-skill-opencode-unix uninstall-skill-opencode-windows \
+        install-skill-all uninstall-skill-all \
         website-build website-run setup help
 
 # =============================================================================
@@ -101,8 +112,62 @@ website-run:
 # SKILL MANAGEMENT (platform-specific)
 # =============================================================================
 
-SKILL_DIR = $(HOME)/.claude/skills/agent-pmo
+# Shared install helper — usage: $(call _install_skill_unix,LABEL,DEST_DIR)
+# Copies agent-pmo-skill/SKILL.md → DEST_DIR/agent-pmo/SKILL.md with STANDARDS_REPO substituted.
+define _install_skill_unix
+	@echo "==> Installing agent-pmo skill for $(1)..."
+	@rm -rf "$(2)/agent-pmo"
+	@mkdir -p "$(2)/agent-pmo"
+	@sed 's|{{STANDARDS_REPO}}|$(CURDIR)|g' \
+		agent-pmo-skill/SKILL.md > "$(2)/agent-pmo/SKILL.md"
+	@echo "    Installed to $(2)/agent-pmo"
+	@echo "    STANDARDS_REPO = $(CURDIR)"
+	@echo "==> Done."
+endef
 
+define _uninstall_skill_unix
+	@echo "==> Removing agent-pmo skill for $(1)..."
+	@if [ -d "$(2)/agent-pmo" ]; then \
+		rm -rf "$(2)/agent-pmo"; \
+		echo "    Removed."; \
+	else \
+		echo "    Nothing to remove."; \
+	fi
+	@echo "==> Done."
+endef
+
+define _install_skill_windows
+	@echo "==> Installing agent-pmo skill for $(1) (Windows)..."
+	$$dest = "$(2)/agent-pmo"; \
+	if (Test-Path $$dest) { Remove-Item $$dest -Recurse -Force }; \
+	New-Item -ItemType Directory -Path $$dest -Force | Out-Null; \
+	(Get-Content "$(CURDIR)/agent-pmo-skill/SKILL.md") -replace '\{\{STANDARDS_REPO\}\}', '$(CURDIR)' | \
+		Set-Content "$$dest/SKILL.md"; \
+	Write-Host "    Installed to $$dest"; \
+	Write-Host "==> Done."
+endef
+
+define _uninstall_skill_windows
+	@echo "==> Removing agent-pmo skill for $(1) (Windows)..."
+	$$dest = "$(2)/agent-pmo"; \
+	if (Test-Path $$dest) { Remove-Item $$dest -Recurse -Force; Write-Host "    Removed." } \
+	else { Write-Host "    Nothing to remove." }; \
+	Write-Host "==> Done."
+endef
+
+# =============================================================================
+# Per-agent skill directories
+# =============================================================================
+SKILL_DIR_CLAUDE   = $(HOME)/.claude/skills
+SKILL_DIR_CODEX    = $(HOME)/.agents/skills
+SKILL_DIR_COPILOT  = $(HOME)/.copilot/skills
+SKILL_DIR_CLINE    = $(HOME)/.cline/skills
+SKILL_DIR_ROO      = $(HOME)/.roo/skills
+SKILL_DIR_OPENCODE = $(HOME)/.config/opencode/skills
+
+# =============================================================================
+# CLAUDE CODE — ~/.claude/skills/
+# =============================================================================
 ifeq ($(OS),Windows_NT)
 install-skill-claude: install-skill-claude-windows
 uninstall-skill-claude: uninstall-skill-claude-windows
@@ -111,45 +176,141 @@ install-skill-claude: install-skill-claude-unix
 uninstall-skill-claude: uninstall-skill-claude-unix
 endif
 
-# --- Unix (macOS / Linux) ---
 install-skill-claude-unix:
-	@echo "==> Install agent-pmo skill for Claude Code..."
-	@rm -rf "$(SKILL_DIR)"
-	@mkdir -p "$(SKILL_DIR)"
-	@sed 's|{{STANDARDS_REPO}}|$(CURDIR)|g' \
-		agent-pmo-skill/SKILL.md > "$(SKILL_DIR)/SKILL.md"
-	@echo "    Installed to $(SKILL_DIR)"
-	@echo "    STANDARDS_REPO = $(CURDIR)"
-	@echo "==> Done. Skill available globally as /agent-pmo"
+	$(call _install_skill_unix,Claude Code,$(SKILL_DIR_CLAUDE))
 
 uninstall-skill-claude-unix:
-	@echo "==> Removing agent-pmo skill..."
-	@if [ -d "$(SKILL_DIR)" ]; then \
-		rm -rf "$(SKILL_DIR)"; \
-		echo "    Removed."; \
-	else \
-		echo "    Nothing to remove."; \
-	fi
-	@echo "==> Done."
+	$(call _uninstall_skill_unix,Claude Code,$(SKILL_DIR_CLAUDE))
 
-# --- Windows (PowerShell) ---
 install-skill-claude-windows:
-	@echo "==> Install agent-pmo skill for Claude Code (Windows)..."
-	$$skillPath = "$(SKILL_DIR)"; \
-	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force }; \
-	New-Item -ItemType Directory -Path $$skillPath -Force | Out-Null; \
-	(Get-Content "$(CURDIR)/agent-pmo-skill/SKILL.md") -replace '\{\{STANDARDS_REPO\}\}', '$(CURDIR)' | \
-		Set-Content "$$skillPath/SKILL.md"; \
-	Write-Host "    Installed to $$skillPath"; \
-	Write-Host "    STANDARDS_REPO = $(CURDIR)"; \
-	Write-Host "==> Done. Skill available globally as /agent-pmo"
+	$(call _install_skill_windows,Claude Code,$(SKILL_DIR_CLAUDE))
 
 uninstall-skill-claude-windows:
-	@echo "==> Removing agent-pmo skill (Windows)..."
-	$$skillPath = "$(SKILL_DIR)"; \
-	if (Test-Path $$skillPath) { Remove-Item $$skillPath -Recurse -Force; Write-Host "    Removed." } \
-	else { Write-Host "    Nothing to remove." }; \
-	Write-Host "==> Done."
+	$(call _uninstall_skill_windows,Claude Code,$(SKILL_DIR_CLAUDE))
+
+# =============================================================================
+# OPENAI CODEX — ~/.agents/skills/
+# =============================================================================
+ifeq ($(OS),Windows_NT)
+install-skill-codex: install-skill-codex-windows
+uninstall-skill-codex: uninstall-skill-codex-windows
+else
+install-skill-codex: install-skill-codex-unix
+uninstall-skill-codex: uninstall-skill-codex-unix
+endif
+
+install-skill-codex-unix:
+	$(call _install_skill_unix,OpenAI Codex,$(SKILL_DIR_CODEX))
+
+uninstall-skill-codex-unix:
+	$(call _uninstall_skill_unix,OpenAI Codex,$(SKILL_DIR_CODEX))
+
+install-skill-codex-windows:
+	$(call _install_skill_windows,OpenAI Codex,$(SKILL_DIR_CODEX))
+
+uninstall-skill-codex-windows:
+	$(call _uninstall_skill_windows,OpenAI Codex,$(SKILL_DIR_CODEX))
+
+# =============================================================================
+# GITHUB COPILOT — ~/.copilot/skills/
+# =============================================================================
+ifeq ($(OS),Windows_NT)
+install-skill-copilot: install-skill-copilot-windows
+uninstall-skill-copilot: uninstall-skill-copilot-windows
+else
+install-skill-copilot: install-skill-copilot-unix
+uninstall-skill-copilot: uninstall-skill-copilot-unix
+endif
+
+install-skill-copilot-unix:
+	$(call _install_skill_unix,GitHub Copilot,$(SKILL_DIR_COPILOT))
+
+uninstall-skill-copilot-unix:
+	$(call _uninstall_skill_unix,GitHub Copilot,$(SKILL_DIR_COPILOT))
+
+install-skill-copilot-windows:
+	$(call _install_skill_windows,GitHub Copilot,$(SKILL_DIR_COPILOT))
+
+uninstall-skill-copilot-windows:
+	$(call _uninstall_skill_windows,GitHub Copilot,$(SKILL_DIR_COPILOT))
+
+# =============================================================================
+# CLINE — ~/.cline/skills/
+# =============================================================================
+ifeq ($(OS),Windows_NT)
+install-skill-cline: install-skill-cline-windows
+uninstall-skill-cline: uninstall-skill-cline-windows
+else
+install-skill-cline: install-skill-cline-unix
+uninstall-skill-cline: uninstall-skill-cline-unix
+endif
+
+install-skill-cline-unix:
+	$(call _install_skill_unix,Cline,$(SKILL_DIR_CLINE))
+
+uninstall-skill-cline-unix:
+	$(call _uninstall_skill_unix,Cline,$(SKILL_DIR_CLINE))
+
+install-skill-cline-windows:
+	$(call _install_skill_windows,Cline,$(SKILL_DIR_CLINE))
+
+uninstall-skill-cline-windows:
+	$(call _uninstall_skill_windows,Cline,$(SKILL_DIR_CLINE))
+
+# =============================================================================
+# ROO CODE — ~/.roo/skills/
+# =============================================================================
+ifeq ($(OS),Windows_NT)
+install-skill-roo: install-skill-roo-windows
+uninstall-skill-roo: uninstall-skill-roo-windows
+else
+install-skill-roo: install-skill-roo-unix
+uninstall-skill-roo: uninstall-skill-roo-unix
+endif
+
+install-skill-roo-unix:
+	$(call _install_skill_unix,Roo Code,$(SKILL_DIR_ROO))
+
+uninstall-skill-roo-unix:
+	$(call _uninstall_skill_unix,Roo Code,$(SKILL_DIR_ROO))
+
+install-skill-roo-windows:
+	$(call _install_skill_windows,Roo Code,$(SKILL_DIR_ROO))
+
+uninstall-skill-roo-windows:
+	$(call _uninstall_skill_windows,Roo Code,$(SKILL_DIR_ROO))
+
+# =============================================================================
+# OPENCODE — ~/.config/opencode/skills/
+# =============================================================================
+ifeq ($(OS),Windows_NT)
+install-skill-opencode: install-skill-opencode-windows
+uninstall-skill-opencode: uninstall-skill-opencode-windows
+else
+install-skill-opencode: install-skill-opencode-unix
+uninstall-skill-opencode: uninstall-skill-opencode-unix
+endif
+
+install-skill-opencode-unix:
+	$(call _install_skill_unix,OpenCode,$(SKILL_DIR_OPENCODE))
+
+uninstall-skill-opencode-unix:
+	$(call _uninstall_skill_unix,OpenCode,$(SKILL_DIR_OPENCODE))
+
+install-skill-opencode-windows:
+	$(call _install_skill_windows,OpenCode,$(SKILL_DIR_OPENCODE))
+
+uninstall-skill-opencode-windows:
+	$(call _uninstall_skill_windows,OpenCode,$(SKILL_DIR_OPENCODE))
+
+# =============================================================================
+# ALL AGENTS — install/uninstall in one shot
+# =============================================================================
+install-skill-all: install-skill-claude install-skill-codex install-skill-copilot \
+                   install-skill-cline install-skill-roo install-skill-opencode
+
+uninstall-skill-all: uninstall-skill-claude uninstall-skill-codex uninstall-skill-copilot \
+                     uninstall-skill-cline uninstall-skill-roo uninstall-skill-opencode
 
 # =============================================================================
 # HELP
@@ -168,5 +329,17 @@ help:
 	@echo "  dashboard              - Refresh the dashboard manually"
 	@echo "  website-build          - Build the website via 11ty"
 	@echo "  website-run            - Serve the website locally with 11ty"
-	@echo "  install-skill-claude   - Install agent-pmo skill for Claude Code"
-	@echo "  uninstall-skill-claude - Remove the agent-pmo skill"
+	@echo "  install-skill-claude   - Install agent-pmo skill for Claude Code  (~/.claude/skills/)"
+	@echo "  install-skill-codex    - Install agent-pmo skill for OpenAI Codex (~/.agents/skills/)"
+	@echo "  install-skill-copilot  - Install agent-pmo skill for GitHub Copilot (~/.copilot/skills/)"
+	@echo "  install-skill-cline    - Install agent-pmo skill for Cline         (~/.cline/skills/)"
+	@echo "  install-skill-roo      - Install agent-pmo skill for Roo Code      (~/.roo/skills/)"
+	@echo "  install-skill-opencode - Install agent-pmo skill for OpenCode       (~/.config/opencode/skills/)"
+	@echo "  install-skill-all      - Install for all agents at once"
+	@echo "  uninstall-skill-claude   - Remove agent-pmo skill for Claude Code"
+	@echo "  uninstall-skill-codex    - Remove agent-pmo skill for OpenAI Codex"
+	@echo "  uninstall-skill-copilot  - Remove agent-pmo skill for GitHub Copilot"
+	@echo "  uninstall-skill-cline    - Remove agent-pmo skill for Cline"
+	@echo "  uninstall-skill-roo      - Remove agent-pmo skill for Roo Code"
+	@echo "  uninstall-skill-opencode - Remove agent-pmo skill for OpenCode"
+	@echo "  uninstall-skill-all      - Remove for all agents at once"

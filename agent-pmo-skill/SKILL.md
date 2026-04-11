@@ -95,9 +95,40 @@ Before creating anything, **inventory what already exists** so you never create 
 - Record the finding for the final report.
 
 #### 2i. GitHub repository settings
-- If the repo exists on GitHub, check current settings using `gh api repos/OWNER/REPO` to see merge strategy, features, and branch protection.
-- Compare against the standard in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`.
-- If settings already match, leave them alone. Only apply changes for settings that differ.
+
+Run `gh api repos/OWNER/REPO` to read current settings (merge strategy, features, branch protection).
+
+**If `gh` is unavailable, not authenticated, or returns nulls/errors — STOP and emit this warning verbatim before continuing:**
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️  WARNING: GitHub repo settings COULD NOT BE READ  ⚠️        ║
+╠══════════════════════════════════════════════════════════════════╣
+║  `gh api` failed or returned no data. This matters because:      ║
+║                                                                   ║
+║  1. CI WORKFLOW: squash-only vs merge-commit affects how         ║
+║     ci.yml must be configured (branch triggers, merge checks).   ║
+║                                                                   ║
+║  2. REPO NORMALIZATION: merge strategy, branch protection,       ║
+║     PR settings, and issue/wiki toggles CANNOT be applied        ║
+║     without `gh` access. The repo will be left in whatever       ║
+║     state GitHub currently has it in.                            ║
+║                                                                   ║
+║  To fix: run `gh auth login` then re-run this skill.             ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Do you want to continue WITHOUT applying GitHub repo settings?
+Answering YES means CI workflow assumptions may be wrong and repo
+settings will NOT be normalized.
+
+→ Type YES to continue anyway, or NO to abort and fix gh access first.
+```
+
+**Wait for the user's explicit YES/NO before proceeding. Do NOT continue automatically.**
+- If NO: stop here. Tell the user to run `gh auth login` and re-invoke the skill.
+- If YES: note "GitHub settings skipped — gh unavailable" in the Step 5 report and continue.
+
+If `gh` works: compare the result against `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. If settings already match, leave them alone. Only apply changes for settings that differ.
 
 ### CRITICAL — Template Customization Rule
 
@@ -243,6 +274,8 @@ Use the `gh` CLI to configure:
 - **Branch protection:** If no protection exists on `main`, add a ruleset requiring PRs and CI status checks to pass. If protection already exists, leave it alone.
 
 The exact `gh api` commands are in the common-repo-settings file. The repo must be pushed to GitHub for these commands to work — if it's a brand new local-only repo, note this for the user and skip (they can run it after the first push).
+
+**If `gh` is unavailable or returns errors here:** the user already confirmed YES in Step 2i to continue without it. Skip this step entirely and record it in the Step 5 report as not applied.
 
 #### 3h. Agent instruction files ([AGENT] — agent-agnostic)
 
