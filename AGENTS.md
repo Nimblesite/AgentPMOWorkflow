@@ -81,6 +81,8 @@ Open standard: https://agents.md — agent-specific docs below.
 
 This repo follows the standard 7-target Makefile interface (REPO-STANDARDS-SPEC [MAKE-TARGETS]):
 
+Normalize make targets according to the [conventions](https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html).
+
 ```bash
 make build   # generate the HTML dashboard report
 make test    # F# fixture tests + Playwright E2E (fail-fast). ONLY test entry point.
@@ -91,7 +93,7 @@ make ci      # lint + test + build (full CI simulation)
 make setup   # install dependencies + configure (auto-detects OS)
 ```
 
-Repo-specific helpers (not in the standard 7):
+Repo-specific targets (see `Repo-Specific Targets` section in the Makefile):
 
 ```bash
 make dashboard              # refresh the dashboard manually
@@ -102,7 +104,7 @@ make uninstall-skill-claude # remove the agent-pmo skill
 make help                   # list all available targets
 ```
 
-Only the 7 standard targets above plus repo-specific helpers exist. The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes called from `_test`. To debug a single test, invoke `dotnet fsi dashboard/test-report.fsx` or `cd dashboard && npx playwright test ...` directly — those are not Make targets.
+The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes called from `_test`. To debug a single test, invoke `dotnet fsi dashboard/test-report.fsx` or `cd dashboard && npx playwright test ...` directly — those are not Make targets.
 
 ## PMO Dashboard (`dashboard/`)
 

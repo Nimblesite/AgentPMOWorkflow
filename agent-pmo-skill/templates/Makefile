@@ -6,11 +6,9 @@
 
 .PHONY: build test lint fmt clean ci setup
 
-# -----------------------------------------------------------------------------
-# OS Detection — portable commands for Linux, macOS, and Windows
-# On Windows, run via GNU Make with PowerShell (e.g., make from Git Bash or
-# choco install make). The $(OS) variable is set to "Windows_NT" automatically.
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# OS Detection
+# ---------------------------------------------------------------------------
 ifeq ($(OS),Windows_NT)
   SHELL := powershell.exe
   .SHELLFLAGS := -NoProfile -Command
@@ -22,16 +20,14 @@ else
   MKDIR = mkdir -p
 endif
 
-# =============================================================================
-# Coverage thresholds — read from `coverage-thresholds.json` at the repo root.
+# ---------------------------------------------------------------------------
+# Coverage — single source of truth is coverage-thresholds.json
 # See REPO-STANDARDS-SPEC [COVERAGE-THRESHOLDS-JSON].
-# DO NOT hardcode a threshold here. DO NOT read from a CI env var.
-# The JSON file is the single source of truth.
-# =============================================================================
+# ---------------------------------------------------------------------------
 COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 
 # =============================================================================
-# PRIMARY TARGETS — exactly 7. Do not add others.
+# Standard Targets
 # =============================================================================
 
 ## build: Compile/assemble all artifacts
@@ -39,9 +35,7 @@ build:
 	@echo "==> Building..."
 	# TODO: add build command (see language sections below)
 
-## test: FAIL-FAST tests + coverage + threshold enforcement (ONLY test entry point).
-##       Stops at the first failing test. Collects coverage. Asserts measured %
-##       against `coverage-thresholds.json`. Exits non-zero on any failure.
+## test: Fail-fast tests + coverage + threshold enforcement.
 ##       See REPO-STANDARDS-SPEC [TEST-RULES] and [COVERAGE-THRESHOLDS-JSON].
 test:
 	@echo "==> Testing (fail-fast + coverage + threshold)..."
@@ -53,7 +47,6 @@ lint:
 	# TODO: add lint command (see language sections below)
 
 ## fmt: Format all code in-place. Pass CHECK=1 for read-only check (CI use).
-##      e.g. `make fmt CHECK=1`
 fmt:
 	@echo "==> Formatting$(if $(CHECK), (check mode),)..."
 	# TODO: add fmt command, branching on $(CHECK) if needed (see language sections below)
@@ -73,15 +66,16 @@ setup:
 	@echo "==> Setup complete. Run 'make ci' to validate."
 
 # =============================================================================
-# LANGUAGE-SPECIFIC IMPLEMENTATIONS
-# Replace the TODO stubs in the public targets above with the commands below.
-# For multi-language repos, chain commands within each target.
+# Language-Specific Implementations
+#
+# Replace the TODO stubs in the standard targets above with the commands
+# below for your language. For multi-language repos, chain commands.
 #
 # Rules:
-#   - `lint`  — linters/analyzers only. NO formatting, NO format checks.
-#   - `fmt`   — format in-place. Branch on $(CHECK) for read-only mode.
-#   - `test`  — fail-fast flag + call $(MAKE) _coverage_check at the end.
-# _coverage_check is the only private target — internal helper, not public.
+#   - lint  — linters/analyzers only. NO formatting, NO format checks.
+#   - fmt   — format in-place. Branch on $(CHECK) for read-only mode.
+#   - test  — fail-fast flag + call $(MAKE) _coverage_check at the end.
+#   _coverage_check is the only private target — not public.
 # =============================================================================
 
 # --- RUST ---
@@ -313,10 +307,15 @@ setup:
 # 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
 
 # =============================================================================
-# HELP
+# Repo-Specific Targets
+#
+# Targets below this line are specific to this repo and are NOT part of the
+# standard 7-target interface. Add repo-specific helpers here.
 # =============================================================================
+
+## help: List all available targets
 help:
-	@echo "Targets:"
+	@echo "Standard targets:"
 	@echo "  build  - Compile/assemble all artifacts"
 	@echo "  test   - Fail-fast tests + coverage + threshold enforcement"
 	@echo "  lint   - All linters/analyzers (read-only, no formatting)"

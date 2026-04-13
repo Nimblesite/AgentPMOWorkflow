@@ -108,9 +108,9 @@ endif
 - The inline `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make test` (which includes coverage enforcement) via WSL or Git Bash.
 - Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
 
-### [MAKE-TARGETS] Required Targets (exactly 7, identical across all repos)
+### [MAKE-TARGETS] Standard Targets (exactly 7, identical across all repos)
 
-Every repo's Makefile exposes EXACTLY these 7 public targets. No more, no fewer.
+Every repo's Makefile exposes EXACTLY these 7 standard targets in a clearly labeled `Standard Targets` section:
 
 | Target | What it does |
 |--------|-------------|
@@ -122,7 +122,9 @@ Every repo's Makefile exposes EXACTLY these 7 public targets. No more, no fewer.
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
 | `make setup` | Post-create dev environment setup (devcontainer hook) |
 
-Any public target not in this list is superfluous. The agent-pmo marker system ([MARKER-CLEANUP]) handles cleanup: if a target or file was stamped by agent-pmo and its source no longer exists, merge any useful logic into the correct target above, then delete it. Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
+Repos MAY have additional targets in a separate `Repo-Specific Targets` section below the standard targets. These MUST NOT duplicate or shadow the 7 standard targets. Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
+
+Agent-pmo-stamped targets that are not in the 7 standard targets and not in the repo-specific section are orphaned — see [MARKER-CLEANUP].
 
 ### [MAKE-TEMPLATE] Standard Makefile Template
 
@@ -313,6 +315,13 @@ The pipeline fails. The PR is blocked. There is no warning mode. There is no sep
 coverage improves past the current threshold, bump the number in `coverage-thresholds.json`
 in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified in the
 PR description.
+
+**Rounding buffer when bumping:** When bumping a threshold, **subtract 1% from the measured
+coverage** to absorb floating-point rounding differences between runners, coverage tools, and
+report formats. Example: measured coverage is `92.4%` → bump the threshold to `91` (not `92`).
+This prevents flaky CI failures where a tool reports `91.97%` on one machine and `92.01%` on
+another. The ratchet still only goes up — you may only apply the −1% buffer when the new
+(buffered) value is strictly greater than the current threshold.
 
 **Template:** [`templates/coverage-calc/coverage-thresholds.json`](../../agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json)
 
@@ -804,8 +813,8 @@ STRUCTURE
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
-[ ] Makefile has EXACTLY these 7 public targets: build, test, lint, fmt, clean, ci, setup ([MAKE-TARGETS])
-[ ] Makefile has ONLY the 7 required targets — no extras ([MARKER-CLEANUP] for orphans)
+[ ] Makefile has the 7 standard targets: build, test, lint, fmt, clean, ci, setup ([MAKE-TARGETS])
+[ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section ([MAKE-TARGETS])
 [ ] Makefile `_lint` runs linters/analyzers only (no formatting)
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
@@ -964,7 +973,7 @@ A skill built from this spec operates in two modes:
 2. For each MISSING item: add it (using templates from [`templates/`](templates/))
 3. For each WRONG item:
    - CI job names wrong → rename to `lint`, `test`, `build`
-   - Makefile has extra public targets beyond the 7 in [MAKE-TARGETS] → merge useful logic into the correct standard target, then delete the extra. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts. Update `.PHONY`, CI YAML, and any scripts/docs that referenced deleted targets.
+   - Makefile has agent-pmo-stamped targets outside the 7 standard targets → merge useful logic into the correct standard target, then delete the orphan ([MARKER-CLEANUP]). Repo-specific targets that are NOT agent-pmo-stamped belong in the `Repo-Specific Targets` section — leave them untouched.
    - `make test` not fail-fast → add the test runner's fail-fast flag ([TEST-RULES])
    - `make test` not enforcing coverage → call `_coverage_check` from inside the `_test` recipe so `make test` exits non-zero below threshold
    - `make lint` doing formatting work → remove; formatting belongs in `make fmt`
