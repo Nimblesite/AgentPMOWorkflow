@@ -1,73 +1,26 @@
 # Repository Standards Specification
 
 > **Machine-readable standard for the `agent-pmo` skill.**
-> This document defines the exact configuration files, targets, job names, and templates
-> that every repo in this portfolio must conform to. A skill reads this document to
-> MINT a new repo or REMEDIATE an existing one.
-
-Generated: 2026-03-26
-Source: Analysis of 20 repos from `project_status/repo-report.html`
+> Defines the exact configuration files, targets, job names, and templates every repo in this
+> portfolio must conform to. The skill reads this to MINT a new repo or REMEDIATE an existing one.
 
 ---
 
 ## [DESIGN] Design Principles
 
-1. **Docs are the source of truth.** The specs folder holds docs that SPECIFY the behavior of the system. The plans folder holds docs that specify how to achieve some goal. All plan docs MUST have a TODO list with checkboxes at the bottom of the document. We use these instead of inbuilt agent TODO lists because it allows us to track TODOs across agents and sessions
-2. **Templates are starting points, not copy-paste targets.** Every config file required by this spec
-   has a template in [`templates/`](templates/). The skill uses these as a baseline but MUST customize
-   them for the target repo — stripping irrelevant language sections, filling placeholders, and
-   removing examples for tools/languages not present. See [MODES-CUSTOMIZE].
-3. **Fail fast, fail loud.** Lint before test. Coverage threshold blocks merge.
-   Zero warnings allowed — all linters run in errors-as-warnings mode. **Every `make test` target
-   MUST stop at the first failing test** (see [TEST-RULES]). Pipelines that run all tests after a failure
-   waste CI minutes and force agents to wait for an outcome they already know.
-4. **No git in Claude sessions.** Skills and CLAUDE.md rules prohibit git commands.
-   CI and GitHub Actions do the git work.
-5. **Multi-language repos are the norm.** Standards are designed so each language
-   adds its targets/jobs orthogonally without breaking the uniform interface.
-6. **Spec IDs are hierarchical descriptive slugs, NEVER numbered.** Every spec section MUST have a
-   unique ID in the format `[GROUP-TOPIC]` or `[GROUP-TOPIC-DETAIL]`. IDs are uppercase, hyphen-separated,
-   and MUST NOT contain sequential numbers.
+1. **Docs are the source of truth.** `specs/` defines behavior; `plans/` defines how to achieve goals. All plan docs MUST end with a TODO checklist (tracked across agents and sessions, unlike in-agent TODO lists).
+2. **Templates are starting points, not copy-paste targets.** Every required config has a template in [`templates/`](templates/). The skill MUST customize it for the target repo — strip irrelevant language sections, fill placeholders, remove unused examples. See [MODES-CUSTOMIZE].
+3. **Fail fast, fail loud.** Lint before test. Coverage threshold blocks merge. Zero warnings — all linters in errors-as-warnings mode. Every `make test` MUST stop at the first failure (see [TEST-RULES]).
+4. **No git in Claude sessions.** CI and GitHub Actions do the git work.
+5. **Multi-language repos are the norm.** Each language adds its targets/jobs orthogonally without breaking the uniform interface.
+6. **Spec IDs are hierarchical descriptive slugs, NEVER numbered.** Format: `[GROUP-TOPIC]` or `[GROUP-TOPIC-DETAIL]`. Uppercase, hyphen-separated, no sequential numbers.
 
-   **Hierarchy rule:** The first word is the **group**. All spec sections sharing the same group MUST
-   appear together in the document's table of contents. The group defines a logical category; the
-   remaining words narrow the topic within that group. The hierarchy depth varies by repo — small
-   repos may use two words (`[AUTH-LOGIN]`), most will use three (`[AUTH-TOKEN-VERIFY]`), and complex
-   domains may use four (`[AUTH-OAUTH-REFRESH-FLOW]`). The hierarchy MUST mirror the spec document's
-   heading structure.
+   The first word is the **group**; sections sharing a group MUST appear together in the TOC. Depth varies (`[AUTH-LOGIN]`, `[AUTH-TOKEN-VERIFY]`, `[AUTH-OAUTH-REFRESH-FLOW]`) and MUST mirror heading structure.
 
-   **Examples by group:**
-   ```
-   ## Authentication
-   ### [AUTH-LOGIN] User login flow
-   ### [AUTH-TOKEN-VERIFY] Token verification
-   ### [AUTH-TOKEN-REFRESH] Token refresh
-   ### [AUTH-OAUTH-CALLBACK] OAuth callback handling
+   - Good: `[AUTH-LOGIN]`, `[CI-TIMEOUT]`, `[LINT-ESLINT]`, `[FEAT-DARK-MODE]`
+   - Bad: `[SPEC-001]`, `[FEAT-AUTH-01]` (numbered), `[TIMEOUT]` (no group)
 
-   ## CI/CD
-   ### [CI-TIMEOUT] Job timeout policy
-   ### [CI-LINT] Lint job configuration
-   ### [CI-RELEASE] Release workflow
-
-   ## Linting
-   ### [LINT-ESLINT] ESLint configuration
-   ### [LINT-RUFF] Ruff configuration
-   ### [LINT-CLIPPY] Clippy configuration
-   ```
-
-   - Good: `[AUTH-LOGIN]`, `[CI-TIMEOUT]`, `[LINT-ESLINT]`, `[AUTH-TOKEN-VERIFY]`, `[FEAT-DARK-MODE]`
-   - Bad: `[SPEC-001]` (numbered), `[REQ-003]` (numbered), `[FEAT-AUTH-01]` (trailing number),
-     `[TIMEOUT]` (no group — where does this belong?), `[CI-004]` (numbered, not descriptive)
-
-   **Cross-referencing is mandatory.** All code, tests, and design documents that implement or relate
-   to a spec section MUST reference its ID in a comment (e.g., `// Implements [AUTH-TOKEN-VERIFY]`,
-   `# Tests [CI-TIMEOUT]`). This creates a traceable link from spec → code → tests. The `spec-check`
-   skill enforces this by searching for spec ID references in code and test files.
-
-   **Why no numbers:** Numbered IDs create merge conflicts, encourage meaningless sequential assignment,
-   and tell the reader nothing about what the spec section covers. Descriptive slugs are self-documenting,
-   naturally unique, and stable across refactors. The hierarchical grouping means you can grep for
-   `[AUTH-` to find every authentication spec section, its implementing code, and its tests.
+   **Cross-referencing is mandatory.** Code, tests, and design docs implementing a spec section MUST reference its ID in a comment (`// Implements [AUTH-TOKEN-VERIFY]`). The `spec-check` skill enforces this by grepping for IDs. Descriptive slugs are self-documenting, naturally unique, stable across refactors, and greppable (`[AUTH-` finds every auth section and its implementations).
 
 ---
 
@@ -94,26 +47,18 @@ endif
 ```
 
 **Rules:**
-- Use `$(RM)` instead of `rm -rf` and `$(MKDIR)` instead of `mkdir -p`
-- Use forward slashes for paths (works on all platforms)
-- Tools like `dotnet`, `npm`/`npx`, `gh`, `cargo`, `go`, `flutter`, `dart`, `python`/`pip` are already cross-platform — no changes needed for commands that use them
-- Where a command genuinely cannot work on Windows (e.g., `launchd`, `cron`, `chmod`, `ln -s`), provide both Unix and Windows targets:
-  ```makefile
-  ifeq ($(OS),Windows_NT)
-  install-schedule: install-schedule-windows
-  else
-  install-schedule: install-schedule-unix
-  endif
-  ```
-- The inline `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only — this is acceptable because CI runs on Linux. For local Windows use, developers can run `make test` (which includes coverage enforcement) via WSL or Git Bash.
-- Some repos are inherently platform-specific (e.g., a macOS-only app). In those cases, document the limitation with a comment at the top of the Makefile but still include OS detection for the targets that can be portable
+- Use `$(RM)` and `$(MKDIR)`, not `rm -rf`/`mkdir -p`. Use forward slashes for paths.
+- `dotnet`, `npm`, `gh`, `cargo`, `go`, `flutter`, `dart`, `python`/`pip` are cross-platform — no wrapping needed.
+- For commands that can't run on Windows (`launchd`, `cron`, `chmod`, `ln -s`), provide both Unix and Windows variants and dispatch on `$(OS)`.
+- The `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only. Acceptable because CI runs on Linux; Windows devs use WSL or Git Bash.
+- Platform-specific repos (e.g., macOS-only apps) document the limitation at the top of the Makefile but still use OS detection for portable targets.
 
 ### [MAKE-TARGETS] Standard Targets (exactly 7, identical across all repos)
 
-Every repo's Makefile is organised into **two sections**:
+Every Makefile is organised into two sections:
 
-1. **`Standard Targets`** — the 7 portfolio-wide targets below. Every repo has **exactly these 7** in this section. Implementations vary per language; the set of target names does not.
-2. **`Repo-Specific Targets`** — a separate section below, for targets unique to this repo (e.g. `dashboard`, `website-build`, `install-skill-claude`). **The contents of this section vary per repo.** Skills applying this spec MUST NOT delete targets from this section simply because they are not in the list of 7. Repo-specific targets are first-class and preserved across remediation runs.
+1. **`Standard Targets`** — the 7 portfolio-wide targets below. Implementations vary per language; the names never do.
+2. **`Repo-Specific Targets`** — targets unique to this repo (e.g. `dashboard`, `website-build`). Skills MUST NOT delete these during remediation just because they're not in the list of 7.
 
 The 7 standard targets:
 
@@ -129,11 +74,11 @@ The 7 standard targets:
 
 **Rules:**
 
-- The 7 standard targets MUST all be present in `Standard Targets`. No substitutions, no omissions.
-- **The `Standard Targets` section MUST NOT contain any public target outside the 7 above.** A public target with a non-standard name up there is misplaced — move it into `Repo-Specific Targets` (unless it duplicates/shadows a standard target, in which case merge and delete).
-- Repo-specific targets MUST NOT duplicate or shadow the 7 standard targets (no `test-all`, no `build-release`, no `lint-fix` — merge that logic into the corresponding standard target instead).
-- Internal sub-recipes (`_test_unit`, `_test_e2e`, `_coverage_check`) may chain inside the 7 standard recipes, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
-- Agent-pmo-stamped public targets outside the 7 standard targets are orphans and are removed per [MARKER-CLEANUP]. Non-stamped public targets are assumed to be genuine repo-specific targets and are preserved.
+- All 7 standard targets MUST be present in `Standard Targets`. No substitutions, no omissions.
+- The `Standard Targets` section contains ONLY those 7 public targets. Anything else belongs in `Repo-Specific Targets` (or merged into a standard target if it shadows one).
+- Repo-specific targets MUST NOT shadow the 7 (no `test-all`, `build-release`, `lint-fix` — merge into the corresponding standard target).
+- Internal sub-recipes (`_test_unit`, `_coverage_check`) chain inside standard recipes but MUST be underscore-prefixed and MUST NOT appear in `.PHONY`.
+- Agent-pmo-stamped public targets outside the 7 are orphans ([MARKER-CLEANUP]). Non-stamped public targets are preserved.
 
 ### [MAKE-TEMPLATE] Standard Makefile Template
 
@@ -177,14 +122,14 @@ deploy    — deploy preview/staging (depends on build)
 
 **File:** [`templates/.github/workflows/release.yml`](templates/.github/workflows/release.yml)
 
-The release pipeline runs on tag push (`v*`) and executes these jobs in order:
+Runs on tag push (`v*`) and executes these jobs in order:
 
-1. **version** — Extract version from tag, stamp it into project manifests, commit/push back to `main`
-2. **build-cross-platform** — Build platform-independent packages on ubuntu
-3. **build-platform** — Build platform-specific binaries on their respective OS (Linux, macOS, Windows)
-4. **release** — Download all artifacts, create GitHub release with release notes
-5. **publish** — Push packages/binaries to registries (npm, NuGet, PyPI, pub.dev, crates.io, VS Code Marketplace). Requires secrets configured in repo Settings → Secrets → Actions.
-6. **deploy-pages** — Trigger the `deploy-pages.yml` workflow via `workflow_dispatch`
+1. **version** — extract version from tag, stamp into project manifests, commit/push to `main`.
+2. **build-cross-platform** — build platform-independent packages on ubuntu.
+3. **build-platform** — build platform-specific binaries on their respective OS.
+4. **release** — download artifacts, create GitHub release with notes.
+5. **publish** — push to registries (npm, NuGet, PyPI, pub.dev, crates.io, VS Code Marketplace). Requires secrets in repo Settings.
+6. **deploy-pages** — trigger `deploy-pages.yml` via `workflow_dispatch`.
 
 ### [CI-PAGES] deploy-pages.yml Template
 
@@ -196,28 +141,12 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
 
 ### [TEST-RULES] Every `make test` is fail-fast AND computes coverage
 
-> ⚠️ **NON-NEGOTIABLE.** Read this section in full before touching any Makefile or test config. ⚠️
+> ⚠️ **NON-NEGOTIABLE.** ⚠️
 
-**Two rules apply to every test target in every repo:**
+Two rules apply to every test target:
 
-1. **FAIL FAST.** The test runner MUST stop at the first failing test. Use the runner's
-   fail-fast/exit-on-first-failure flag (table below). Never use a "run everything, report at the
-   end" mode.
-2. **COVERAGE IS MANDATORY.** Every test target collects coverage AND enforces the threshold
-   inline. The `_coverage_check` step (which reads `coverage-thresholds.json`) runs as the
-   final step of the `_test` recipe, before `make test` exits. There is no "tests without
-   coverage" mode and no `--no-coverage` flag.
-
-**Why fail-fast is non-negotiable:**
-
-- **CI minutes are expensive.** Running 30 minutes of tests after the first failure on line 12
-  burns money for zero new information.
-- **Agents wait for green.** When an AI agent runs `make test`, it blocks until the command
-  exits. If the runner keeps grinding through 500 tests after the first failure, the agent sits
-  idle for the entire duration even though it already knows the run is doomed. Fail-fast cuts
-  the feedback loop from minutes to seconds.
-- **The first failure is usually the cause.** Subsequent failures are often cascades from the
-  first one. Stopping early forces you to fix the root cause instead of triaging noise.
+1. **FAIL FAST.** The runner MUST stop at the first failing test. Use the runner's native fail-fast flag (table below). Never "run everything, report at the end" — CI minutes are expensive and agents block on the exit.
+2. **COVERAGE IS MANDATORY.** `_coverage_check` (reading `coverage-thresholds.json`) runs as the final step of `_test` before `make test` exits. No `--no-coverage` flag, no "tests without coverage" mode.
 
 **Per-language fail-fast flags:**
 
@@ -233,17 +162,14 @@ The release pipeline runs on tag push (`v*`) and executes these jobs in order:
 | F# | Same as C# | Same as C# |
 | Go | `go test` | `-failfast` |
 
-If a runner has no native fail-fast flag, wrap it in a script that exits non-zero on the first
-failing test name parsed from output. Do not skip this rule.
+If a runner has no native fail-fast flag, wrap it in a script that exits non-zero on the first failing test name parsed from output.
 
-**Coverage is part of the same target.** `make test` does:
-1. Run tests fail-fast with coverage instrumentation enabled.
-2. On test success, invoke `_coverage_check` (which reads `coverage-thresholds.json` via `jq`) to assert measured ≥ threshold.
-3. Exit non-zero if either step fails.
+**Coverage is part of the same target.** `make test`:
+1. Runs tests fail-fast with coverage instrumentation.
+2. On success, invokes `_coverage_check` (reads `coverage-thresholds.json` via `jq`) to assert measured ≥ threshold.
+3. Exits non-zero if either step fails.
 
-There is no `make test-no-coverage`. There is no `make test-fast`. The standard target is the
-only target. If you need to debug a single test, call the runner directly — that is not a
-Makefile target.
+No `make test-no-coverage`, no `make test-fast`. To debug a single test, call the runner directly — that is not a Makefile target.
 
 ### [COVERAGE-THRESHOLDS] Thresholds by Repo Type
 
@@ -269,27 +195,11 @@ Makefile target.
 
 ### [COVERAGE-THRESHOLDS-JSON] Coverage thresholds live in `coverage-thresholds.json`
 
-**Every repo MUST have a `coverage-thresholds.json` file at the project root** (or per
-sub-project for multi-project repos — see below). This file is the **single source of truth**
-for coverage thresholds. The internal Makefile `_coverage_check` recipe (called by `_test`
-inside `make test`) reads this file. CI calls only `make test`. **No GitHub repo variables.
-No env-var-based thresholds. No hardcoded numbers in CI YAML. No public `make coverage-check`
-target — coverage enforcement is part of `make test` ([MAKE-TARGETS]).**
+Every repo MUST have `coverage-thresholds.json` at the project root (or per sub-project for multi-project repos). **Single source of truth.** The `_coverage_check` recipe reads it; CI calls only `make test`. **No GitHub repo variables, no env-var thresholds, no hardcoded numbers in CI YAML, no public `make coverage-check` target.**
 
-**Why a JSON file (not GitHub repo variables):**
+Why a JSON file (not GitHub repo variables): versioned with code (PR-reviewable, blamed, revertable — GH variables are invisible state in Settings with no audit trail); local runs match CI (same file, no `COVERAGE_THRESHOLD=85` env hack); per-project granularity in one file; branch-aware (a PR can ratchet thresholds up alongside coverage improvements).
 
-- **Versioned with the code.** A threshold change is a PR — visible, reviewable, blamed,
-  reverted like any other code change. GitHub variables are invisible state hidden in
-  Settings → Variables, editable by anyone with repo admin, with no audit trail.
-- **Local runs match CI.** `make test` reads the same file CI reads. No `COVERAGE_THRESHOLD=85`
-  env hack to remember.
-- **Per-project granularity, in one place.** Multi-project repos list every project and its
-  threshold in one file instead of `COVERAGE_THRESHOLD_PROJECT_A`, `COVERAGE_THRESHOLD_PROJECT_B`,
-  …  variables sprawling across the org.
-- **Branch-aware.** A feature branch can ratchet a threshold up in the same PR that improves
-  coverage. GH variables can't.
-
-**File format** (canonical example: `/Users/christianfindlay/Documents/Code/ai_cms/DataProvider/coverage-thresholds.json`):
+**File format** (canonical example: `ai_cms/DataProvider/coverage-thresholds.json`):
 
 ```json
 {
@@ -306,31 +216,16 @@ target — coverage enforcement is part of `make test` ([MAKE-TARGETS]).**
 }
 ```
 
-- **`default_threshold`** (integer, required): Fallback used when a project has no entry, and
-  the default for single-project repos.
-- **`projects`** (object, optional): Map of project path → `{ "threshold": int, "include":
-  string }`. The `include` field is language-specific (e.g., coverlet assembly filters for
-  .NET); omit it for languages that don't need it.
+- **`default_threshold`** (integer, required): Fallback for projects without an entry; the default for single-project repos.
+- **`projects`** (object, optional): Map of project path → `{ "threshold": int, "include": string }`. The `include` field is language-specific (e.g., coverlet assembly filters); omit when not needed.
 
-**Single-project repos** still create the file with at least `default_threshold`.
+Single-project repos still create the file with at least `default_threshold`.
 
-**Tests MUST FAIL if the threshold is not met.** The internal `_coverage_check` recipe (called
-from `_test` inside `make test`) reads `coverage-thresholds.json`, computes line coverage, and
-exits non-zero if measured coverage < threshold for any project. `make test` exits non-zero.
-The pipeline fails. The PR is blocked. There is no warning mode. There is no separate public
-`make coverage-check` target — coverage enforcement is part of `make test` ([MAKE-TARGETS]).
+**Tests MUST FAIL below threshold.** `_coverage_check` exits non-zero if measured < threshold for any project, making `make test` exit non-zero and blocking the PR. No warning mode, no separate `make coverage-check` target.
 
-**Ratchet rule:** Thresholds are **monotonically increasing** — they never go down. When
-coverage improves past the current threshold, bump the number in `coverage-thresholds.json`
-in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified in the
-PR description.
+**Ratchet rule:** Thresholds are monotonically increasing — never down. When coverage improves, bump the number in the same PR. Lowering a threshold requires explicit PR justification.
 
-**Rounding buffer when bumping:** When bumping a threshold, **subtract 1% from the measured
-coverage** to absorb floating-point rounding differences between runners, coverage tools, and
-report formats. Example: measured coverage is `92.4%` → bump the threshold to `91` (not `92`).
-This prevents flaky CI failures where a tool reports `91.97%` on one machine and `92.01%` on
-another. The ratchet still only goes up — you may only apply the −1% buffer when the new
-(buffered) value is strictly greater than the current threshold.
+**Rounding buffer when bumping:** subtract 1% from measured coverage to absorb floating-point differences across runners/tools (e.g., 92.4% measured → threshold 91, not 92). Prevents flaky failures when one runner reports 91.97% and another 92.01%. Only apply the buffer when the buffered value still strictly exceeds the current threshold.
 
 **Template:** [`templates/coverage-calc/coverage-thresholds.json`](../../agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json)
 
@@ -374,30 +269,19 @@ Every Rust workspace Cargo.toml MUST include these lint sections.
 
 ### [LINT-PYTHON-BASILISK] Python — Basilisk is the PRIMARY linter AND type checker
 
-> ⚠️ **Non-negotiable for every Python project, in every repo, every time.** ⚠️
+> ⚠️ **Non-negotiable for every Python project.** ⚠️
 
-**Basilisk is the primary linter AND the primary type checker for all Python code in this
-portfolio.** It is not optional. It is not "if available". It is not "preferred". It is the
-mandated tool. Every Python repo MUST have Basilisk configured before any other Python lint or
-type-check tool.
+Basilisk is the mandated primary linter AND type checker for all portfolio Python code. Every Python repo MUST configure Basilisk before any other lint/type-check tool.
 
-**Layer order (primary → secondary):**
+**Layer order:**
 
-1. **Basilisk** — primary linter + primary type checker. Source of truth for type errors and
-   lint violations. Configured in `pyproject.toml [tool.basilisk]`. CI MUST run Basilisk and
-   fail on any violation. See [Basilisk configuration docs](https://basilisk-python.dev/docs/configuration/).
-2. **ruff** — secondary linter + the auto-formatter. Configured in `pyproject.toml [tool.ruff]`
-   with `select = ["ALL"]`. Catches what Basilisk doesn't and handles `make fmt`.
-3. **pyright** — secondary type checker. Configured in `pyproject.toml [tool.pyright]`. Acts
-   as a safety net under Basilisk.
+1. **Basilisk** — primary linter + type checker; source of truth. Configured in `pyproject.toml [tool.basilisk]`. CI MUST fail on any violation. See [Basilisk docs](https://basilisk-python.dev/docs/configuration/).
+2. **ruff** — secondary linter + auto-formatter. `pyproject.toml [tool.ruff]` with `select = ["ALL"]`. Also handles `make fmt`.
+3. **pyright** — secondary type checker. `pyproject.toml [tool.pyright]`. Safety net under Basilisk.
 
-**`make lint` runs Basilisk first.** If Basilisk fails, the build fails — ruff and pyright
-never get a chance to run. This forces every Python project to keep Basilisk green.
+`make lint` runs Basilisk first; if it fails, ruff and pyright don't run. Forces every project to keep Basilisk green.
 
-**Migrating an existing repo:** If a repo has only ruff/pyright/mypy/flake8, the agent-pmo
-skill MUST add Basilisk configuration (in `pyproject.toml [tool.basilisk]`) and wire it into
-`make lint` ahead of the existing tools. Do not delete the existing tools — they become the
-secondary layer.
+**Migration:** for repos with only ruff/pyright/mypy/flake8, add Basilisk ahead of the existing tools. Don't delete the others — they become the secondary layer.
 
 **File:** [`templates/linting/pyproject.toml`](../../agent-pmo-skill/templates/linting/pyproject.toml)
 
@@ -411,9 +295,7 @@ secondary layer.
 
 ### [LINT-CSHARP] C# — Static Analysis via Directory.Build.props
 
-Do not add style rules to the .editorconfig because this can destroy formatting. 
-Do add all code analysis rules, especially null safety rules
-If the repo has a rules config file, use this instead
+Do not add style rules to `.editorconfig` (can destroy formatting). Do add all code analysis rules, especially null safety. If the repo has a rules config file, use it instead.
 
 ### [LINT-FSHARP] F# — Analyzer Configuration
 
@@ -455,16 +337,16 @@ For multi-language repos, `_fmt` chains all formatters and `_lint` chains all li
 
 ## [LOG] Logging Standards
 
-Every repo MUST use structured logging throughout the application. `print`/`console.log`/`println!`/`Debug.WriteLine` are prohibited for diagnostics.
+Every repo MUST use structured logging. `print` / `console.log` / `println!` / `Debug.WriteLine` are prohibited for diagnostics.
 
 ### [LOG-RULES] Universal Logging Rules
 
-1. **Structured logging library required.** See [LOG-LIBS] for per-language libraries.
-2. **Log at entry/exit of all significant operations.** Use levels: `error`, `warn`, `info`, `debug`, `trace`.
-3. **Structured fields over string interpolation.** Log `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`.
-4. **Async/background logging for I/O sinks.** Any log call that writes to a database or file MUST be async or run on a background thread. Never block the request/UI thread with logging I/O.
-5. **NEVER log personal data.** No PII: names, emails, addresses, phone numbers, IP addresses (unless required for security audit with explicit documented consent).
-6. **NEVER log secrets.** No API keys, tokens, passwords, connection strings, or credentials. To confirm a key is loaded, log a truncated hash or `"API key: present"`.
+1. **Structured logging library required** ([LOG-LIBS]).
+2. **Log at entry/exit of significant operations.** Levels: `error`, `warn`, `info`, `debug`, `trace`.
+3. **Structured fields, not string interpolation.** `{ "userId": 42, "action": "checkout" }` not `"User 42 performed checkout"`.
+4. **Async I/O sinks.** DB/file log writes MUST be async or background — never block the request/UI thread.
+5. **NEVER log PII.** Names, emails, addresses, phone numbers, IPs (unless documented security-audit consent).
+6. **NEVER log secrets.** No keys, tokens, passwords, connection strings. To confirm a key is loaded, log a truncated hash or `"API key: present"`.
 
 ### [LOG-LIBS] Logging Libraries by Language
 
@@ -480,15 +362,14 @@ Every repo MUST use structured logging throughout the application. `print`/`cons
 
 ### [LOG-VSCODE] VS Code Extension Logging
 
-- Write detailed structured logs to a file inside the extension's state folder (`.vsixname/` in the workspace root).
-- Basic errors and diagnostics MUST also be written to the extension's VS Code **Output Channel** so users can see them without hunting for log files.
-- Both sinks (file + Output Channel) must be active simultaneously.
+- Detailed structured logs → file in the extension's state folder (`.vsixname/` in workspace root).
+- Basic errors/diagnostics → VS Code **Output Channel** (so users see them without hunting for files).
+- Both sinks active simultaneously.
 
 ### [LOG-SAAS] SaaS / Server Application Logging
 
-- Log to the database for persistence and queryability.
-- Database/file log writes MUST be async or on a background thread — never block the request path.
-- In addition to the database, emit structured logs to stdout/stderr for container orchestrators and log aggregation services.
+- Log to the DB for persistence and queryability (async / background only — never block the request path).
+- Also emit structured logs to stdout/stderr for container orchestrators and aggregation services.
 
 ### [LOG-CHECKLIST] Repo State Checklist Addition
 
@@ -565,13 +446,13 @@ Dev environment setup is handled by `make setup` (defined in the Makefile). All 
 
 ## [AGENT] Agent Instructions Standard (Agent-Agnostic)
 
-The rules content (hard rules, logging standards, testing, build commands, architecture) is **agent-neutral**. The file it lives in depends on which AI coding agent the target repo primarily uses.
+Rules content (hard rules, logging, testing, build commands, architecture) is agent-neutral. The file it lives in depends on the target repo's primary agent.
 
 ### [AGENT-DOCS] Critical Reference Documentation
 
-Before manipulating ANY agent instruction or skill files, the skill MUST read the official documentation for the target agent. Each agent has its own syntax, file locations, and conventions. **Do not guess — read the docs first.**
+Before touching any agent instruction or skill files, read the official docs for the target agent. Each agent has its own syntax and conventions — do not guess.
 
-The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **one file is canonical (holds all rules); every other agent file is a minimal pointer to it.** The skill MUST identify which file is already canonical before touching anything, and MUST NOT modify the canonical file.
+The `AGENTS.md` open standard ([agents.md](https://agents.md)) rule: **one file is canonical (holds all rules); every other agent file is a minimal pointer to it.** Identify the canonical file before touching anything, and never duplicate its contents elsewhere.
 
 #### Agent Instruction File Docs
 
@@ -605,11 +486,11 @@ The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **o
 
 ### [AGENT-TEMPLATE] Canonical Template
 
-**File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language. This is the authoritative template for project instructions regardless of which agent consumes them.
+**File:** [`templates/AGENTS.md`](templates/AGENTS.md) — contains ALL rules in agent-neutral language, regardless of which agent consumes it.
 
 ### [AGENT-CANONICAL] Canonical File Identification (Do This First)
 
-**Before placing or modifying any file, identify the canonical file.**
+Before placing or modifying any file, identify the canonical file:
 
 | Priority | Condition | Canonical file |
 |----------|-----------|----------------|
@@ -617,45 +498,35 @@ The `AGENTS.md` open standard is defined at https://agents.md. The key rule: **o
 | 2 | `CLAUDE.md` exists with substantial content (>10 lines, not a pointer) | `CLAUDE.md` |
 | 3 | Neither exists | Create per [AGENT-PLACEMENT] |
 
-**If a canonical file exists, merge into it — never replace it.** Read it, identify gaps against the standard, and merge missing content in. Preserve the file's existing structure and repo-specific context. Tighten: cut redundant prose and bloat while adding what's missing. The file should get better and leaner, not longer. All other agent files (pointer files) are created or updated to point at the canonical file.
+If a canonical file exists, **merge into it — never replace**. Preserve existing structure and repo-specific context; cut redundant prose while adding what's missing. The file should get leaner, not longer. All other agent files become pointers.
 
 ### [AGENT-PLACEMENT] File Placement Rules
 
-When creating from scratch (no canonical file found in [AGENT-CANONICAL]), determine the canonical file by the primary agent:
+When creating from scratch, the primary agent determines the canonical file:
 
-| Primary Agent | Canonical file | All other agent files |
-|---|---|---|
-| Claude Code | `CLAUDE.md` (template content + Claude-specific skill links) | Pointer → `CLAUDE.md` |
-| Cursor | `AGENTS.md` | Pointer → `AGENTS.md` |
-| Cline / Roo | `AGENTS.md` | Pointer → `AGENTS.md` |
-| Windsurf | `AGENTS.md` | Pointer → `AGENTS.md` |
-| GitHub Copilot | `AGENTS.md` | Pointer → `AGENTS.md` |
-| No agent / Unknown | `AGENTS.md` | Pointer → `AGENTS.md` |
+| Primary Agent | Canonical file |
+|---|---|
+| Claude Code | `CLAUDE.md` (template content + Claude-specific skill links) |
+| Cursor / Cline / Roo / Windsurf / GitHub Copilot / Unknown | `AGENTS.md` |
 
-When `CLAUDE.md` is canonical (whether pre-existing or newly created):
-- `AGENTS.md` is a pointer to `CLAUDE.md`
-- All other agent files point to `CLAUDE.md`
+All non-canonical agent files become pointers to the canonical one.
 
-When `AGENTS.md` is canonical:
-- `CLAUDE.md` uses `@AGENTS.md` import syntax (official Claude Code import) plus any Claude-specific addendum
-- All other agent files point to `AGENTS.md`
-- Claude-specific files (`.claude/skills/`) are still placed if Claude Code is used at all, since they don't interfere with other agents
+- When `CLAUDE.md` is canonical: `AGENTS.md` and all other files point to it.
+- When `AGENTS.md` is canonical: `CLAUDE.md` uses `@AGENTS.md` import (plus any Claude-specific addendum); other files point to `AGENTS.md`. `.claude/skills/` is still placed if Claude is used at all — it doesn't interfere with other agents.
 
-**CRITICAL — Pointer syntax is agent-specific.** Each agent has its own way of importing/referencing another file. The skill MUST use the correct syntax per the docs in [AGENT-DOCS]:
-- **Claude Code**: `@AGENTS.md` import in `CLAUDE.md` (official import syntax)
-- **Copilot**: `.github/copilot-instructions.md` says "read AGENTS.md" in plain text
-- **Cline/Roo**: `.clinerules/` file says "read {{CANONICAL_FILE}}" in plain text
-- **Cursor/Windsurf**: `.cursorrules`/`.windsurfrules` says "read {{CANONICAL_FILE}}" in plain text
+**Pointer syntax is agent-specific** (use the docs in [AGENT-DOCS]):
+- **Claude Code**: `@AGENTS.md` import in `CLAUDE.md`
+- **Copilot / Cline / Roo / Cursor / Windsurf**: plain text "read {{CANONICAL_FILE}}" in the respective rules file
 - **OpenCode**: `opencode.json` `"instructions"` array references the canonical file
 
 ### [AGENT-POINTERS] Pointer Files
 
-Every repo gets pointer files for agents that are NOT the primary agent. Each pointer redirects to the canonical file.
+Every repo gets pointer files for agents that are NOT primary. Each redirects to the canonical file.
 
 | Agent / Tool | File | Template |
 |--------------|------|----------|
 | Claude Code | `CLAUDE.md` (pointer when not primary) | [`templates/CLAUDE.md`](templates/CLAUDE.md) |
-| Cline / Roo (native rules) | `.clinerules/00-read-instructions.md` | [`templates/.clinerules/00-read-instructions.md`](templates/.clinerules/00-read-instructions.md) |
+| Cline / Roo | `.clinerules/00-read-instructions.md` | [`templates/.clinerules/00-read-instructions.md`](templates/.clinerules/00-read-instructions.md) |
 | Cursor | `.cursorrules` | [`templates/.cursorrules`](templates/.cursorrules) |
 | Windsurf | `.windsurfrules` | [`templates/.windsurfrules`](templates/.windsurfrules) |
 | GitHub Copilot | `.github/copilot-instructions.md` | [`templates/.github/copilot-instructions.md`](templates/.github/copilot-instructions.md) |
@@ -663,22 +534,22 @@ Every repo gets pointer files for agents that are NOT the primary agent. Each po
 
 **Rules:**
 - NEVER add project rules to pointer files. All rules live in the canonical file.
-- Pointer files MUST be minimal — a single redirect, nothing more. No explanations, no copied rules, no preamble. Strip any existing pointer file down to the bare minimum that causes the agent to read the canonical file.
-- If a new agent tool appears, add a pointer file here — do not create a second set of rules.
+- Pointer files MUST be minimal — single redirect, no preamble, no copied rules. Strip any existing pointer to the bare minimum.
+- New agent tool? Add a pointer file — never a second set of rules.
 
 ---
 
 ## [SKILL] Skills Standard (Agent-Agnostic)
 
-Skills are portable, on-demand instruction packages. The templates in `templates/skills/` are written in a generic SKILL.md format. When applying to a target repo, the skill MUST convert them to the target agent's native format and directory structure.
+Skills are portable, on-demand instruction packages. Templates in `templates/skills/` use a generic SKILL.md format; convert to the target agent's native format and directory structure when applying.
 
 ### [SKILL-DOCS] CRITICAL — Read the target agent's skill docs first
 
-Before placing or converting any skill files, the agent MUST read the official skill documentation for the target agent (see [AGENT-DOCS] Agent Skill Docs table). Each agent has different:
-- **Directory locations** (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/`)
-- **Frontmatter requirements** (some require `name` to match directory, some have `compatibility` fields)
-- **Size constraints** (Cline: keep under 5,000 tokens; others vary)
-- **Discovery conventions** (some walk up directories, some only check project root)
+Before placing or converting skill files, read the target agent's official skill docs (see [AGENT-DOCS]). Agents differ on:
+- **Directory** (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/`)
+- **Frontmatter** (some require `name` to match directory, some have `compatibility` fields)
+- **Size constraints** (Cline: <5000 tokens; others vary)
+- **Discovery** (some walk up directories, some only check project root)
 
 ### [SKILL-PLACEMENT] Skill placement by agent
 
@@ -690,10 +561,10 @@ Before placing or converting any skill files, the agent MUST read the official s
 | Cline / Roo | `.cline/skills/<name>/SKILL.md` | `.claude/skills/`, `.clinerules/skills/` |
 | OpenCode | `.opencode/skills/<name>/SKILL.md` | `.agents/skills/`, `.claude/skills/` |
 
-When placing skills:
-1. **Primary agent gets skills in its native directory.** If Claude is primary, skills go in `.claude/skills/`. If Copilot is primary, skills go in `.github/skills/`.
-2. **Cross-compatible directories are acceptable.** Copilot, Cline, and OpenCode all scan `.agents/skills/` as a fallback. If the repo uses multiple agents, placing skills in `.agents/skills/` covers the most agents with one copy.
-3. **The SKILL.md format is universal.** All agents use the same `SKILL.md` with YAML frontmatter (`name`, `description`) plus markdown body. The skill content itself is portable.
+Placement rules:
+1. **Primary agent gets native directory.** Claude → `.claude/skills/`; Copilot → `.github/skills/`; etc.
+2. **Cross-compatible fallback.** Copilot, Cline, and OpenCode all scan `.agents/skills/`. For multi-agent repos, `.agents/skills/` covers the most agents with one copy.
+3. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body. Content is portable.
 
 ### [SKILL-REQUIRED] Required skills
 
@@ -900,15 +771,9 @@ IDE
 
 ### [MARKER-FORMAT] Agent-PMO file marker
 
-Every file created or substantively edited by agent-pmo MUST contain a marker comment near the top of the file (after any shebang, frontmatter, or XML declaration). The marker tells agents that the file is managed by agent-pmo and includes the short git commit hash of the agent-pmo repo at the time the file was written.
+Every file created or substantively edited by agent-pmo MUST contain a marker near the top (after any shebang, frontmatter, or XML declaration) identifying it as agent-pmo-managed and including the 7-char commit hash of the AgentPMOWorkflow repo at write time.
 
-**Format:**
-
-```
-agent-pmo:<short-hash>
-```
-
-Where `<short-hash>` is the 7-character abbreviated commit hash from the AgentPMOWorkflow repo (output of `git rev-parse --short HEAD` run inside the standards repo).
+**Format:** `agent-pmo:<short-hash>` (where `<short-hash>` = `git rev-parse --short HEAD` inside the standards repo).
 
 **Placement by file type:**
 
@@ -926,107 +791,84 @@ Where `<short-hash>` is the 7-character abbreviated commit hash from the AgentPM
 
 **Rules:**
 
-1. The marker MUST appear within the first 10 lines of the file.
-2. For files with required headers (shebang lines, YAML `---` frontmatter, XML `<?xml?>` declarations), place the marker immediately after the header.
-3. For SKILL.md files, place the marker on the line immediately after the closing `---` of the YAML frontmatter.
-4. Only stamp files that agent-pmo creates or substantively modifies. Do not stamp files that already exist and are left unchanged.
-5. When re-running agent-pmo on a repo, update the hash in existing markers to the current commit.
-6. **NEVER stamp a file with the `agent-pmo:` marker unless its source template or skill exists at an exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` RIGHT NOW.** Before stamping ANY file, verify the source exists by reading it. If you cannot read the source file at the expected path, the file MUST NOT be created and MUST NOT be stamped. This is non-negotiable. A marker is a claim of provenance — stamping a file that has no source in the standards repo is a lie.
+1. Marker MUST appear in the first 10 lines.
+2. For files with required headers (shebang, YAML `---`, `<?xml?>`), place the marker immediately after.
+3. For SKILL.md files, place it on the line after the closing `---` of the frontmatter.
+4. Only stamp files agent-pmo creates or substantively modifies. Don't stamp unchanged files.
+5. On re-run, update existing marker hashes to the current commit.
+6. **NEVER stamp a file unless its source template/skill exists RIGHT NOW at an exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`.** Verify by reading the source before stamping. A marker is a provenance claim — stamping without a source is a lie.
 
 ### [MARKER-CLEANUP] Orphaned artifact cleanup
 
-Any artifact (file, Makefile target, CI step) stamped with an `agent-pmo:` marker whose source template or skill no longer exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` is orphaned.
+Any `agent-pmo:`-stamped artifact (file, Makefile target, CI step) whose source no longer exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` is orphaned.
 
 **Process:**
+1. Scan target repo for all `agent-pmo:` markers.
+2. Verify each source still exists in the standards repo.
+3. If orphaned: merge useful logic into the correct standard artifact (e.g., orphaned Makefile target → one of the 7), then delete the orphan.
+4. If merging is unsafe or purpose unclear, alert the user instead of deleting.
+5. Report all handled orphans.
 
-1. Scan the target repo for all `agent-pmo:` markers.
-2. For each, verify the source still exists in the standards repo.
-3. If orphaned: merge any useful logic into the correct standard artifact (e.g. an orphaned Makefile target's logic into one of the 7 required targets), then delete the orphan.
-4. If merging is not safe or the purpose is unclear, alert the user instead of deleting.
-5. Report all orphaned artifacts handled.
-
-This ensures that when skills or templates are removed from the standards repo (e.g., the `fmt`, `lint`, and `test` skills were consolidated into `ci-prep`), target repos get cleaned up automatically on the next agent-pmo run.
+Keeps target repos clean when templates are consolidated or removed upstream (e.g., `fmt`/`lint`/`test` skills → `ci-prep`).
 
 ### [MARKER-AUDIT] Provenance auditing
 
-The commit hash in the marker enables traceability:
-
-- `git log --oneline <hash>..HEAD` in the standards repo shows what changed since the file was stamped.
-- If a file's marker hash is far behind the current standards repo HEAD, the file may need re-application.
-- The `agent-pmo` skill SHOULD note files with stale markers (more than 50 commits behind) and offer to re-apply the current templates.
+The hash enables traceability: `git log --oneline <hash>..HEAD` in the standards repo shows what changed since stamp. Stale markers (>50 commits behind HEAD) SHOULD be flagged for re-application.
 
 ---
 
 ## [MODES] Mint vs Remediate Modes
 
-A skill built from this spec operates in two modes:
-
 ### MINT mode (new repo)
 
-1. Create directory structure
-2. Copy all config files verbatim from [`templates/`](templates/) (substituting `{{REPO_NAME}}`, `{{PRIMARY_LANGUAGE}}`, `{{CANONICAL_FILE}}`)
-3. Select devcontainer template for primary language
-4. Select Makefile implementation section for primary language
-5. Detect primary agent ([AGENT-CANONICAL]) and determine canonical file ([AGENT-PLACEMENT])
-6. Generate the canonical instruction file from `templates/AGENTS.md` — **customize all placeholder sections** for the repo's actual languages, architecture, and purpose. If Claude is primary, add Claude-specific skill links to CLAUDE.md.
-7. Create all pointer files from [AGENT-POINTERS], substituting `{{CANONICAL_FILE}}` with the detected canonical file
-8. Create all skills from [SKILL] templates — **see [MODES-CUSTOMIZE] Template Customization Rule**
-9. Stamp every created file with the `agent-pmo:<hash>` marker per [MARKER]
-10. Ensure `_coverage_check` Makefile target reads `coverage-thresholds.json` and is wired into `make test` ([TEST-RULES])
-11. Create `coverage-thresholds.json` at the repo root with `default_threshold` set per the [COVERAGE-THRESHOLDS] repo-type table ([COVERAGE-THRESHOLDS-JSON])
-12. Verify `make test` runs the test runner with its fail-fast flag ([TEST-RULES] table)
+1. Create directory structure.
+2. Copy configs from [`templates/`](templates/), substituting `{{REPO_NAME}}`, `{{PRIMARY_LANGUAGE}}`, `{{CANONICAL_FILE}}`.
+3. Select devcontainer + Makefile sections for the primary language.
+4. Detect primary agent ([AGENT-CANONICAL]) and determine canonical file ([AGENT-PLACEMENT]).
+5. Generate canonical instruction file from `templates/AGENTS.md` — **customize all placeholders** for the repo's actual languages, architecture, and purpose. Add Claude-specific skill links to `CLAUDE.md` if Claude is primary.
+6. Create all pointer files ([AGENT-POINTERS]) with `{{CANONICAL_FILE}}` filled in.
+7. Create skills from [SKILL] templates — see [MODES-CUSTOMIZE].
+8. Stamp every created file with `agent-pmo:<hash>` ([MARKER]).
+9. Wire `_coverage_check` into `_test` ([TEST-RULES]) and create `coverage-thresholds.json` using [COVERAGE-THRESHOLDS] defaults.
+10. Verify `make test` uses the runner's fail-fast flag ([TEST-RULES]).
 
 ### REMEDIATE mode (existing repo)
 
-1. Run the checklist from [CHECKLIST] against the repo
-2. For each MISSING item: add it (using templates from [`templates/`](templates/))
-3. For each WRONG item:
-   - CI job names wrong → rename to `lint`, `test`, `build`
-   - Makefile has agent-pmo-stamped targets outside the 7 standard targets → merge useful logic into the correct standard target, then delete the orphan ([MARKER-CLEANUP]). Repo-specific targets that are NOT agent-pmo-stamped belong in the `Repo-Specific Targets` section — leave them untouched.
-   - `make test` not fail-fast → add the test runner's fail-fast flag ([TEST-RULES])
-   - `make test` not enforcing coverage → call `_coverage_check` from inside the `_test` recipe so `make test` exits non-zero below threshold
-   - `make lint` doing formatting work → remove; formatting belongs in `make fmt`
-   - Thresholds in env vars / GitHub repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage ([COVERAGE-THRESHOLDS-JSON])
-   - `.gitignore` missing tool dirs → append standard tool patterns
-   - Canonical instruction file missing sections → append missing sections (detect primary agent per [AGENT-CANONICAL] first)
-   - Default branch is `master` → note for human action (cannot change remotely)
-4. Report what was changed vs what needs human action
-5. When two configs serve the same purpose, **merge them into the normative file and delete the old one** (e.g., merge `.eslintrc.js` into `eslint.config.mjs`, then delete `.eslintrc.js`). Merging and renaming to the standard name is expected — do not leave duplicates.
+1. Run [CHECKLIST] against the repo.
+2. MISSING items: add from [`templates/`](templates/).
+3. WRONG items:
+   - CI job names wrong → rename to `lint`, `test`, `build`.
+   - Makefile has agent-pmo-stamped targets outside the 7 → merge into the correct standard target, delete the orphan ([MARKER-CLEANUP]). Leave non-stamped repo-specific targets alone.
+   - `make test` not fail-fast → add the runner's flag ([TEST-RULES]).
+   - `make test` not enforcing coverage → call `_coverage_check` from `_test`.
+   - `make lint` doing formatting → remove; formatting belongs in `make fmt`.
+   - Thresholds in env vars / GH repo variables / hardcoded YAML → migrate to `coverage-thresholds.json` and DELETE the old storage.
+   - `.gitignore` missing tool dirs → append standard patterns.
+   - Canonical file missing sections → append (detect primary agent first per [AGENT-CANONICAL]).
+   - Default branch is `master` → flag for human action (cannot change remotely).
+4. When two configs serve the same purpose, merge into the normative file and delete the old one (e.g., `.eslintrc.js` → `eslint.config.mjs`). Don't leave duplicates.
+5. Report changes vs. human-action items.
 
 ### [MODES-CUSTOMIZE] Template Customization Rule (CRITICAL)
 
-**Templates are STARTING POINTS, not copy-paste targets.** Every template that contains language-specific examples, multi-language listings, or placeholder content MUST be tailored to the target repo before writing it. The repo must be **ready to go immediately** — no irrelevant languages, no generic examples, no placeholder text left behind.
+**Templates are STARTING POINTS.** Strip irrelevant languages, fill placeholders, remove unused examples. A generated repo must be ready to go — no leftover references to languages/tools not used.
 
-What this means in practice:
+1. **Skills** fall into two categories:
 
-1. **Skills (`.claude/skills/`):** There are two categories:
+   **Language-customizable** (`code-dedup`, `ci-prep`, `upgrade-packages`) contain multi-language examples. When applying:
+   - Remove language sections that don't apply (Python repo's `code-dedup` mentions only `pyright`/`ruff`/`pytest-cov`).
+   - Replace generic file lists with the repo's actual files (Go repo → `go.mod`, not `Cargo.toml`/`package.json`/`pubspec.yaml`).
+   - Match tool references to the repo's Makefile targets, CI steps, linter configs.
 
-   **Language-customizable skills** (`code-dedup`, `ci-prep`, `upgrade-packages`) contain examples spanning all supported languages. When applying to a specific repo:
-   - **Remove all language sections that don't apply.** A Python repo's `code-dedup` skill should only mention Python tools (`pyright`, `ruff`, `pytest-cov`), not `tsconfig`, `cargo`, or `dotnet`.
-   - **Replace generic examples with repo-specific ones.** If the skill says "check for `Cargo.toml`, `package.json`, `pubspec.yaml`..." and the repo is Go, replace with the actual project files.
-   - **Adjust tool references** to match what the repo actually uses (its Makefile targets, its CI steps, its linter configs).
+   **Content-preserving** (`website-audit`, `spec-check`, `submit-pr`, any skill without multi-language examples) contain detailed procedures, checklists, and reference URLs. Customization is limited to filling repo-specific placeholders. **Never change** steps, URLs, validation criteria, tool commands, report formats, numbering, or structure.
 
-   **Content-preserving skills** (`website-audit`, `spec-check`, `submit-pr`, and any skill that does NOT contain multi-language examples) are language-agnostic and contain detailed step-by-step procedures, checklists, and reference URLs. **The spirit of the skill must remain intact.** Customization is limited to:
-   - Filling in repo-specific details (e.g., which websites to audit, which site generator is used).
-   - Adding repo-specific context where the template has placeholders.
+   **Test:** diff source vs. output — only repo-specific additions should differ. Missing steps/URLs/instructions = wrong.
 
-   **What you MUST NOT change:**
-   - **Steps** — every step and sub-check in the source must appear in the output. Do not drop, merge, summarize, or rewrite steps.
-   - **URLs** — every reference URL must be preserved exactly. These are authoritative sources the skill depends on.
-   - **Specific instructions** — checklists, validation criteria, rules, tool commands, and report formats must be copied verbatim.
-   - **The overall structure** — step numbering, heading hierarchy, and the progress checklist (if present) must match the source.
+2. **Canonical instruction file:** strip non-applicable Hard Rules language sections; fill all `{{placeholders}}` with real project description, architecture, and languages.
+3. **Makefile / CI workflows:** keep only the language blocks that apply; delete commented-out ones.
+4. **Config files:** only include configs for languages actually present.
 
-   **The test:** diff the source template against the output. The only differences should be repo-specific additions. If entire steps, URLs, or instructions are missing, the customization is wrong.
-
-2. **Canonical instruction file (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT]):** The template has `{{placeholders}}` and multi-language Hard Rules sections. Strip language-specific rules that don't apply. Fill in all placeholders with real content — project description, architecture, actual languages used.
-
-3. **Makefile:** Uncomment only the language blocks that apply. Delete commented blocks for other languages so the file is clean and unambiguous.
-
-4. **CI workflows:** Uncomment only the language setup steps that apply. Remove commented blocks for unused languages.
-
-5. **Config files:** Only include configs for languages actually present in the repo. Don't create `eslint.config.mjs` for a Rust repo or `rustfmt.toml` for a Python repo.
-
-**The test:** After applying templates, a developer reading any generated file should see ZERO references to languages, tools, or frameworks not used in the repo. If a file mentions "Rust" in a Python-only repo, the customization failed.
+**Test:** a dev reading any generated file should see ZERO references to unused languages/tools.
 
 ### Substitution variables
 
@@ -1038,39 +880,7 @@ What this means in practice:
 | `{{DESCRIPTION}}` | One-line repo description |
 | `{{CANONICAL_FILE}}` | `CLAUDE.md` or `AGENTS.md` (determined by [AGENT-PLACEMENT] agent detection) |
 
-Note: coverage thresholds are NOT substituted into templates. They live in
-`coverage-thresholds.json` ([COVERAGE-THRESHOLDS-JSON]). The skill creates that file once,
-populated from [COVERAGE-THRESHOLDS] defaults, and never bakes a number into a Makefile, CI workflow, or any
-other file.
-
----
-
-## Appendix A: Current State Summary (20 repos, 2026-03-26)
-
-| Repo | Language(s) | CI | Makefile | Coverage | Devcontainer | Skills | Agent Instructions | PR Template |
-|------|------------|----|---------|---------|--------------|---------|-----------|----|
-| forge | Rust+C#+F#+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ |
-| StoryTowns | Flutter+Deno | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
-| project_status | Flutter | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Books | Markdown | ✗ | ✗ | ✗ | ✗ | ✗ | partial | ✗ |
-| Napper | F#+Rust+TS | ✗ | ✓ | partial | ✗ | ✗ | ✓ | ✗ |
-| CommandTree | TypeScript | ✓ | ✗ | ✓ 90% | ✗ | partial | ✓ | ✗ |
-| tmc | TypeScript | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
-| gigs | TS+Python+C# | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
-| alcove | Python+Flutter | ✓ | ✗ | ✓ 70%/60% | ✗ | ✗ | ✓ | ✗ |
-| Basilisk | Rust+TS+Python | ✓ | ✗ | ✓ per-crate | ✗* | ✗ | ✓ | ✗ |
-| DataProvider | C#+TS | ✗ | ✗ | partial | ✗ | ✓ 7 | ✓ | partial |
-| YFNUSYVJRH | Ruby/Jekyll | ✗ | ✗ | ✗ | ✓ | ✗ | minimal | ✗ |
-| dart_agent | Dart | ✗ | ✓ | ✗ | ✓ | partial | ✓ | ✗ |
-| vscode-copilot-chat | TypeScript | ✗ | ✗ | partial | ✓ | ✗ | ✗ | ✗ |
-| spline | TypeScript | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| GrammarApi | Rust | ✓ | ✗ | ✗ | ✗ | ✗ | minimal | ✗ |
-| h5-master | C# | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| vexels | Go+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ |
-| osprey_dua | Go+C+TS | ✓ | partial | partial | ✓ | ✗ | ✗ | ✓ |
-| dart_mutant | Rust | partial | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
-
-*Basilisk: devcontainer mentioned in CLAUDE.md but not present on disk
+Note: coverage thresholds are NOT substituted into templates — they live in `coverage-thresholds.json` ([COVERAGE-THRESHOLDS-JSON]). Never bake a threshold number into a Makefile, CI workflow, or any other file.
 
 ---
 
