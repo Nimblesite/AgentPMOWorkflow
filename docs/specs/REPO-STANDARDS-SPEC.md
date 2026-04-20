@@ -110,7 +110,12 @@ endif
 
 ### [MAKE-TARGETS] Standard Targets (exactly 7, identical across all repos)
 
-Every repo's Makefile exposes EXACTLY these 7 standard targets in a clearly labeled `Standard Targets` section:
+Every repo's Makefile is organised into **two sections**:
+
+1. **`Standard Targets`** — the 7 portfolio-wide targets below. Every repo has **exactly these 7** in this section. Implementations vary per language; the set of target names does not.
+2. **`Repo-Specific Targets`** — a separate section below, for targets unique to this repo (e.g. `dashboard`, `website-build`, `install-skill-claude`). **The contents of this section vary per repo.** Skills applying this spec MUST NOT delete targets from this section simply because they are not in the list of 7. Repo-specific targets are first-class and preserved across remediation runs.
+
+The 7 standard targets:
 
 | Target | What it does |
 |--------|-------------|
@@ -122,9 +127,13 @@ Every repo's Makefile exposes EXACTLY these 7 standard targets in a clearly labe
 | `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
 | `make setup` | Post-create dev environment setup (devcontainer hook) |
 
-Repos MAY have additional targets in a separate `Repo-Specific Targets` section below the standard targets. These MUST NOT duplicate or shadow the 7 standard targets. Internal sub-recipes (`_test_unit`, `_test_e2e`) may chain inside `_test`, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
+**Rules:**
 
-Agent-pmo-stamped targets that are not in the 7 standard targets and not in the repo-specific section are orphaned — see [MARKER-CLEANUP].
+- The 7 standard targets MUST all be present in `Standard Targets`. No substitutions, no omissions.
+- **The `Standard Targets` section MUST NOT contain any public target outside the 7 above.** A public target with a non-standard name up there is misplaced — move it into `Repo-Specific Targets` (unless it duplicates/shadows a standard target, in which case merge and delete).
+- Repo-specific targets MUST NOT duplicate or shadow the 7 standard targets (no `test-all`, no `build-release`, no `lint-fix` — merge that logic into the corresponding standard target instead).
+- Internal sub-recipes (`_test_unit`, `_test_e2e`, `_coverage_check`) may chain inside the 7 standard recipes, but MUST remain private (underscore-prefixed) and MUST NOT appear in `.PHONY`.
+- Agent-pmo-stamped public targets outside the 7 standard targets are orphans and are removed per [MARKER-CLEANUP]. Non-stamped public targets are assumed to be genuine repo-specific targets and are preserved.
 
 ### [MAKE-TEMPLATE] Standard Makefile Template
 

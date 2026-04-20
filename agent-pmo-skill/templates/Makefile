@@ -28,6 +28,11 @@ COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 
 # =============================================================================
 # Standard Targets
+#
+# These 7 targets are portfolio-wide and identical across every repo.
+# Do NOT add extra public targets here — put them in the Repo-Specific
+# Targets section at the bottom of this file.
+# See REPO-STANDARDS-SPEC [MAKE-TARGETS].
 # =============================================================================
 
 ## build: Compile/assemble all artifacts
@@ -306,13 +311,6 @@ setup:
 # 	go mod download
 # 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
 
-# =============================================================================
-# Repo-Specific Targets
-#
-# Targets below this line are specific to this repo and are NOT part of the
-# standard 7-target interface. Add repo-specific helpers here.
-# =============================================================================
-
 ## help: List all available targets
 help:
 	@echo "Standard targets:"
@@ -323,3 +321,18 @@ help:
 	@echo "  clean  - Remove build artifacts"
 	@echo "  ci     - lint + test + build (full CI simulation)"
 	@echo "  setup  - Post-create dev environment setup"
+
+# =============================================================================
+# Repo-Specific Targets
+#
+# Targets below this line are specific to this repo and are NOT part of the
+# standard 7-target interface. Add repo-specific helpers here.
+#
+# Rules:
+#   - MUST NOT duplicate or shadow any of the 7 standard targets above.
+#   - Agents applying REPO-STANDARDS-SPEC preserve targets in this section —
+#     they are NOT "superfluous" just because they're not one of the 7.
+#   - Add them to .PHONY if they are phony.
+# =============================================================================
+
+

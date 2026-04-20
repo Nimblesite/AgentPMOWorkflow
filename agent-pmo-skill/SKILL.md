@@ -8,364 +8,185 @@ disable-model-invocation: true
 
 # Enforce Repository Standards
 
-Apply the standards defined in the `REPO-STANDARDS-SPEC.md` file. Works on both new and existing repos.
+This skill is a **process wrapper around the spec**. The spec is authoritative for every rule, table, config file, command, and threshold. This file tells you the order of operations, what to inspect in the target repo, and what decisions to make. **Do not duplicate spec content here — point to the relevant spec ID and read it.**
 
-**Finding the spec:** The spec and all templates live at a fixed path that was stamped into this skill at install time:
+- **Spec:** `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`
+- **Templates:** `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`
 
-- Spec: `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`
-- Templates: `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`
-
-Read the spec directly. Do NOT search the filesystem, scan sibling directories, or guess paths. If the path above does not exist, report an error and stop.
+If the paths above do not exist, report an error and stop. Do not search the filesystem or guess paths.
 
 **NEVER run `git commit`, `git push`, or any git write command.** Read-only git commands (status, log, diff) are fine.
 
+## How to use this skill
+
+1. Read the spec. When a step references a spec ID (e.g. `[MAKE-TARGETS]`), open that section and follow it. The spec contains the rules; this file is the workflow.
+2. Before touching files, read the universal rules below — they apply to every step.
+3. Execute Steps 1–5 in order.
+
+## Universal rules (apply to EVERY step)
+
+- **Token discipline.** Try to be economical with token usage while carrying out this skill.
+- **Merge, don't clobber.** If a compliant equivalent exists → leave it. If an equivalent exists under a wrong name → rename/update in place. Only create from scratch if nothing equivalent exists.
+- **No duplicates.** The target repo must not end up with two files serving the same purpose. Rename or delete the old one.
+- **Templates are starting points, not copy-paste targets.** See spec [MODES-CUSTOMIZE]. Strip every language/tool section that does not apply. Fill every `{{placeholder}}`. Zero irrelevant content in the output.
+- **Stamp every file you create or substantively modify** with `agent-pmo:<hash>` per spec [MARKER] / [MARKER-FORMAT]. Get the hash with `git -C "{{STANDARDS_REPO}}" rev-parse --short HEAD`.
+- **Never stamp a file whose source does not exist in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`.** Verify by reading the source first. Applies especially to skills — list `templates/skills/` and only create what is actually there.
+- **Never run git write commands.** Read-only git is fine.
+
 ## Instructions
 
-### Step 1 — Read the spec, detect context, and detect primary agent
+### Step 1 — Read the spec and detect context
 
-1. Read `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`. **All file contents, templates, linter configs, CI workflows, coverage checks, and Makefile targets come from that spec. Do not improvise or invent alternatives.**
-2. Detect which languages are present in the target repo (look for `Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`, etc.).
-3. Determine repo type (library, CLI, app/service, extension, static site) for coverage thresholds per the spec. All projects default to 90% code coverage target by default
-4. **Identify the canonical file.** Check in this order:
-   - If `AGENTS.md` exists with substantial content (>10 lines, not just a pointer) → `AGENTS.md` is canonical.
-   - If `CLAUDE.md` exists with substantial content → `CLAUDE.md` is canonical.
-   - If neither exists, you are the primary agent — determine canonical file per [AGENT-PLACEMENT] and create it from the template, tailored to the repo.
-   - Canonical file by agent when creating from scratch: Claude Code → `CLAUDE.md`; all others → `AGENTS.md`.
-5. **Merge into the canonical file — never replace it.** Read the existing canonical file. Identify what is missing or weaker than the standard (missing sections, vague rules, wrong commands). **Merge the missing content in, preserving the file's existing structure, tone, and repo-specific context.** Do NOT copy-paste the template wholesale. The result must read as a coherent document for this specific repo — not a generic template with the repo name swapped in. Tighten and cut while merging: remove redundant prose, stale comments, and bloat. The canonical file should get better and leaner, not longer.
-5a. **Strip all non-canonical instruction files to bare pointer.** For every agent instruction file that is NOT the canonical file (e.g. if `CLAUDE.md` is canonical then `AGENTS.md` is a pointer, and vice versa — plus `.clinerules/`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`): **delete all existing content** and replace with ONLY the marker line and the `@<canonical_file>` redirect. Nothing else — no headings, no explanations, no preamble, no copied rules. Use `templates/CLAUDE.md` as the pointer template (it is just `@{{CANONICAL_FILE}}`). A pointer file with any content beyond the marker and `@` redirect is broken and must be fixed.
-6. Report which file is canonical and summarise what was merged in vs. what was already present.
-7. **Read the target agent's official documentation** before touching any instruction or skill files. The spec [AGENT-DOCS] has the complete URL table. Each agent has different file locations, import syntax, and conventions. You MUST use the correct syntax — do not guess.
+1. Read `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`. All file contents, configs, CI workflows, and commands come from the spec. Do not improvise.
+2. Detect languages from build files (`Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`).
+3. Determine repo type (library, CLI, app/service, extension, static site) for the coverage threshold per spec [COVERAGE-THRESHOLDS]. Default 90%.
+4. **Identify the canonical instruction file** per spec [AGENT-CANONICAL] and [AGENT-PLACEMENT]:
+   - `AGENTS.md` with substantial content (>10 lines, not a pointer) → canonical.
+   - Else `CLAUDE.md` with substantial content → canonical.
+   - Else create one from `templates/AGENTS.md`: Claude Code → `CLAUDE.md`; all others → `AGENTS.md`.
+5. Read the target agent's official docs (spec [AGENT-DOCS]) before touching instruction/skill files. Syntax and placement differ per agent.
 
-### Step 2 — Audit existing artifacts for equivalents
+### Step 2 — Audit existing artifacts
 
-Before creating anything, **inventory what already exists** so you never create duplicates.
+Before creating anything, **inventory what already exists** so Step 3 can merge instead of duplicate.
 
-#### 2a. Documentation folder structure
-- Check if a `docs/` directory exists with `specs/` and `plans/` subdirectories.
-- Check for non-standard documentation folders: `doco/`, `documentation/`, `doc/`, `documents/`. These are common variants that agents and humans create instead of the standard `docs/`.
-- If a non-standard folder exists and `docs/` does not, it must be **renamed** to `docs/` in Step 3.
-- If a non-standard folder exists AND `docs/` also exists, the contents must be **merged** into `docs/` and the non-standard folder deleted.
-- Check whether existing docs are properly organised into `specs/` (documents that specify system behavior) and `plans/` (documents that specify how to achieve goals, with TODO checklists at the bottom of the doc). Markdown files sitting loose in the docs root should be classified and moved into the correct subdirectory.
+For each area below, record: what exists, what's missing, what's under a wrong name, what duplicates a standard artifact.
 
-#### 2b. CI workflows
-- List ALL files in `.github/workflows/`. Look for existing CI workflows under any name (e.g., `build.yml`, `ci-build.yml`, `test.yml`, `checks.yml`, `main.yml`, `pull_request.yml`, `pr.yml`).
-- Read each workflow file. If a workflow already does what `ci.yml` should do (lint/test/build on PRs), that IS the CI workflow — **rename it** to `ci.yml` and update it in place. Do NOT create a new `ci.yml` alongside it.
-- Same for release workflows (`publish.yml`, `deploy.yml`, `build-release.yml` → `release.yml`) and pages workflows (`gh-pages.yml`, `pages.yml` → `deploy-pages.yml`).
+- **2a. Docs folder.** Look for `docs/` (standard) or variants `doco/`, `documentation/`, `doc/`, `documents/`. Check for `docs/specs/` and `docs/plans/` subdirs. Flag loose markdown files in `docs/` for classification.
+- **2b. CI workflows.** List `.github/workflows/*.yml`. Identify any existing workflow that does what `ci.yml`/`release.yml`/`deploy-pages.yml` should do, under any filename. Per spec [CI-WORKFLOWS] / [CI-JOBS] these will be renamed in Step 3, not re-created.
+- **2c. Makefile.** If present, read in full. Classify every public target per spec [MAKE-TARGETS]:
+  - (i) One of the 7 standard targets → note whether present/missing/wrongly-implemented.
+  - (ii) Duplicates/shadows a standard target (e.g. `test-all`, `lint-fix`, `build-release`) → candidate for merge+delete.
+  - (iii) Agent-pmo-stamped but source no longer in standards repo → orphan per [MARKER-CLEANUP].
+  - (iv) Genuine repo-specific target → belongs in `Repo-Specific Targets` section, preserved.
+  Flag cross-platform violations ([MAKE-CROSS-PLATFORM]): raw `rm -rf`/`mkdir -p` instead of `$(RM)`/`$(MKDIR)`. If a `justfile`/`Taskfile.yml` is used instead, ask the user before replacing.
+- **2d. Linter configs.** Look for legacy/alternate-name configs per spec [LINT]. ESLint v0-v8 files → `eslint.config.mjs`. Old Prettier variants → `.prettierrc.json`. Python `.flake8`/`setup.cfg`/`tox.ini` → Basilisk+ruff+pyright ([LINT-PYTHON-BASILISK]). `.golangci.yaml` → `.golangci.yml`. Migrating means **delete the old file** once the new one covers it.
+- **2e. Formatter configs.** Check CSharpier, Fantomas, Prettier, rustfmt, ruff format per spec [FMT] / [FMT-TOOLS]. `[tool.black]` in pyproject → migrate to `[tool.ruff.format]`.
+- **2f. Coverage.** Check for `coverage-thresholds.json` at repo root (spec [COVERAGE-THRESHOLDS-JSON]). Flag any legacy threshold storage for migration:
+  - `vars.COVERAGE_THRESHOLD*` in workflows
+  - `COVERAGE_THRESHOLD ?= …` in Makefile
+  - Hardcoded numbers in CI YAML (`--lines 90`, `--fail-under 85`)
+  - `gh variable list 2>/dev/null | grep -i COVERAGE`
+  - Shell scripts (`scripts/check_coverage.sh`, etc.) — replaced by the `_coverage_check` Make recipe
+  - `.coveragerc` vs `pyproject.toml [tool.coverage]` — don't have both
+- **2g. Gitignore.** Read existing `.gitignore` in full. Per spec [GITIGNORE], add only clearly-safe patterns (OS junk, build artifacts, secrets, tooling noise). **Err on the side of adding fewer patterns** — ignoring something the repo intentionally tracks can silently hide work. Do not duplicate or replace.
+- **2h. LICENSE.** Check for `LICENSE`/`LICENSE.md`/`LICENSE.txt`/`LICENCE`/`COPYING`/`UNLICENSE`. If missing, record for the Step 5 big warning. **Do NOT create one** — license choice has legal consequences and must be the user's decision.
+- **2i. GitHub repo settings.** Run `gh api repos/OWNER/REPO`. If `gh` is unavailable/unauthenticated/returns nulls, STOP and emit the warning below verbatim, then wait for explicit YES/NO:
 
-#### 2c. Makefile
-- If a `Makefile` exists, read it. Merge spec-required targets into the existing file. Preserve any extra custom targets the repo has. Do NOT create a second Makefile or overwrite custom targets.
-- Check whether the Makefile has cross-platform OS detection ([MAKE-CROSS-PLATFORM]). If it uses raw `rm -rf` or `mkdir -p` instead of `$(RM)`/`$(MKDIR)`, flag it for update in Step 3.
-- If the repo uses a different build file instead (e.g., `justfile`, `Taskfile.yml`), keep it for reference but create the standard `Makefile` that delegates or replaces it — ask the user if unsure.
+  ```
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  ⚠️  WARNING: GitHub repo settings COULD NOT BE READ  ⚠️        ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  `gh api` failed or returned no data. This matters because:      ║
+  ║                                                                   ║
+  ║  1. CI WORKFLOW: squash-only vs merge-commit affects how         ║
+  ║     ci.yml must be configured (branch triggers, merge checks).   ║
+  ║                                                                   ║
+  ║  2. REPO NORMALIZATION: merge strategy, branch protection,       ║
+  ║     PR settings, and issue/wiki toggles CANNOT be applied        ║
+  ║     without `gh` access. The repo will be left in whatever       ║
+  ║     state GitHub currently has it in.                            ║
+  ║                                                                   ║
+  ║  To fix: run `gh auth login` then re-run this skill.             ║
+  ╚══════════════════════════════════════════════════════════════════╝
 
-#### 2d. Linter configs
-- Check for equivalent configs under alternate names or locations:
-  - ESLint: `.eslintrc.js`, `.eslintrc.cjs`, `.eslintrc.yaml`, `.eslintrc.json` → standardise to `eslint.config.mjs` (ESLint v9+ flat config)
-  - Prettier: `.prettierrc`, `.prettierrc.js`, `.prettierrc.yaml`, `prettier.config.js` → standardise to `.prettierrc.json`
-  - Python linting: `setup.cfg` `[flake8]`/`[isort]` sections, `.flake8`, `tox.ini` → migrate to **Basilisk** (PRIMARY linter AND type checker — see [LINT-PYTHON-BASILISK]) configured in `pyproject.toml [tool.basilisk]`, with `[tool.ruff]` and `[tool.pyright]` as the secondary layer
-  - Go linting: `.golangci.yaml` (wrong extension) → rename to `.golangci.yml`
-  - C#: build props with analyzer packages (see spec for required PackageReference items in Directory.Build.props)
-- When migrating, **delete the old file** after confirming the new one covers everything. Do NOT leave both.
+  Do you want to continue WITHOUT applying GitHub repo settings?
+  Answering YES means CI workflow assumptions may be wrong and repo
+  settings will NOT be normalized.
 
-#### 2e. Formatter configs
-- Check for existing formatter setups: CSharpier (`.csharpierrc.json`, `dotnet-tools.json`), Fantomas (`.fantomasrc`, `dotnet-tools.json`), Prettier (`.prettierrc`, `.prettierrc.json`, `.prettierrc.js`, etc.), rustfmt (`rustfmt.toml`), ruff format (`pyproject.toml [tool.ruff.format]`). If `[tool.black]` exists in pyproject.toml, migrate to `[tool.ruff.format]` and remove it.
-- If an equivalent formatter config exists under a non-standard name, migrate it. Do NOT leave duplicates.
-- For Python repos, verify Basilisk is set up as the **primary linter AND type checker** in `pyproject.toml [tool.basilisk]` and wired into `make lint` BEFORE ruff/pyright. The auto-formatter is ruff format. See [LINT-PYTHON-BASILISK].
+  → Type YES to continue anyway, or NO to abort and fix gh access first.
+  ```
 
-#### 2f. Coverage configs
-- **Check for `coverage-thresholds.json`** at the repo root. If absent, you'll create one in Step 3d. If present, validate it has `default_threshold` and matches the [COVERAGE-THRESHOLDS-JSON] schema.
-- **Search for legacy threshold storage and flag for migration:**
-  - `vars.COVERAGE_THRESHOLD*` references in any workflow under `.github/workflows/`
-  - `COVERAGE_THRESHOLD ?= …` style defaults in the Makefile
-  - Hardcoded numbers in CI YAML (`--lines 90`, `--fail-under 85`, etc.)
-  - Run `gh variable list 2>/dev/null | grep -i COVERAGE` to find GitHub repo variables
-- Check for existing coverage scripts (`scripts/check_coverage.sh`, `tools/coverage.sh`, etc.). If found, the Makefile `_coverage_check` target replaces them — **delete the old script** after migrating any custom logic.
-- Check for `.coveragerc` vs `pyproject.toml` `[tool.coverage]` — don't have both.
+  - NO → stop. Tell the user to run `gh auth login` and re-invoke.
+  - YES → note "GitHub settings skipped — gh unavailable" in the Step 5 report and continue.
+  - If `gh` works → compare against `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md` and only apply the diffs.
 
-#### 2g. Gitignore
-- Read the existing `.gitignore` in full. Read the relevant template gitignore(s) for detected languages.
-- **Add only patterns that are clearly safe** — OS junk (`.DS_Store`, `Thumbs.db`), build artifacts (dirs like `target/`, `dist/`, `__pycache__/`), secrets (`.env`, `*.pem`, `*.key`), and tooling noise (`.idea/`, coverage artifacts).
-- **Do NOT blindly copy the template.** Err on the side of adding fewer patterns. A missing ignore is recoverable; ignoring something important (source files, config, migration files) can silently hide work.
-- Before adding any pattern, ask: could this match something the repo intentionally tracks? If yes, skip it or flag it for the user.
-- Do NOT duplicate patterns already present. Do NOT replace the existing file.
+### Step 3 — Apply standards (merge-first, DO NOT commit/push)
 
-#### 2h. LICENSE file (CRITICAL — must alert if missing)
-- Check for a `LICENSE`, `LICENSE.md`, `LICENSE.txt`, `LICENCE`, `COPYING`, or `UNLICENSE` file at the repo root.
-- **If NO license file exists, flag this loudly for the Step 5 report.** An unlicensed repo is legally "all rights reserved" — nobody can use, copy, or contribute to it without explicit permission.
-- **DO NOT create a LICENSE file automatically.** License choice is a deliberate decision the user must make (MIT, Apache-2.0, GPL, proprietary, etc.) — the wrong choice has legal consequences.
-- Record the finding for the final report.
+For every item: (1) compliant equivalent exists → leave alone; (2) equivalent exists under wrong name/content → rename/update in place; (3) nothing equivalent → create from template.
 
-#### 2i. GitHub repository settings
+- **3a. Docs folder.** Rename `doco/`/`documentation/`/`doc/`/`documents/` → `docs/`. Merge if both exist, then delete the non-standard one. Create `docs/specs/` and `docs/plans/`. Classify loose markdown files: specs = behavior/requirements; plans = how-to with TODO checklists. Update internal references that pointed to the old folder name.
+- **3a-ii. Spec ID rule.** Ensure the rule is present in the canonical instruction file. Validation/renaming of existing spec IDs is the `spec-check` skill's job, not this one.
+- **3b. Makefile.** Per spec [MAKE-TARGETS] and [MAKE-TEMPLATE]. The Makefile has two sections:
+  - `Standard Targets` — the 7 fixed targets (`build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`). No substitutions, no extras allowed here.
+  - `Repo-Specific Targets` — a separate section below, varies per repo, **preserved**.
 
-Run `gh api repos/OWNER/REPO` to read current settings (merge strategy, features, branch protection).
+  Act on the Step 2c classification:
+  - (i) missing/wrong standard target → add/fix in `Standard Targets`.
+  - (ii) duplicate of a standard target → merge useful logic into the standard target, delete the duplicate, update callers.
+  - (iii) orphan → [MARKER-CLEANUP]: merge useful logic into the correct standard target, delete the orphan.
+  - (iv) genuine repo-specific target in the wrong place → move it down into `Repo-Specific Targets`. Do not delete. Do not "tidy up".
 
-**If `gh` is unavailable, not authenticated, or returns nulls/errors — STOP and emit this warning verbatim before continuing:**
-
-```
-╔══════════════════════════════════════════════════════════════════╗
-║  ⚠️  WARNING: GitHub repo settings COULD NOT BE READ  ⚠️        ║
-╠══════════════════════════════════════════════════════════════════╣
-║  `gh api` failed or returned no data. This matters because:      ║
-║                                                                   ║
-║  1. CI WORKFLOW: squash-only vs merge-commit affects how         ║
-║     ci.yml must be configured (branch triggers, merge checks).   ║
-║                                                                   ║
-║  2. REPO NORMALIZATION: merge strategy, branch protection,       ║
-║     PR settings, and issue/wiki toggles CANNOT be applied        ║
-║     without `gh` access. The repo will be left in whatever       ║
-║     state GitHub currently has it in.                            ║
-║                                                                   ║
-║  To fix: run `gh auth login` then re-run this skill.             ║
-╚══════════════════════════════════════════════════════════════════╝
-
-Do you want to continue WITHOUT applying GitHub repo settings?
-Answering YES means CI workflow assumptions may be wrong and repo
-settings will NOT be normalized.
-
-→ Type YES to continue anyway, or NO to abort and fix gh access first.
-```
-
-**Wait for the user's explicit YES/NO before proceeding. Do NOT continue automatically.**
-- If NO: stop here. Tell the user to run `gh auth login` and re-invoke the skill.
-- If YES: note "GitHub settings skipped — gh unavailable" in the Step 5 report and continue.
-
-If `gh` works: compare the result against `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. If settings already match, leave them alone. Only apply changes for settings that differ.
-
-### CRITICAL — Template Customization Rule
-
-**Templates in `templates/` are STARTING POINTS, not copy-paste targets.** Every template that contains multi-language examples, generic listings, or placeholder content MUST be tailored to the target repo's actual languages, tools, and architecture. The repo must be ready to use immediately with zero irrelevant content.
-
-When applying any template:
-- **Remove all language/tool sections that don't apply** to the detected languages. A Python only repo must not mention `cargo`, `tsconfig`, `dotnet`, or Dart analyzers.
-- **Replace generic examples with repo-specific ones.** If a skill template lists tools for 7 languages, keep only the ones for this repo's languages.
-- **Fill all placeholders** (`{{REPO_NAME}}`, descriptions, architecture sections) with real content.
-- **Strip unused Makefile blocks, CI language steps, and config files** for languages not present.
-
-**The test:** After applying, a developer reading any generated file should see ZERO references to languages, tools, or frameworks not used in the repo.
-
-This applies especially to:
-- **Skills** (`.claude/skills/`): Templates like `code-dedup` and `ci-prep` contain examples for every supported language — strip to only what's relevant.
-- **Canonical instruction file** (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT]): Remove Hard Rules sections for languages not in use. Fill in all `{{placeholders}}`.
-- **Makefile**: Delete commented blocks for unused languages.
-- **CI workflows**: Remove commented setup steps for unused languages.
-
-### File Markers (applies to ALL steps below)
-
-Every file you create or substantively modify MUST include an `agent-pmo:<hash>` marker near the top. Before writing any files, get the current short hash:
-
-```bash
-git -C "{{STANDARDS_REPO}}" rev-parse --short HEAD
-```
-
-Use this hash in every marker. See the spec [MARKER] for exact placement rules by file type. For example:
-- YAML/Makefile/TOML/dotfiles: `# agent-pmo:abc1234`
-- Markdown: `<!-- agent-pmo:abc1234 -->`
-- JSON: `"_agent_pmo": "abc1234"` as a top-level field
-- JS/TS: `// agent-pmo:abc1234`
-- XML: `<!-- agent-pmo:abc1234 -->`
-
-Place markers within the first 10 lines. For files with headers (shebang, YAML frontmatter, XML declarations), place immediately after the header. When updating an existing agent-pmo file, update the hash to the current value.
-
-**CRITICAL: Before stamping ANY file, verify its source template or skill exists at the exact path in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` by reading it. If the source file does not exist, DO NOT create the file and DO NOT stamp it. A marker is a claim of provenance — if the source doesn't exist in the standards repo, the file must not exist in the target repo. This applies especially to skills: only create skills that exist in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/`. List the directory first, then only create what you find.**
-
-### Step 3 — Apply standards with merge-first logic (DO NOT commit/push)
-
-For each item: **(1)** if a compliant equivalent exists, leave it alone; **(2)** if an equivalent exists under the wrong name or with wrong content, rename/update it in place; **(3)** only create from scratch if nothing equivalent exists.
-
-#### 3a. Documentation folder structure
-- If a non-standard doc folder exists (`doco/`, `documentation/`, `doc/`, `documents/`) and no `docs/` exists, **rename it** to `docs/`.
-- If both a non-standard folder and `docs/` exist, **merge** the contents into `docs/` and delete the non-standard folder.
-- Create `docs/specs/` and `docs/plans/` subdirectories if they don't exist.
-- Classify and move any loose markdown files in `docs/` into the correct subdirectory:
-  - Files that specify system behavior, requirements, or standards → `docs/specs/`
-  - Files that describe how to achieve goals or have TODO checklists → `docs/plans/`
-  - Non-markdown files (images, assets, etc.) may remain in `docs/` or a `docs/assets/` subdirectory.
-- Update any internal references (README links, CLAUDE.md paths, etc.) that pointed to the old folder name.
-
-#### 3a-ii. Spec ID rule
-
-Ensure the spec ID rule is present in the canonical instruction file (AGENTS.md / CLAUDE.md). This skill does NOT validate or rename existing spec IDs — that's the `spec-check` skill's job. This skill only ensures the rule is documented so agents follow it going forward.
-
-#### 3b. Makefile
-
-**Required public targets — exactly these 7, no more, no fewer ([MAKE-TARGETS]):**
-`build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`.
-
-Any public target not in this list is superfluous. For each extra target:
-1. Merge its useful logic into the correct standard target (e.g. format-check logic → `_lint`, coverage-check → `_test`).
-2. Delete it and remove from `.PHONY`.
-3. Update callers (workflows, scripts, docs) to use the standard target.
-4. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts. Alert the user for unstamped extras you're unsure about.
-
-**Other Makefile rules:**
-- Merge required targets into existing `Makefile`, or create one if none exists.
-- **Cross-platform ([MAKE-CROSS-PLATFORM]):** Ensure the Makefile has the OS detection block at the top (`ifeq ($(OS),Windows_NT)` ... `endif`) and uses `$(RM)`/`$(MKDIR)` instead of `rm -rf`/`mkdir -p`. Platform-specific targets (symlinks, scheduled tasks, etc.) must have both Unix and Windows variants.
-- `_lint` runs linters/analyzers only. `_fmt` handles formatting. They do not overlap.
-- `_test` MUST use the test runner's fail-fast flag AND call `_coverage_check` as its last line.
-- Uncomment language-specific implementation recipes for each detected language.
-- For multi-language repos, chain implementations as described in the spec.
-- Preserve project-specific custom targets only if they serve a genuine purpose beyond the 7 standard targets. When in doubt, ask the user before keeping.
-
-#### 3c. GitHub Actions workflows
-- Update/rename the identified existing workflow (from Step 2b), or create `ci.yml` only if no equivalent exists.
-- Same for `release.yml` and `deploy-pages.yml`.
-- Uncomment the language setup sections that apply.
-- **Default to a single `ci` job with sequential steps**: `make lint → make test → make build`. Each target is independent — lint analyzes, test runs tests with coverage, build compiles. Only the 7 targets in [MAKE-TARGETS] exist. Only split into separate parallel jobs when individual tasks are 5+ minutes each.
-- **CRITICAL: Every job in every workflow MUST have `timeout-minutes: 10`** unless there is a documented reason it genuinely needs longer. If a job needs longer than 10 minutes, keep `timeout-minutes` at the required value and add a comment directly above it explaining WHY it must exceed 10 minutes. Example:
+  Other rules from the spec: cross-platform ([MAKE-CROSS-PLATFORM]); `_lint` and `_fmt` do not overlap; `_test` uses the fail-fast flag AND calls `_coverage_check` last ([TEST-RULES]); uncomment only the language blocks that apply.
+- **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
   timeout-minutes: 15
   ```
+- **3d. Coverage.** Read spec [TEST] in full before doing anything here. `make test` = fail-fast + coverage + threshold, one indivisible operation. Thresholds ONLY in `coverage-thresholds.json` per [COVERAGE-THRESHOLDS-JSON].
 
-#### 3d. Coverage (CRITICAL — JSON file is the single source of truth)
+  This skill must:
+  - Create `coverage-thresholds.json` at the repo root from `templates/coverage-calc/coverage-thresholds.json`. Set `default_threshold` per [COVERAGE-THRESHOLDS]. For multi-project repos, list each project with its **currently measured** threshold (ratchet from measured — never above).
+  - Migrate every legacy threshold storage found in Step 2f into the JSON. Delete the old storage (env blocks, Makefile defaults, shell scripts, public `coverage*` targets). For GitHub repo variables, instruct the user to delete them from Settings → Variables → Actions (this skill can't delete them).
+  - Wire `_coverage_check` into `_test`. Keep it private — it is never a public target. Reference the language-specific commented blocks in `templates/Makefile`.
+  - Verify `ci.yml` has NO `coverage-check`/`coverage` step and NO `COVERAGE_THRESHOLD` env vars. The workflow just calls `make lint`, `make test`, `make build`.
+  - .NET: `coverlet.runsettings` per [COVERAGE-COVERLET]. Python: `pyproject.toml [tool.coverage]` only (no `.coveragerc`). TypeScript/Jest: [COVERAGE-JEST].
+  - Thresholds are monotonically increasing. Reject PRs that lower a threshold unless explicitly justified.
+- **3e. Linter configs.** Apply spec [LINT] and the per-language sections ([LINT-RUST], [LINT-TS-ESLINT], [LINT-TS-PRETTIER], [LINT-TS-STRICT], [LINT-PYTHON-BASILISK], [LINT-DART], [LINT-GO], [LINT-CSHARP], [LINT-FSHARP]). Merge into existing `pyproject.toml`/`Cargo.toml`/`tsconfig.json` — don't clobber non-lint sections. Delete superseded files (`.eslintrc.*`, `.flake8`, `setup.cfg [flake8]`, `.golangci.yaml`, etc.) after migration.
+- **3f. Formatting.** Apply spec [FMT] / [FMT-TOOLS] / [FMT-PYTHON] / [FMT-MULTI]. `make fmt`, `make lint`, `make test` are three separate, non-overlapping targets.
+- **3g. GitHub repo settings.** Apply spec [GITHUB-SETTINGS] / [GITHUB-MERGE] / [GITHUB-FEATURES] / [GITHUB-PROTECTION] / [GITHUB-CLI] via the commands in `templates/.github/common-repo-settings.md`. Applies to both new and existing repos. If the repo is local-only (no remote yet), skip and note for after-first-push. If `gh` was skipped in Step 2i, skip here too and record in the Step 5 report.
+- **3h. Agent instruction files.** Per spec [AGENT] / [AGENT-TEMPLATE] / [AGENT-POINTERS].
 
-**Read REPO-STANDARDS-SPEC [TEST] in full before doing anything in this step.**
+  **The canonical file MUST be fully customised.** Fill every placeholder, strip every language/tool/framework section that does not apply, fill the project overview and architecture section with real content. The test: ZERO references to languages or tools the repo does not use.
 
-**`make test` = fail-fast + coverage + threshold enforcement.** These are not separate concerns — they are one indivisible operation ([TEST-RULES]). A `make test` that does not compute coverage is broken and must be fixed. Thresholds live in `coverage-thresholds.json` at the repo root ([COVERAGE-THRESHOLDS-JSON]) — not env vars, not repo variables, not CI YAML.
+  1. Write the canonical file (Claude → `CLAUDE.md`; others → `AGENTS.md`; Copilot → `.github/copilot-instructions.md`).
+  2. Every other agent instruction file becomes a trivial pointer to the canonical file. See spec [AGENT-POINTERS]. **Strip existing content** from non-canonical files — no headings, no preamble, no leftover rules — leave only the marker line and `@<canonical_file>` redirect. Use `templates/CLAUDE.md` as the pointer template.
+  3. Place skills from `templates/skills/` into the target agent's native directory per spec [SKILL-PLACEMENT]. Apply spec [MODES-CUSTOMIZE]:
+     - Language-customizable skills (`code-dedup`, `ci-prep`, `upgrade-packages`): strip irrelevant language sections, fill placeholders.
+     - Content-preserving skills (`website-audit`, `spec-check`, `submit-pr`, any skill without multi-language examples): copy the step-by-step procedure verbatim. Add repo-specific context if useful, but never drop/merge/summarize/rewrite/gut steps. Diff source vs output — the only differences should be repo-specific additions.
 
-What this skill must do:
-
-- **Create `coverage-thresholds.json`** at the repo root if it doesn't exist. Use the template at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/coverage-calc/coverage-thresholds.json`. Set `default_threshold` per the [COVERAGE-THRESHOLDS] repo-type table. For multi-project repos, list each project under `projects` with its current measured threshold (ratchet from current measured coverage, never above).
-- **Migrate existing thresholds.** If you find:
-  - `vars.COVERAGE_THRESHOLD*` references in `ci.yml` → read each value from `gh variable list`, write them into `coverage-thresholds.json`, and **delete the env block** from ci.yml.
-  - GitHub repo variables `COVERAGE_THRESHOLD*` → after migration, instruct the user to delete them from Settings → Variables → Actions (this skill cannot delete them automatically).
-  - Hardcoded `COVERAGE_THRESHOLD ?= 90` style defaults in the Makefile → replace with `COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json` and update the internal `_coverage_check` recipe to read the JSON via `jq`.
-  - Old coverage shell scripts (`scripts/check_coverage.sh`, etc.) → delete them; the internal `_coverage_check` Makefile recipe replaces them.
-  - Public `make coverage-check` / `make coverage` targets → merge threshold-assertion logic into a private `_coverage_check` recipe called from `_test`, then delete the public targets.
-- **Internal `_coverage_check` recipe** must read `coverage-thresholds.json` with `jq` and assert measured ≥ threshold. It is called from `_test` — never exposed as a public target. Reference the language-specific commented blocks in `templates/Makefile`. **`make test` MUST exit non-zero** when below threshold.
-- **`ci.yml` has NO `coverage-check` step, NO `coverage` step, and NO `COVERAGE_THRESHOLD` env vars.** `make test` runs coverage and enforcement inline; the CI workflow only calls `make lint`, `make test`, `make build`. Verify after editing.
-- **Thresholds are monotonically increasing (ratchet).** When coverage improves, bump the JSON value in the same PR. PRs that lower a threshold MUST be rejected unless explicitly justified.
-- For .NET repos, create/update `coverlet.runsettings` per the spec template at `templates/coverage-calc/coverlet.runsettings`.
-- For Python repos, configure coverage in `pyproject.toml` `[tool.coverage]` (Basilisk-aware setup). Do NOT also create `.coveragerc` — pick one location.
-- For TypeScript/Jest repos, use `templates/coverage-calc/jest.coverage.config.js`.
-
-#### 3e. Linter configs
-Apply the exact linter configuration from the spec for each detected language. **Merge into existing files; delete superseded files:**
-- Rust: `Cargo.toml` workspace lints, `rustfmt.toml`
-- TypeScript: `eslint.config.mjs` (flat config), `.prettierrc.json`, `tsconfig.json` strict baseline — merge with existing tsconfig if present, don't clobber project-specific fields like `outDir`, `rootDir`, `include`. Delete old-format equivalents (`.eslintrc.json`, `.eslintrc.js`, `.prettierrc.yaml`, etc.) after migration.
-- Python: **Basilisk is the PRIMARY linter AND PRIMARY type checker for every Python project — non-negotiable ([LINT-PYTHON-BASILISK]).** Configure `[tool.basilisk]` in `pyproject.toml` and run it FIRST in `make lint` (before ruff and pyright). Configure `[tool.ruff]` (with `select = ["ALL"]`) and `[tool.pyright]` as the secondary layer. Merge with existing `pyproject.toml` — don't clobber `[project]` or other tool sections. Delete superseded `.flake8`, `setup.cfg [flake8]`, `tox.ini` lint sections, etc.
-- Dart/Flutter: `analysis_options.yaml`
-- Go: `.golangci.yml` (delete `.golangci.yaml` if it existed)
-- C#: `Directory.Build.props` with `Microsoft.CodeAnalysis.NetAnalyzers` (all CA* and IDE* rules enabled as errors). If the repo is missing individual analyzer rules, add them one by one to the `.csproj` or `Directory.Build.props` — do NOT use .editorconfig for this. Only configure static code analysis rules, not style/formatting settings (CSharpier handles formatting).
-- F#: Analyzer configuration via project files
-
-#### 3f. Formatting
-`make fmt`, `make lint`, and `make test` are three separate, non-overlapping targets:
-- **`make fmt`** — format code in-place.
-- **`make lint`** — run linters/analyzers (read-only). Does NOT format.
-- **`make test`** — run tests fail-fast with coverage and threshold enforcement.
-
-Formatter per language (`_fmt` only):
-- **C#:** CSharpier — `dotnet csharpier .` / `dotnet csharpier --check .`
-- **F#:** Fantomas — `dotnet fantomas .` / `dotnet fantomas --check .`
-- **Rust:** `cargo fmt --all` / `cargo fmt --all --check`
-- **Python:** `_fmt`: `ruff format .`. `_lint`: Basilisk (primary linter + type checker, [LINT-PYTHON-BASILISK]) → ruff lint → pyright.
-- **TypeScript/JavaScript:** Prettier — `npx prettier --write .` / `npx prettier --check .`
-- **Dart/Flutter:** `dart format .` / `dart format --set-exit-if-changed .`
-- **Go:** `gofmt -w .` / `gofmt -l . | grep . && exit 1 || true`
-
-For multi-language repos, `_fmt` chains all formatters and `_lint` chains all linters/analyzers. They do not overlap. No warnings, no soft fails.
-
-#### 3g. GitHub repository settings
-Apply the standard GitHub repo settings defined in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md`. This applies to **both new and existing repos**.
-
-Use the `gh` CLI to configure:
-- **Merge settings:** Squash merge only (disable merge commit and rebase merge), auto merge enabled, delete branch on merge enabled, squash commit title = PR_TITLE, message = PR_BODY.
-- **Features:** Wiki disabled, Projects disabled, Discussions enabled (public repos only).
-- **Branch protection:** If no protection exists on `main`, add a ruleset requiring PRs and CI status checks to pass. If protection already exists, leave it alone.
-
-The exact `gh api` commands are in the common-repo-settings file. The repo must be pushed to GitHub for these commands to work — if it's a brand new local-only repo, note this for the user and skip (they can run it after the first push).
-
-**If `gh` is unavailable or returns errors here:** the user already confirmed YES in Step 2i to continue without it. Skip this step entirely and record it in the Step 5 report as not applied.
-
-#### 3h. Agent instruction files ([AGENT] — agent-agnostic)
-
-**CRITICAL: The canonical instruction file (AGENTS.md or CLAUDE.md) MUST be fully customised for the target repo.** The template is a STARTING POINT. You MUST:
-- Fill ALL `{{placeholders}}` with real values (repo name, languages, description, architecture)
-- **Strip every language section that doesn't apply.** A Python repo MUST NOT mention Rust, TypeScript, Dart, C#, Go rules.
-- **Strip every tool/package reference that doesn't apply.** Don't mention `cargo`, `tsconfig`, `dotnet` in a Python repo.
-- **Fill in the project overview** with a real description of what the repo does.
-- **Fill in the architecture section** with the actual directory structure.
-- **Add repo-specific build commands** if they differ from the defaults.
-- **Include only the logging library row for the repo's language(s).**
-- **Include only the relevant agent reference docs** from the URL tables — a Claude-only repo doesn't need Codex/Copilot links.
-
-**The test:** After customisation, a developer reading the file should see ZERO references to languages, tools, frameworks, or packages not used in the repo.
-
-Generate your own canonical instruction file from the template at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/AGENTS.md`. Customise it fully as described above, then set it up for yourself:
-
-1. **Write your canonical file.** Put the customised content into whatever file you natively read (e.g., Claude → `CLAUDE.md`, Codex → `AGENTS.md`, Copilot → `.github/copilot-instructions.md`).
-2. **Create pointer files** so other agents can also find the instructions. Every other agent instruction file should be a trivial pointer to your canonical file.
-3. **Place skills** from `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` into your native skill directory. Read each source SKILL.md in full, then apply [MODES-CUSTOMIZE] customization rules:
-   - **Language-customizable skills** (`code-dedup`, `ci-prep`, `upgrade-packages`): strip irrelevant language sections, fill placeholders.
-   - **Content-preserving skills** (`website-audit`, `spec-check`, `submit-pr`, and any skill without multi-language examples): **the spirit of the skill must remain intact.** Copy the full step-by-step procedure verbatim. You may add repo-specific context (e.g., which websites to audit) but NEVER drop, merge, summarize, rewrite, or gut steps. Every step, sub-check, URL, specific instruction, checklist item, and report format must be preserved. Diff the source against your output — the only differences should be repo-specific additions.
-
-If an existing instruction file has substantial custom content, **merge** it into the canonical file rather than overwriting.
-
-#### 3i. VS Code workspace colorization (only if VS Code is detected)
-
-If the target repo has a `.vscode/` directory or `.vscode/settings.json`, colorize the VS Code title bar so the user can visually distinguish this workspace from others.
-
-1. **Find the project's brand colors.** Search the repo for a design system or CSS file that defines the project's color palette. Check, in order:
-   - A design system folder (`designsystem/`, `design-system/`, `design/`)
-   - CSS files in a website directory (`website/`, `site/`, `docs/`) — look for CSS custom properties (`--color-*`, `--brand-*`, `--primary`) or prominent color declarations
-   - `tailwind.config.*` theme colors
-   - Any `theme.*` or `colors.*` file
-   - The project's website or README if it references a color scheme
-2. **Extract the primary brand color** (the dominant accent/brand color, NOT white/black/grey).
-3. **Write `.vscode/settings.json`** (merge into existing if the file already exists). Add the `workbench.colorCustomizations` block:
-   ```json
-   {
-     "workbench.colorCustomizations": {
-       "titleBar.activeBackground": "<primary-brand-color>",
-       "titleBar.activeForeground": "<contrasting-text-color>",
-       "titleBar.inactiveBackground": "<darker-shade-of-primary>",
-       "titleBar.inactiveForeground": "<contrasting-text-color-with-opacity>"
+  If an existing canonical file has substantial custom content, **merge** into it instead of overwriting. Result must read as a coherent document for this repo, not a generic template with the name swapped in.
+- **3i. VS Code title bar colorization** (only if `.vscode/` or `.vscode/settings.json` exists).
+  1. Find the project's primary brand color. Check in order: `designsystem/`/`design-system/`/`design/`, CSS custom properties (`--color-*`, `--brand-*`, `--primary`) in `website/`/`site/`/`docs/`, `tailwind.config.*` theme, `theme.*`/`colors.*` files, README color scheme.
+  2. Extract the dominant accent (not white/black/grey).
+  3. Merge into `.vscode/settings.json`:
+     ```json
+     {
+       "workbench.colorCustomizations": {
+         "titleBar.activeBackground": "<primary-brand-color>",
+         "titleBar.activeForeground": "<contrasting-text-color>",
+         "titleBar.inactiveBackground": "<darker-shade-of-primary>",
+         "titleBar.inactiveForeground": "<contrasting-text-color-with-opacity>"
+       }
      }
-   }
-   ```
-   - `titleBar.activeBackground` — the primary brand color
-   - `titleBar.activeForeground` — white or dark text, whichever has better contrast
-   - `titleBar.inactiveBackground` — a slightly darker/desaturated shade of the primary color
-   - `titleBar.inactiveForeground` — same as active foreground but with ~80% opacity (append `cc` to the hex)
-4. If no brand colors can be found anywhere in the repo, **skip this step** and note it in the report. Do NOT invent colors.
+     ```
+     Inactive background = slightly darker/desaturated primary. Inactive foreground = active foreground with ~80% opacity (append `cc` to hex).
+  4. If no brand colors can be found anywhere, **skip** and note in the report. Do NOT invent colors.
+- **3j. VS Code recommended extensions.** Merge `templates/vscode/universal.extensions.json` into `.vscode/extensions.json`. If the repo has a web API (REST/GraphQL/HTTP server), also merge `webapi.extensions.json`. De-duplicate the `recommendations` array. Create `.vscode/` if absent.
 
-#### 3j. VS Code recommended extensions
+### Step 4 — Deduplication check
 
-Merge recommended extensions into `.vscode/extensions.json`. Templates at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/vscode/`:
+After all changes, verify:
 
-- Always include `universal.extensions.json` (`nimblesite.commandtree`, `nimblesite.too-many-cooks`).
-- If the repo has a web API (REST, GraphQL, or any HTTP server), also include `webapi.extensions.json` (`nimblesite.napper`).
-- If `.vscode/extensions.json` already exists, **merge** — add missing recommendations, keep existing entries.
-- De-duplicate the final `recommendations` array.
-- If no `.vscode/` directory exists, create it with the file.
+1. **CI workflows** — exactly one `ci.yml`, at most one `release.yml`, at most one `deploy-pages.yml`. Delete any legacy siblings.
+2. **Linter configs** — one config per tool per language. No both-of pairs (e.g. `eslint.config.mjs` AND `.eslintrc.json`; `.prettierrc` AND `.prettierrc.json`; `.golangci.yml` AND `.golangci.yaml`; `.flake8` AND `pyproject.toml [tool.ruff]`).
+3. **Coverage configs** — no both-of (`.coveragerc` AND `[tool.coverage]`). No leftover coverage shell scripts.
+4. **Formatter configs** — one per tool. No both-of (`[tool.black]` AND `[tool.ruff.format]`).
+5. **Build files** — no competing systems with identical targets (e.g. `Makefile` AND `Taskfile.yml`).
+6. **Docs folders** — exactly one, called `docs/`. `docs/specs/` and `docs/plans/` exist. No loose markdown that belongs in a subdir.
+7. **Skills** — no duplicates across agent-native skill directories. Consolidate to the primary agent's dir per spec [SKILL-PLACEMENT].
+8. **Agent instruction files** — exactly ONE canonical file with full rules. All others are pointers (marker + `@<canonical>` only). Rename legacy pointer filenames (`.clinerules/00-read-claude-md.md` → `.clinerules/00-read-instructions.md`).
+9. **Orphaned `agent-pmo:` files** — per spec [MARKER-CLEANUP]: for every marked file, verify the source still exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`. If not, delete the orphan.
+10. **Stale markers** — flag files more than 50 commits behind current standards HEAD per spec [MARKER-AUDIT].
+11. **Report** all duplicates deleted, orphans removed, stale markers found. When unsure whether something is a duplicate or a genuine repo-specific artifact, **ask the user** — never delete "to be tidy".
 
-### Step 4 — Deduplication check (CRITICAL)
+Merging multiple files into one is a valid outcome and overrides the no-delete default.
 
-After all changes, run this checklist to catch any bloat introduced:
+### Step 5 — Verify (DO NOT commit)
 
-1. **CI workflows:** List `.github/workflows/*.yml`. Verify there is exactly ONE CI workflow (`ci.yml`), at most one release workflow (`release.yml`), and at most one pages workflow (`deploy-pages.yml`). If duplicates exist (e.g., both `ci.yml` and the old `build.yml`), **delete the old one**.
-2. **Linter configs:** For each language, verify only ONE config exists per tool. Examples of duplicates to catch:
-   - Both `eslint.config.mjs` and `.eslintrc.json` (or any legacy `.eslintrc.*`)
-   - Both `.prettierrc.json` and `.prettierrc`
-   - Both `.golangci.yml` and `.golangci.yaml`
-   - Both `.flake8` and `pyproject.toml [tool.ruff]`
-3. **Coverage configs:** Verify no duplicate coverage configs (e.g., both `.coveragerc` and `pyproject.toml [tool.coverage]`). Verify no leftover coverage shell scripts.
-4. **Formatter configs:** For each language, verify only ONE formatter config exists per tool (e.g., not both `.prettierrc` and `.prettierrc.json`; not both `[tool.black]` and `[tool.ruff.format]` in pyproject.toml).
-5. **Build files:** Verify there aren't competing build systems doing the same thing (e.g., both `Makefile` and `Taskfile.yml` with identical targets).
-6. **Documentation folders:** Verify only ONE documentation folder exists (`docs/`). No leftover `doco/`, `doc/`, `documentation/`, or `documents/` folders. Verify `docs/specs/` and `docs/plans/` exist. Verify no loose markdown files in `docs/` that should be in a subdirectory.
-7. **Skills:** Check the agent-native skill directory (`.claude/skills/`, `.agents/skills/`, `.github/skills/`, `.cline/skills/`, `.opencode/skills/` per [SKILL-PLACEMENT]) — don't create duplicates of skills that already exist. If skills exist in multiple directories, consolidate to the primary agent's directory.
-8. **Agent instruction files:** Verify exactly ONE file has the full rules content (either CLAUDE.md or AGENTS.md, not both). All other agent files must be pointers. Check that old pointer filenames (e.g., `.clinerules/00-read-claude-md.md`) are renamed to the new standard (`.clinerules/00-read-instructions.md`).
-9. **Orphaned agent-pmo files ([MARKER]):** Search the target repo for all files containing an `agent-pmo:` marker. For each marked file, verify that its corresponding source template or skill still exists in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`. If the source no longer exists, **delete the orphaned file**. This cleans up files from skills or templates that were removed from the standards repo (e.g., the old `fmt`, `lint`, and `test` skills that were consolidated into `ci-prep`).
-10. **Stale markers:** For files with `agent-pmo:` markers, compare the stamped hash against the current standards repo HEAD. If a file is more than 50 commits behind, flag it for re-application.
-11. **Report:** List any duplicates found and deleted, any orphaned files removed, and any stale markers found. If you're unsure whether something is a duplicate or serves a different purpose, ask the user rather than deleting.
-
-In some cases, multiple files may merge into one file. This is optimal as it reduces clutter. **This case overrides the no delete rule**.
-
-### Step 5 — Verify (but do NOT commit)
-
-1. List all files created, modified, renamed, or deleted (including any extra Makefile targets merged/removed).
-2. If possible, run `make lint` and `make test` to validate the setup works. Report any errors so the user can address them.
-3. **LICENSE CHECK — if no license file was found in Step 2h, emit a BIG, IMPOSSIBLE-TO-MISS warning at the top of the final report.** Use heavy visual emphasis (banner of `=` or `!` characters, uppercase heading, bold). Example:
+1. List every file created, modified, renamed, or deleted (including Make targets merged/removed).
+2. If possible, run `make lint` and `make test` to validate. Report errors so the user can fix them.
+3. **LICENSE check.** If no license file was found in Step 2h, emit the banner at the **top** of the final report — impossible to miss, do not soften, do not omit:
 
    ```
    ================================================================================
@@ -386,28 +207,4 @@ In some cases, multiple files may merge into one file. This is optimal as it red
    consequences and must be made deliberately.
    ================================================================================
    ```
-
-   This warning MUST appear even if everything else succeeded. Do not bury it, do not soften it, do not omit it.
 4. Remind the user: **No commits or pushes were made. Review the changes and commit when ready.**
-
-## Rules
-
-- ⚠️ **Token discipline.** Read files with `offset`/`limit` when you only need a slice. Prefer `Grep` for known symbols. Don't dump whole templates into context to "see what's there" — you already have the spec. Write less. Delete more. Alert the user if context is loaded with files unrelated to the task.
-- **`make test` = fail-fast + coverage + threshold enforcement ([TEST-RULES]).** These are inseparable. A `make test` without coverage is broken. Use the runner's fail-fast flag. Never `--no-fail-fast`. Never "test without coverage".
-- **THRESHOLDS LIVE IN `coverage-thresholds.json` ONLY.** Never set thresholds via env vars, never via GitHub repo variables, never hardcoded in `ci.yml`. The JSON file at the repo root is the single source of truth ([COVERAGE-THRESHOLDS-JSON]). Ratchet only — never lower.
-- **NEVER run `git commit`, `git push`, or any git write command.**
-- **NEVER skip the spec.** Every config file must match the spec exactly (with only the documented substitutions like `{{REPO_NAME}}`).
-- **NEVER copy templates verbatim.** Templates are starting points. Strip all language/tool references that don't apply to the target repo. Fill all placeholders. The output must be immediately usable with zero irrelevant content.
-- **All GH Actions jobs get `timeout-minutes: 10`** by default. Only deviate with an explicit comment justifying the exception.
-- **EXACTLY 7 Makefile targets, NO MORE ([MAKE-TARGETS]):** `build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`. Any extras → merge useful logic into the correct standard target, delete the extra, update callers. Use [MARKER-CLEANUP] for agent-pmo-stamped artifacts.
-- **`make fmt`, `make lint`, `make test` are separate, non-overlapping targets.** Do not conflate them.
-- **Basilisk is the PRIMARY linter AND PRIMARY type checker for every Python project — non-negotiable.** Always configure Basilisk in `pyproject.toml [tool.basilisk]` first and wire it into `make lint` BEFORE ruff/pyright. Then layer on ruff format as the auto-formatter and pyright as a secondary type-check safety net. See [LINT-PYTHON-BASILISK].
-- **MERGE, don't clobber.** When an existing file partially meets the spec, update it in place. When an equivalent exists under a wrong name, rename it. Only create from scratch when nothing equivalent exists.
-- **NO DUPLICATES.** After applying standards, the repo must not have two files serving the same purpose. If you create a new canonical file, delete the old one it replaces. Always run the Step 4 deduplication check.
-- When remediating an existing repo, preserve project-specific settings that don't conflict with the spec (extra CI jobs, custom tsconfig paths, etc.). Extra public Make targets beyond the 7 in [MAKE-TARGETS] → merge useful logic, delete the extra. When in doubt, ask the user before keeping.
-- If the repo already has a config that's compliant, leave it alone — don't touch files unnecessarily.
-- **Read the agent docs before touching agent files.** The spec [AGENT-DOCS] has the complete URL table. Each agent has different import syntax, file locations, and conventions. Use the correct syntax for the detected agent — never guess.
-- **Skills are agent-agnostic but placement is agent-specific.** Skill templates use a universal SKILL.md format. Place them in the target agent's native directory per [SKILL-PLACEMENT]. If the repo uses multiple agents, prefer `.agents/skills/` for maximum cross-compatibility.
-- **Spec IDs are normative.** Every spec section MUST have a hierarchical, non-numeric ID (`[GROUP-TOPIC-DETAIL]`). Existing repos with missing or numbered IDs MUST be normalised. When renaming IDs, update all cross-references in code, tests, and docs.
-- **Every file you create or substantively modify gets an `agent-pmo:<hash>` marker ([MARKER]).** This enables orphaned file cleanup and provenance auditing. Never skip the marker.
-- **NEVER stamp a file unless its source exists in the standards repo.** Before creating any file from a template or skill, read the source at `{{STANDARDS_REPO}}/agent-pmo-skill/templates/` to confirm it exists. If the source path does not exist, do not create the file. List `{{STANDARDS_REPO}}/agent-pmo-skill/templates/skills/` before creating skills — only create what is actually there.
