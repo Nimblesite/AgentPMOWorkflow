@@ -25,6 +25,9 @@ coordination/
 logs/
 nohup.out
 
+# Repo-specific agent configuration that must be versioned.
+!.claude/settings.local.json
+
 # Coverage artifacts (all languages)
 coverage/
 lcov.info

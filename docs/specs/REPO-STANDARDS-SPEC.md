@@ -566,13 +566,46 @@ Placement rules:
 2. **Cross-compatible fallback.** Copilot, Cline, and OpenCode all scan `.agents/skills/`. For multi-agent repos, `.agents/skills/` covers the most agents with one copy.
 3. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body. Content is portable.
 
-### [SKILL-REQUIRED] Required skills
+### [SKILL-INSTALLATION] Install every skill unless clearly irrelevant
 
-| Skill | Template |
-|-------|----------|
-| ci-prep | [`templates/skills/ci-prep/SKILL.md`](templates/skills/ci-prep/SKILL.md) |
-| code-dedup | [`templates/skills/code-dedup/SKILL.md`](templates/skills/code-dedup/SKILL.md) |
-| submit-pr | [`templates/skills/submit-pr/SKILL.md`](templates/skills/submit-pr/SKILL.md) |
+**Default: every skill in [`templates/skills/`](../../agent-pmo-skill/templates/skills/) MUST be installed into the target repo.** That directory IS the authoritative skill list. Do NOT hard-code a subset in this spec, in the agent-pmo skill, or anywhere else — always enumerate `templates/skills/` at runtime. New skills appear there and become automatically required; removed skills become orphaned per [MARKER-CLEANUP] and are deleted from target repos.
+
+**Procedure (agent-pmo MUST follow this verbatim):**
+
+1. **List** the immediate subdirectories of `templates/skills/`. Each one is a skill.
+2. **For each skill, decide install vs skip** using the criteria below. **Default is install.** The burden of proof is on skipping.
+3. **Install** every skill that is not clearly irrelevant, tailoring per [MODES-CUSTOMIZE].
+4. **Report** the install/skip decision for EVERY skill in the Step 5 report, with a one-line reason per skip. A silent skip is a bug.
+
+**Skip a skill ONLY when ALL of these hold:**
+
+- The skill is scoped to a capability the repo **clearly does not have** (e.g., `website-audit` in a repo with no website templates, no static site generator, and no deployed site).
+- There is no plausible near-future use for it — don't skip just because the capability is rarely used.
+- Skipping saves the user real cost — otherwise, install it.
+
+**When in doubt, install.** An unused skill costs nothing; a missing skill means the agent does the wrong thing when the user asks for that capability.
+
+**Examples of valid skips:**
+
+| Skill | Valid skip when... |
+|-------|--------------------|
+| `website-audit` | Repo has no website, no SSG, no HTML templates, no deployed site. |
+| `spec-check` | Repo has no `docs/specs/` and no spec-ID conventions — even then, prefer installing. |
+| `upgrade-packages` | Repo has no package manifest at all (rare; usually install anyway). |
+
+**Examples of INVALID skips (do NOT skip for these reasons):**
+
+- "The skill mentions languages the repo doesn't use" — tailor it (strip irrelevant sections), don't skip it.
+- "The skill contains a step the repo won't need" — tailor it.
+- "The user hasn't asked for this capability yet" — install it; skills are on-demand.
+- "The previous run only installed 3 skills" — re-enumerate the templates directory; the spec does not hard-code a list.
+
+**Tailoring (per [MODES-CUSTOMIZE]):**
+
+- **Language-customizable skills** (multi-language examples, e.g., `code-dedup`, `ci-prep`, `upgrade-packages`) — strip sections that don't apply, fill placeholders with repo-specific tool names, Makefile targets, and paths.
+- **Content-preserving skills** (step-by-step procedures with URLs and checklists, e.g., `fix-bug`, `spec-check`, `submit-pr`, `website-audit`) — copy the full procedure verbatim. You may add repo-specific context (which site, which directories, which test runners) but never drop, merge, summarize, or rewrite steps, URLs, or checklists.
+
+**Authoritative list:** `ls agent-pmo-skill/templates/skills/` at the standards repo HEAD. That directory IS the required-skills list.
 
 ---
 
@@ -681,7 +714,7 @@ STRUCTURE
 [ ] .devcontainer/devcontainer.json
 [ ] Makefile `setup` target configured
 [ ] Skills in agent-native directory ([SKILL-PLACEMENT]: .claude/, .agents/, .github/, .cline/, or .opencode/)
-[ ] Required skills present: ci-prep, code-dedup, submit-pr
+[ ] Every skill in `templates/skills/` installed (enumerate at runtime, install-all unless clearly irrelevant per [SKILL-INSTALLATION])
 [ ] All agent-pmo managed files have `agent-pmo:<hash>` marker ([MARKER])
 [ ] No orphaned agent-pmo files (marked files whose source template no longer exists)
 [ ] .gitignore (comprehensive)
@@ -827,7 +860,7 @@ The hash enables traceability: `git log --oneline <hash>..HEAD` in the standards
 4. Detect primary agent ([AGENT-CANONICAL]) and determine canonical file ([AGENT-PLACEMENT]).
 5. Generate canonical instruction file from `templates/AGENTS.md` — **customize all placeholders** for the repo's actual languages, architecture, and purpose. Add Claude-specific skill links to `CLAUDE.md` if Claude is primary.
 6. Create all pointer files ([AGENT-POINTERS]) with `{{CANONICAL_FILE}}` filled in.
-7. Create skills from [SKILL] templates — see [MODES-CUSTOMIZE].
+7. Enumerate `templates/skills/` and install every skill per [SKILL-INSTALLATION], tailoring each per [MODES-CUSTOMIZE]. Skip a skill only if clearly irrelevant to this repo, and report the skip reason.
 8. Stamp every created file with `agent-pmo:<hash>` ([MARKER]).
 9. Wire `_coverage_check` into `_test` ([TEST-RULES]) and create `coverage-thresholds.json` using [COVERAGE-THRESHOLDS] defaults.
 10. Verify `make test` uses the runner's fail-fast flag ([TEST-RULES]).
