@@ -69,7 +69,10 @@ For each area below, record: what exists, what's missing, what's under a wrong n
   - `gh variable list 2>/dev/null | grep -i COVERAGE`
   - Shell scripts (`scripts/check_coverage.sh`, etc.) — replaced by the `_coverage_check` Make recipe
   - `.coveragerc` vs `pyproject.toml [tool.coverage]` — don't have both
-- **2g. Gitignore.** Read existing `.gitignore` in full. Per spec [GITIGNORE], add only clearly-safe patterns (OS junk, build artifacts, secrets, tooling noise). **Err on the side of adding fewer patterns** — ignoring something the repo intentionally tracks can silently hide work. Do not duplicate or replace.
+- **2g. Gitignore.** Read existing `.gitignore` in full. Per spec [GITIGNORE] and [GITIGNORE-RULES]:
+  - **NEVER add ignores for:** `.vscode/`, `.idea/`, `.claude/`, `.codex/`, `.agents/`, `.cline/`, `.clinerules/`, `.opencode/`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`, `AGENTS.md`, `CLAUDE.md`, or any AI agent config/skill directories. These MUST be committed.
+  - **If the existing `.gitignore` already ignores any of the above**, remove those lines — they are bugs.
+  - Add only clearly-safe patterns: OS junk (`.DS_Store`, `Thumbs.db`), build artifacts (`target/`, `node_modules/`, `dist/`), secrets (`.env`, `*.pem`), and tool caches. Do not duplicate or replace patterns already present.
 - **2h. LICENSE.** Check for `LICENSE`/`LICENSE.md`/`LICENSE.txt`/`LICENCE`/`COPYING`/`UNLICENSE`. If missing, record for the Step 5 big warning. **Do NOT create one** — license choice has legal consequences and must be the user's decision.
 - **2i. GitHub repo settings.** Run `gh api repos/OWNER/REPO`. If `gh` is unavailable/unauthenticated/returns nulls, STOP and emit the warning below verbatim, then wait for explicit YES/NO:
 
@@ -134,6 +137,7 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
   - Thresholds are monotonically increasing. Reject PRs that lower a threshold unless explicitly justified.
 - **3e. Linter configs.** Apply spec [LINT] and the per-language sections ([LINT-RUST], [LINT-TS-ESLINT], [LINT-TS-PRETTIER], [LINT-TS-STRICT], [LINT-PYTHON-BASILISK], [LINT-DART], [LINT-GO], [LINT-CSHARP], [LINT-FSHARP]). Merge into existing `pyproject.toml`/`Cargo.toml`/`tsconfig.json` — don't clobber non-lint sections. Delete superseded files (`.eslintrc.*`, `.flake8`, `setup.cfg [flake8]`, `.golangci.yaml`, etc.) after migration.
 - **3f. Formatting.** Apply spec [FMT] / [FMT-TOOLS] / [FMT-PYTHON] / [FMT-MULTI]. `make fmt`, `make lint`, `make test` are three separate, non-overlapping targets.
+- **3g-pre. Gitignore remediation.** Before applying GitHub settings, fix `.gitignore` per spec [GITIGNORE-RULES]: scan the file for any line that ignores `.vscode/`, `.idea/`, `.claude/`, `.codex/`, `.agents/`, `.cline/`, `.clinerules/`, `.opencode/`, `.cursorrules`, `.windsurfrules`, or similar AI/IDE config paths. **Delete those lines** — they are bugs, not features. Then append patterns from `templates/gitignore/universal.gitignore` and the relevant language gitignore(s), skipping duplicates.
 - **3g. GitHub repo settings.** Apply spec [GITHUB-SETTINGS] / [GITHUB-MERGE] / [GITHUB-FEATURES] / [GITHUB-PROTECTION] / [GITHUB-CLI] via the commands in `templates/.github/common-repo-settings.md`. Applies to both new and existing repos. If the repo is local-only (no remote yet), skip and note for after-first-push. If `gh` was skipped in Step 2i, skip here too and record in the Step 5 report.
 - **3h. Agent instruction files.** Per spec [AGENT] / [AGENT-TEMPLATE] / [AGENT-POINTERS].
 

@@ -7,4 +7,4 @@ bin/
 *.test
 *.out
 vendor/
-go.sum    # remove this line — go.sum SHOULD be committed
+# go.sum MUST be committed — do not add it here

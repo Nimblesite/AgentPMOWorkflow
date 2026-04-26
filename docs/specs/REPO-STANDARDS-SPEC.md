@@ -389,6 +389,32 @@ LOGGING
 
 ## [GITIGNORE] .gitignore Standard
 
+### [GITIGNORE-RULES] What to ignore and what NOT to ignore
+
+**Never ignore** (must be committed and tracked):
+
+| Category | Paths | Reason |
+|----------|-------|--------|
+| VS Code | `.vscode/` | Settings, extensions, launch configs, title-bar colors — shared dev tooling |
+| JetBrains | `.idea/` | Shared run configs and code style settings |
+| Claude Code | `.claude/` | Skills and instructions |
+| OpenAI Codex | `.codex/`, `.agents/` | Skills and instructions |
+| Cline / Roo | `.cline/`, `.clinerules/` | Rules and skills |
+| OpenCode | `.opencode/` | Skills and instructions |
+| Cursor | `.cursorrules` | Agent rules |
+| Windsurf | `.windsurfrules` | Agent rules |
+| GitHub Copilot | `.github/copilot-instructions.md` | Agent instructions |
+| Agent instruction files | `AGENTS.md`, `CLAUDE.md` | Agent rules — the whole point of this system |
+
+**Do ignore** (build artifacts, secrets, OS junk, tool caches):
+- OS noise: `.DS_Store`, `Thumbs.db`, `._*`
+- Build output: `target/`, `dist/`, `build/`, `bin/`, `obj/`, `node_modules/`
+- Coverage artifacts: `coverage/`, `htmlcov/`, `*.profraw`, `TestResults/`
+- Secrets: `.env`, `.env.local`, `*.pem`, `*.key` (but not `*.pub.key`)
+- Tool caches: `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.dart_tool/`
+
+**Principle:** Ignore generated outputs and secrets. Commit config and tooling. When in doubt, don't ignore — a silently hidden file is harder to debug than a committed one.
+
 ### [GITIGNORE-BASE] Universal .gitignore base (all repos)
 
 **File:** [`templates/gitignore/universal.gitignore`](templates/gitignore/universal.gitignore)
