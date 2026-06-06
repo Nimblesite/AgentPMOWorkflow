@@ -6,6 +6,11 @@
 
 > Read this entire file before making changes.
 
+> ⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is
+> ambiguous, choose the most reasonable default, note the assumption, and keep working to
+> completion. No mid-task pauses for confirmation or approval. Deliver finished work plus a
+> short summary of any assumptions made. ⚠️
+
 ## Project Overview
 
 Agent PMO Workflow — a system for running 20+ AI agents across multiple projects simultaneously. See `README.md` for the full vision. Two components:

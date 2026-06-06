@@ -329,13 +329,33 @@ help:
 # Repo-Specific Targets
 #
 # Targets below this line are specific to this repo and are NOT part of the
-# standard 7-target interface. Add repo-specific helpers here.
+# standard target vocabulary. Add repo-specific helpers here.
 #
 # Rules:
-#   - MUST NOT duplicate or shadow any of the 7 standard targets above.
-#   - Agents applying REPO-STANDARDS-SPEC preserve targets in this section —
-#     they are NOT "superfluous" just because they're not one of the 7.
+#   - MUST NOT duplicate or shadow a standard target above (use the canonical
+#     name for those concepts; put only genuinely unique helpers here).
+#   - This section is OWNED BY THE REPO. Agents applying REPO-STANDARDS-SPEC
+#     preserve these verbatim — never delete, rename, reorder, or regenerate
+#     them. They are NOT "superfluous". See [MAKE-REPO-SPECIFIC].
 #   - Add them to .PHONY if they are phony.
+#
+# Editor extensions ([MAKE-IDE-EXT]): if this repo builds a .vsix / Zed / etc.
+# extension, add ONE `rebuild-install-<kind>` target per extension that runs a
+# full clean cycle — uninstall → clean → rebuild → package → install (if the
+# toolchain supports local install). Example for a VS Code extension:
+#
+# .PHONY: rebuild-install-vsix
+# rebuild-install-vsix: _vsix_uninstall _vsix_clean _vsix_build _vsix_package _vsix_install
+# _vsix_uninstall:
+# 	-code --uninstall-extension {{PUBLISHER}}.{{EXT_NAME}}
+# _vsix_clean:
+# 	$(RM) *.vsix out dist
+# _vsix_build:
+# 	npm run compile
+# _vsix_package:
+# 	npx vsce package
+# _vsix_install:
+# 	code --install-extension $(wildcard *.vsix)
 # =============================================================================
 
 

@@ -725,6 +725,18 @@ These rules exist because agents reliably get git wrong. The canonical instructi
 - **Worktrees are forbidden.** Never run `git worktree`. (Not a judgement on the feature — agents
   consistently corrupt their state with it.)
 
+### [AGENT-AUTONOMY] Autonomous operation (canonical instruction file MUST state this)
+
+The canonical instruction file ([AGENT-TEMPLATE]) MUST direct the agent to operate autonomously:
+
+- **Act autonomously. Do NOT stop to ask the user questions.** When something is ambiguous,
+  choose the most reasonable default, record the assumption, and continue to completion.
+- **No mid-task pauses for confirmation, clarification, or approval.** Deliver finished work plus
+  a short summary of any assumptions made.
+- This applies to *instruction files*. A skill MAY still ask up-front scoping questions when the
+  repo's purpose is genuinely unclear (e.g. the agent-pmo standards skill) — but once work is
+  underway, the autonomy rule governs.
+
 ---
 
 ## [GITHUB-SETTINGS] GitHub Repository Settings
