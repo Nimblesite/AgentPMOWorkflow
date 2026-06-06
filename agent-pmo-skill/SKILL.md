@@ -132,23 +132,18 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
   - (iv) genuine repo-specific target in the wrong place → move it down into `Repo-Specific Targets`. Do not delete. Do not "tidy up".
 
   Other rules from the spec: cross-platform ([MAKE-CROSS-PLATFORM]); `_lint` and `_fmt` do not overlap; `_test` uses the fail-fast flag AND calls `_coverage_check` last ([TEST-RULES]); uncomment only the language blocks that apply.
-- **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-VSIX-PLATFORM], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:
+- **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-SHIPWRIGHT], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
   timeout-minutes: 15
   ```
 
   For release workflows, ensure every build/publish job uses the tagged SHA and runner-local version
-  stamping only. If the target repo publishes a native VS Code extension, enforce Microsoft-style
-  per-target VSIX packaging and package-content verification before upload/publish.
+  stamping only.
 
-  **CRITICAL — Shipwright audit (developer-tool repos).** If Step 1 flagged this repo as a developer
-  tool, you MUST run a Shipwright audit per spec [CI-SHIPWRIGHT] to protect the release/distribution
-  path against supply-chain attacks. Use the `shipwright-compliance` skill if present, or follow
-  https://github.com/Nimblesite/Shipwright/blob/main/docs/agents/shipwright-compliance/SKILL.md
-  (checklist: https://github.com/Nimblesite/Shipwright/blob/main/docs/agents/shipwright-compliance/reference/audit-checklist.md).
-  This is non-optional for `.vsix`/extension and other developer-tool repos. Record the audit
-  outcome in the Step 5 report.
+  **CRITICAL — developer-tool repos:** if Step 1 flagged this repo as a developer tool, run the
+  `shipwright-compliance` skill and follow it end to end (spec [CI-SHIPWRIGHT]). Record the outcome
+  in the Step 5 report.
 - **3d. Coverage.** Read spec [TEST] in full before doing anything here. `make test` = fail-fast + coverage + threshold, one indivisible operation. Thresholds ONLY in `coverage-thresholds.json` per [COVERAGE-THRESHOLDS-JSON].
 
   This skill must:

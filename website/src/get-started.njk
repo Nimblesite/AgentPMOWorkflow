@@ -27,7 +27,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
           <button class="install-tab" data-cmd="git" aria-pressed="false">git clone</button>
         </div>
         <div class="install-cmd-wrap">
-          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.sh | bash</code>
+          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash</code>
           <button class="copy-btn" aria-label="Copy install command" id="copy-btn" title="Copy to clipboard">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             <span id="copy-label">Copy</span>
@@ -101,8 +101,8 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
         <div>
           <h3>Clone the repo</h3>
           <p>Clone Agent PMO into your code directory.</p>
-          <pre><code>git clone https://github.com/MelbourneDeveloper/project_status.git
-cd project_status</code></pre>
+          <pre><code>git clone https://github.com/Nimblesite/AgentPMOWorkflow.git
+cd AgentPMOWorkflow</code></pre>
         </div>
       </div>
 
@@ -420,9 +420,9 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
 <script defer>
 document.addEventListener('DOMContentLoaded', function () {
   const cmds = {
-    curl: 'curl -fsSL https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.sh | bash',
-    windows: 'irm https://raw.githubusercontent.com/MelbourneDeveloper/project_status/main/setup/setup.ps1 | iex',
-    git:  'git clone https://github.com/MelbourneDeveloper/project_status.git && cd project_status && make setup'
+    curl: 'curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash',
+    windows: 'irm https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.ps1 | iex',
+    git:  'git clone https://github.com/Nimblesite/AgentPMOWorkflow.git && cd AgentPMOWorkflow && make setup'
   };
 
   const display = document.getElementById('install-cmd-display');

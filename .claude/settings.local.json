@@ -1,24 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -la /Users/christianfindlay/Documents/Code/project_status/*.fsx /Users/christianfindlay/Documents/Code/project_status/*.sh)",
       "Bash(make test:*)",
+      "Bash(make test-mock:*)",
       "Bash(dotnet fsi:*)",
-      "Bash(python3 -:*)",
-      "Bash(npm init:*)",
       "Bash(npm install:*)",
-      "Bash(npx playwright:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "WebFetch(domain:basilisk-python.dev)",
-      "Bash(ls /Users/christianfindlay/Documents/Code/project_status/Dockerfile* /Users/christianfindlay/Documents/Code/project_status/docker-compose*)",
-      "Bash(chmod +x /Users/christianfindlay/Documents/Code/project_status/setup.sh)",
       "Bash(npm run:*)",
+      "Bash(npx playwright:*)",
       "Bash(npx --version)",
       "Bash(gh repo:*)",
-      "WebFetch(domain:resources.anthropic.com)",
-      "Bash(make test-mock:*)"
+      "WebFetch(domain:resources.anthropic.com)"
     ]
   },
   "autoMemoryEnabled": false

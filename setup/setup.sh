@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  Agent PMO — Setup Script (macOS / Linux)
-#  https://github.com/MelbourneDeveloper/project_status
+#  https://github.com/Nimblesite/AgentPMOWorkflow
 # =============================================================================
 
 set -euo pipefail

@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "npx @11ty/eleventy --serve",
-    "prebuild": "cp ../../nimblesite/static/img/logo.png src/assets/images/nimblesite-logo.png 2>/dev/null || true",
     "build": "npx @11ty/eleventy",
     "preview": "npx @11ty/eleventy --serve --port 8080"
   },

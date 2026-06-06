@@ -1,13 +1,8 @@
 # Common Repository Settings
 
-Standard GitHub repo settings to apply across all repositories. Derived from
-the customised repos: **dart_node**, **napper**, **CommandTree**, **Basilisk**,
-**DataProvider**.
-
-The remaining repos (nimblesite, launchpad, tmc, home_robotics,
-social_media_automator, dart_agent, alcove, gigs, ide, forge, repo_bootstrap,
-Books, project_status) are still on GitHub defaults. StoryTowns is partially
-customised.
+Standard GitHub repo settings to apply across every repository in the
+portfolio. Apply these to bring any repo into line with the portfolio-wide
+conventions described below.
 
 ## Merge Settings
 

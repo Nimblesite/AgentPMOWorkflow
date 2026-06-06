@@ -1,6 +1,6 @@
 # =============================================================================
 #  Agent PMO — Setup Script (Windows)
-#  https://github.com/MelbourneDeveloper/project_status
+#  https://github.com/Nimblesite/AgentPMOWorkflow
 # =============================================================================
 
 $ErrorActionPreference = "Stop"

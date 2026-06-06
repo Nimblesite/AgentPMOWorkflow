@@ -1,14 +1,13 @@
 {
-  "name": "project_status",
+  "name": "agent-pmo-dashboard",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Playwright E2E tests for the Agent PMO dashboard report",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "playwright test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Nimblesite",
+  "license": "MIT",
   "dependencies": {
     "@playwright/test": "^1.58.2"
   }

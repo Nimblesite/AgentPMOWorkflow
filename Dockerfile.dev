@@ -1,7 +1,7 @@
-# Dev environment container for project_status.
+# Dev environment container for AgentPMOWorkflow.
 # Includes dotnet SDK, gh CLI, Node.js, and supercronic for scheduled report runs.
 #
-# Build context: project_status root
+# Build context: AgentPMOWorkflow root
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 
@@ -39,19 +39,19 @@ RUN curl -fsSLO "${SUPERCRONIC_URL}" \
     && mv "supercronic-linux-${SUPERCRONIC_ARCH}" /usr/local/bin/supercronic
 
 # Copy project into image (templates and skill are available at build time)
-COPY . /workspaces/project_status
+COPY . /workspaces/AgentPMOWorkflow
 
 # Create output directory
 RUN mkdir -p /output
 
-# Create the crontab: run project_status every 5 minutes
-RUN echo '*/5 * * * * dotnet fsi /workspaces/project_status/dashboard/repo-report.fsx >> /output/repo-report.log 2>> /output/repo-report-debug.log' \
+# Create the crontab: run AgentPMOWorkflow every 5 minutes
+RUN echo '*/5 * * * * dotnet fsi /workspaces/AgentPMOWorkflow/dashboard/repo-report.fsx >> /output/repo-report.log 2>> /output/repo-report-debug.log' \
     > /etc/supercronic-crontab
 
 # Environment variables (all overridable at runtime via docker-compose / .env)
 ENV REPOS_PATH=/workspaces \
     REPORT_OUTPUT_PATH=/output/repo-report.html \
-    REPO_BOOTSTRAP_PATH=/workspaces/project_status \
+    REPO_BOOTSTRAP_PATH=/workspaces/AgentPMOWorkflow \
     TZ=UTC
 
 # See docker-compose.yml for volume definitions
