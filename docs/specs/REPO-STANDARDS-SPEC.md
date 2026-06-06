@@ -13,6 +13,7 @@
 3. **Fail fast, fail loud.** Lint before test. Coverage threshold blocks merge. Zero warnings — all linters in errors-as-warnings mode. Every `make test` MUST stop at the first failure (see [TEST-RULES]).
 4. **No git in Claude sessions.** CI and GitHub Actions do the git work.
 5. **Multi-language repos are the norm.** Each language adds its targets/jobs orthogonally without breaking the uniform interface.
+5a. **Prefer the generic/open standard over agent-specific variants.** When a vendor-neutral file or location and a Claude-specific one both work, the generic one is canonical: `AGENTS.md` over `CLAUDE.md`, the open Agent Skills directory `.agents/skills/` over `.claude/skills/`. Generic artifacts serve every agent at once. This is a tie-breaker, **not** a licence to break Claude — Claude-specific files still exist as pointers/mirrors so Claude keeps working (see [AGENT-PLACEMENT], [SKILL-PLACEMENT]). Follow the open Agent Skills standard ([agentskills.io](https://agentskills.io/home)).
 6. **Spec IDs are hierarchical descriptive slugs, NEVER numbered.** Format: `[GROUP-TOPIC]` or `[GROUP-TOPIC-DETAIL]`. Uppercase, hyphen-separated, no sequential numbers.
 
    The first word is the **group**; sections sharing a group MUST appear together in the TOC. Depth varies (`[AUTH-LOGIN]`, `[AUTH-TOKEN-VERIFY]`, `[AUTH-OAUTH-REFRESH-FLOW]`) and MUST mirror heading structure.
@@ -544,6 +545,8 @@ The `AGENTS.md` open standard ([agents.md](https://agents.md)) rule: **one file 
 
 #### Agent Skill Docs
 
+Open standard: [agentskills.io](https://agentskills.io/home) — the vendor-neutral Agent Skills format (`SKILL.md` + generic `.agents/skills/`). Prefer it; agent-specific dirs below are for agents that need their own ([DESIGN] 5a, [SKILL-PLACEMENT]).
+
 | Agent | Skill directory | Official docs |
 |---|---|---|
 | Claude Code | `.claude/skills/<name>/SKILL.md` | https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview |
@@ -574,23 +577,27 @@ Before placing or modifying any file, identify the canonical file:
 |----------|-----------|----------------|
 | 1 | `AGENTS.md` exists with substantial content (>10 lines, not a pointer) | `AGENTS.md` |
 | 2 | `CLAUDE.md` exists with substantial content (>10 lines, not a pointer) | `CLAUDE.md` |
-| 3 | Neither exists | Create per [AGENT-PLACEMENT] |
+| 3 | Neither exists (uninitiated repo) | Create `AGENTS.md` per [AGENT-PLACEMENT] |
+
+For an uninitiated repo (priority 3), default to the generic `AGENTS.md` even when Claude Code is the agent ([DESIGN] 5a). `CLAUDE.md` becomes a pointer that imports it (`@AGENTS.md`), so Claude still works.
 
 If a canonical file exists, **merge into it — never replace**. Preserve existing structure and repo-specific context; cut redundant prose while adding what's missing. The file should get leaner, not longer. All other agent files become pointers.
 
 ### [AGENT-PLACEMENT] File Placement Rules
 
-When creating from scratch, the primary agent determines the canonical file:
+When creating from scratch, **default to the generic `AGENTS.md` as canonical for every agent, including Claude Code** ([DESIGN] 5a). The generic file serves all agents at once; Claude-specific files are pointers, never the source of truth.
 
 | Primary Agent | Canonical file |
 |---|---|
-| Claude Code | `CLAUDE.md` (template content + Claude-specific skill links) |
+| Claude Code | `AGENTS.md` (canonical) + `CLAUDE.md` pointer importing it (`@AGENTS.md`, plus any Claude-specific addendum) |
 | Cursor / Cline / Roo / Windsurf / GitHub Copilot / Unknown | `AGENTS.md` |
+
+Keep a `CLAUDE.md` only as a non-canonical artifact if a pre-existing canonical `CLAUDE.md` was detected per [AGENT-CANONICAL] (priority 2) — in that case merge into it, don't fight it.
 
 All non-canonical agent files become pointers to the canonical one.
 
-- When `CLAUDE.md` is canonical: `AGENTS.md` and all other files point to it.
-- When `AGENTS.md` is canonical: `CLAUDE.md` uses `@AGENTS.md` import (plus any Claude-specific addendum); other files point to `AGENTS.md`. `.claude/skills/` is still placed if Claude is used at all — it doesn't interfere with other agents.
+- When `AGENTS.md` is canonical (the default): `CLAUDE.md` uses `@AGENTS.md` import (plus any Claude-specific addendum); other files point to `AGENTS.md`. `.claude/skills/` is still placed if Claude is used at all — it doesn't interfere with other agents.
+- When a pre-existing `CLAUDE.md` is canonical: `AGENTS.md` and all other files point to it.
 
 **Pointer syntax is agent-specific** (use the docs in [AGENT-DOCS]):
 - **Claude Code**: `@AGENTS.md` import in `CLAUDE.md`
@@ -619,7 +626,7 @@ Every repo gets pointer files for agents that are NOT primary. Each redirects to
 
 ## [SKILL] Skills Standard (Agent-Agnostic)
 
-Skills are portable, on-demand instruction packages. Templates in `templates/skills/` use a generic SKILL.md format; convert to the target agent's native format and directory structure when applying.
+Skills are portable, on-demand instruction packages following the open Agent Skills standard ([agentskills.io](https://agentskills.io/home)): a folder with a `SKILL.md` (`name` + `description` frontmatter + body). Prefer this vendor-neutral format and the generic `.agents/skills/` location over agent-specific variants ([DESIGN] 5a). Templates in `templates/skills/` use the generic format; convert to the target agent's native format/directory only where the agent requires it.
 
 ### [SKILL-DOCS] CRITICAL — Read the target agent's skill docs first
 
@@ -640,9 +647,10 @@ Before placing or converting skill files, read the target agent's official skill
 | OpenCode | `.opencode/skills/<name>/SKILL.md` | `.agents/skills/`, `.claude/skills/` |
 
 Placement rules:
-1. **Primary agent gets native directory.** Claude → `.claude/skills/`; Copilot → `.github/skills/`; etc.
-2. **Cross-compatible fallback.** Copilot, Cline, and OpenCode all scan `.agents/skills/`. For multi-agent repos, `.agents/skills/` covers the most agents with one copy.
-3. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body. Content is portable.
+1. **Prefer the generic open-standard directory `.agents/skills/`** ([DESIGN] 5a). It is the open Agent Skills location ([agentskills.io](https://agentskills.io/home)) and is scanned by Copilot, Cline, and OpenCode — one copy serves the most agents. Make it the canonical skill home whenever it works.
+2. **Claude Code is the exception — it reads ONLY `.claude/skills/`.** So when Claude is used, skills MUST live in `.claude/skills/` too, or Claude can't see them. Preferring generic does NOT mean dropping `.claude/skills/` — that would break Claude. Place skills in `.claude/skills/` for Claude; mirror to / prefer `.agents/skills/` for the rest.
+3. **Other primary agents get their native directory** when it isn't `.agents/skills/` (Copilot → `.github/skills/`, etc.).
+4. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body, per the open standard. Content is portable.
 
 ### [SKILL-INSTALLATION] Install every skill unless clearly irrelevant
 

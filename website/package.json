@@ -9,6 +9,6 @@
     "preview": "npx @11ty/eleventy --serve --port 8080"
   },
   "dependencies": {
-    "@11ty/eleventy": "^3.1.2"
+    "@11ty/eleventy": "^3.1.6"
   }
 }

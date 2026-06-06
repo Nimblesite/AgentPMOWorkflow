@@ -889,6 +889,10 @@ img, video { max-width: 100%; height: auto; }
   align-items: start;
 }
 
+/* Let the content column shrink so terminals/<pre> scroll internally instead of
+   forcing horizontal page overflow on mobile (grid items default to min-width:auto). */
+.how-step > div { min-width: 0; }
+
 .how-step-num {
   width: 52px;
   height: 52px;
@@ -1024,6 +1028,10 @@ tr:hover td { background: var(--color-primary-subtle); }
 }
 
 .setup-step:last-child { border-bottom: none; }
+
+/* Let the content column shrink so <pre> blocks scroll internally instead of
+   forcing horizontal page overflow on mobile (grid items default to min-width:auto). */
+.setup-step > div { min-width: 0; }
 
 .setup-step-num {
   width: 36px;
@@ -1525,9 +1533,7 @@ pre {
     width: 340px;
     flex-shrink: 0;
   }
-}
 
-  .spec-grid {
   .spec-grid {
     flex-direction: row;
     align-items: flex-start;
@@ -1536,6 +1542,7 @@ pre {
 
   .spec-text { flex: 1; min-width: 0; }
   .spec-visual { width: 420px; flex-shrink: 0; }
+}
 
 /* ─────────────────────────────────────────────
    Large desktop (≥1140px)

@@ -51,7 +51,7 @@ If the paths above do not exist, report an error and stop. Do not search the fil
 4. **Identify the canonical instruction file** per spec [AGENT-CANONICAL] and [AGENT-PLACEMENT]:
    - `AGENTS.md` with substantial content (>10 lines, not a pointer) → canonical.
    - Else `CLAUDE.md` with substantial content → canonical.
-   - Else create one from `templates/AGENTS.md`: Claude Code → `CLAUDE.md`; all others → `AGENTS.md`.
+   - Else (uninitiated repo) create the generic `AGENTS.md` from `templates/AGENTS.md` as canonical — for EVERY agent, Claude included ([DESIGN] 5a). Other agent files (`CLAUDE.md` via `@AGENTS.md`, etc.) become pointers per [AGENT-POINTERS]. Prefer generic over Claude-specific, but never break Claude.
 5. Read the target agent's official docs (spec [AGENT-DOCS]) before touching instruction/skill files. Syntax and placement differ per agent.
 
 ### Step 2 — Audit existing artifacts

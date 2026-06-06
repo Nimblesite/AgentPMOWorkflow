@@ -70,3 +70,6 @@ playwright-report/
 _site/
 
 .deslop-cache/
+
+
+/*.png
