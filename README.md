@@ -5,25 +5,22 @@
 ### Stop Watching One Agent. Start Running Twenty.
 
 <p>
-  <a href="https://github.com/Nimblesite/AgentPMOWorkflow/actions"><img src="https://img.shields.io/github/actions/workflow/status/Nimblesite/AgentPMOWorkflow/ci.yml?branch=main&label=CI&style=flat-square" alt="CI status"></a>
-  <a href="https://github.com/Nimblesite/AgentPMOWorkflow/releases"><img src="https://img.shields.io/github/v/release/Nimblesite/AgentPMOWorkflow?style=flat-square" alt="Latest release"></a>
   <a href="https://github.com/Nimblesite/AgentPMOWorkflow/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Nimblesite/AgentPMOWorkflow?style=flat-square" alt="License"></a>
   <a href="https://nimblesite.github.io/AgentPMOWorkflow/"><img src="https://img.shields.io/badge/website-live-19d078?style=flat-square" alt="Website"></a>
 </p>
 
 **🌐 Website:** [nimblesite.github.io/AgentPMOWorkflow](https://nimblesite.github.io/AgentPMOWorkflow/)
 
-```
-┌──────────────────────────────────────────────────┐
-│               PMO Dashboard · 4 active           │
-├──────────────────────────────────────────────────┤
-│  ✓ app-backend    PR #47 open   CI ● green       │
-│  ⚠ data-pipeline  3 failing    CI ● running      │
-│  ✓ mobile-client  review        CI ● green       │
-│  ↻ api-gateway    linting       CI ● pending     │
-└──────────────────────────────────────────────────┘
-        ↓ dispatch       ↓ dispatch      ↓ dispatch
-   [Agent: feature]  [Agent: CI fix]  [Agent: coverage]
+```mermaid
+flowchart TD
+    D["PMO Dashboard · scans every repo every 3 min"]
+    D --> A1["✓ app-backend · PR #47 · CI green"]
+    D --> A2["⚠ data-pipeline · 3 failing · CI running"]
+    D --> A3["✓ mobile-client · review · CI green"]
+    D --> A4["↻ api-gateway · linting · CI pending"]
+    A1 --> F(["Agent: feature dev"])
+    A2 --> C(["Agent: CI fix"])
+    A4 --> V(["Agent: coverage"])
 ```
 
 </div>
