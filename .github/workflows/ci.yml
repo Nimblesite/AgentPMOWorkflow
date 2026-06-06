@@ -28,14 +28,30 @@ jobs:
         working-directory: dashboard
         run: npm ci
 
-      - name: Install Playwright browsers
+      # apt system deps for chromium (this phase works; keep it non-interactive
+      # so needrestart/debconf don't block on ubuntu-24.04 runners).
+      - name: Install Playwright system deps
         working-directory: dashboard
-        # DEBIAN_FRONTEND/NEEDRESTART_MODE stop the apt `--with-deps` phase from
-        # hanging on the interactive needrestart prompt on ubuntu-24.04 runners.
         env:
           DEBIAN_FRONTEND: noninteractive
           NEEDRESTART_MODE: a
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install-deps chromium
+
+      # The browser-binary download intermittently stalls at 100% on the runner
+      # and would otherwise eat the whole job timeout. Cap each attempt and retry.
+      - name: Install Playwright browser (chromium)
+        working-directory: dashboard
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::playwright install chromium (attempt $attempt)"
+            if timeout 240 npx playwright install chromium; then
+              echo "::endgroup::"; exit 0
+            fi
+            echo "::endgroup::"
+            echo "attempt $attempt stalled or failed; retrying"
+          done
+          echo "playwright browser install failed after 3 attempts" >&2
+          exit 1
 
       # `make test` runs F# fixture tests (which generate the report HTML)
       # then Playwright E2E tests against the generated HTML, fail-fast.
