@@ -1,1 +1,8 @@
-src/assets/images/nimblesite-logo.png
+# Build output
+_site/
+
+# Dependencies
+node_modules/
+
+# Playwright artifacts
+.playwright-mcp/

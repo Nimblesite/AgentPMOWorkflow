@@ -66,6 +66,18 @@ jobs:
       - name: Lint
         run: make lint
 
+      # Deslop duplication gate ([CI-DESLOP]). KEEP ONLY for repos in a Deslop-supported
+      # language (Rust, C#, Dart, Python); delete this whole step otherwise.
+      # The threshold lives in committed .deslop.toml — ratcheted DOWN, never up.
+      # `deslop .` reads it and exits 3 (tanks the build) when duplication exceeds it.
+      - name: Deslop duplication gate
+        env:
+          DESLOP_VERSION: "0.5.1"  # pin — see https://github.com/Nimblesite/Deslop/releases
+        run: |
+          curl -sSfL "https://github.com/Nimblesite/Deslop/releases/download/v${DESLOP_VERSION}/deslop-${DESLOP_VERSION}-linux-x64.tar.gz" | tar -xz
+          echo "$PWD/deslop-${DESLOP_VERSION}-linux-x64" >> "$GITHUB_PATH"
+          deslop .
+
       # make test = fail-fast + coverage + threshold enforcement ([TEST-RULES]).
       # Thresholds live in coverage-thresholds.json ([COVERAGE-THRESHOLDS-JSON]).
       - name: Test
@@ -83,6 +95,7 @@ jobs:
             coverage.out
             TestResults/**/coverage.*
             target/llvm-cov/
+            deslop-report.json
           retention-days: 7
 
       - name: Build

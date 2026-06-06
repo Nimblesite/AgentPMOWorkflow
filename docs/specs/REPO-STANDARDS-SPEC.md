@@ -188,6 +188,33 @@ If the repo ships a developer tool (VS Code `.vsix`, CLI/binary via Homebrew/Sco
 
 **File:** [`templates/.github/workflows/deploy-pages.yml`](templates/.github/workflows/deploy-pages.yml)
 
+### [CI-DESLOP] Duplication gate — Deslop (CRITICAL, ratcheted)
+
+Code duplication is debt. Every repo whose primary language Deslop supports — **Rust, C#, Dart, Python** (more coming) — MUST run Deslop as a CI gate. Repos in no supported language skip this section. Authoritative docs: https://deslop.live/docs/for-ai/
+
+**The duplication score is STORED and RATCHETED.** It lives in a committed `.deslop.toml` at the repo root — the single source of truth, versioned with the code (PR-reviewable, blamed, revertable), exactly like `coverage-thresholds.json`. **NOT a GitHub variable, NOT a CI env var, NOT a hardcoded number in CI YAML.**
+
+**File:** `.deslop.toml` (repo root):
+
+```toml
+[threshold]
+# Maximum repo-wide duplication percent. CI runs `deslop .`, which reads this value
+# and exits non-zero (deslop exit code 3) the moment measured duplication exceeds it.
+max_duplication_percent = 5.0
+```
+
+**Ratchet rule — monotonically DECREASING (the inverse of coverage).** Duplication only ever goes down. When a PR reduces duplication, lower `max_duplication_percent` to the new measured value in the SAME PR. **RAISING the threshold is forbidden without explicit written PR justification — the build MUST tank when duplication climbs back up.** Apply a small rounding buffer (round the measured value UP by ~0.1–0.5%) only to absorb cross-runner float jitter, and only when the buffered value is still strictly below the current stored threshold.
+
+**CI wiring.** `ci.yml` installs the pinned Deslop CLI and runs `deslop .` (reads `.deslop.toml`) as a dedicated step after `make lint`. Exit codes: `0` ok, `1` runtime error, `2` usage error, `3` threshold breached (the full report is still written). **Pin the version** — see the [Releases page](https://github.com/Nimblesite/Deslop/releases). Canonical report: `deslop-report.json`, with the repo-wide score at `metrics.duplication_percent`.
+
+**Templates:** [`templates/.deslop.toml`](../../agent-pmo-skill/templates/.deslop.toml) and the Deslop step in [`templates/.github/workflows/ci.yml`](../../agent-pmo-skill/templates/.github/workflows/ci.yml).
+
+**Agent loop — prevention beats cleanup.** Deslop also ships MCP tools the coding agent MUST use before and after editing code. The canonical instruction file MUST state this (see [AGENT] and `templates/AGENTS.md`). The loop:
+
+- **BEFORE authoring** any function, method, class, helper, fixture, or test setup → call the `find-similar` MCP tool. `signals.fused ≥ 0.85` or an `identical`/`nearly_identical` bucket → **reuse the existing code, do not duplicate**; `0.6 ≤ fused < 0.85` → review the canonical occurrence and bias toward reuse; `fused < 0.6` or empty → proceed.
+- **AFTER changing code** → `rescan`, then `top-offenders` (worst clusters, by severity) and `cluster-by-id` (full member list + signals for a cluster you plan to merge). Use `report-for-file` / `report-for-range` to surface clusters touching a specific file or selection. Call `schema-doc` once per session to learn the report shape.
+- **NEVER silence findings** by widening the threshold, marking code `hidden`, or splitting it into trivially different shapes.
+
 ---
 
 ## [TEST] Coverage Standards

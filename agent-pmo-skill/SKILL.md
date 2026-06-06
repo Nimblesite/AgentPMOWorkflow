@@ -116,6 +116,8 @@ For each area below, record: what exists, what's missing, what's under a wrong n
   - YES → note "GitHub settings skipped — gh unavailable" in the Step 5 report and continue.
   - If `gh` works → compare against `{{STANDARDS_REPO}}/agent-pmo-skill/templates/.github/common-repo-settings.md` and only apply the diffs.
 
+- **2j. Deslop duplication gate** (spec [CI-DESLOP]; docs https://deslop.live/docs/for-ai/). Only if the repo's language is Deslop-supported — **Rust, C#, Dart, Python**. Otherwise skip and note "no Deslop-supported language". When it applies, record what's missing: (i) committed `.deslop.toml` at repo root with `[threshold] max_duplication_percent`; (ii) the Deslop install + `deslop .` gate step in `ci.yml`; (iii) the **Duplication — Deslop** section in the canonical instruction file telling the agent to use the `find-similar`/`rescan`/`top-offenders` MCP loop. Flag any anti-patterns: a hardcoded `--fail-over <N>` number in CI YAML, a threshold in a GitHub variable/env var instead of `.deslop.toml`, or a threshold that was raised without justification.
+
 ### Step 3 — Apply standards (merge-first, DO NOT commit/push)
 
 For every item: (1) compliant equivalent exists → leave alone; (2) equivalent exists under wrong name/content → rename/update in place; (3) nothing equivalent → create from template.
@@ -146,6 +148,11 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
   **CRITICAL — developer-tool repos:** if Step 1 flagged this repo as a developer tool, run the
   `shipwright-compliance` skill and follow it end to end (spec [CI-SHIPWRIGHT]). Record the outcome
   in the Step 5 report.
+- **3c-ii. Deslop duplication gate** (spec [CI-DESLOP]). Only for Deslop-supported languages (Rust, C#, Dart, Python); skip otherwise.
+  - Create `.deslop.toml` at the repo root from `templates/.deslop.toml`. Set `max_duplication_percent` to the repo's **currently measured** duplication (ratchet from measured — never invent a looser number). If you cannot measure it now, leave the template default and note it for the user to tighten.
+  - Add the Deslop install + `deslop .` gate step to `ci.yml` from `templates/.github/workflows/ci.yml` (after `make lint`). Pin `DESLOP_VERSION`. The gate reads `.deslop.toml` — **never** hardcode the threshold in YAML.
+  - Ensure the canonical instruction file keeps the **Duplication — Deslop** section (the `find-similar` before / `rescan` + `top-offenders` after MCP loop). This is preserved/added in 3h.
+  - Ratchet is **downward only**: never raise `max_duplication_percent` without explicit written PR justification.
 - **3d. Coverage.** Read spec [TEST] in full before doing anything here. `make test` = fail-fast + coverage + threshold, one indivisible operation. Thresholds ONLY in `coverage-thresholds.json` per [COVERAGE-THRESHOLDS-JSON].
 
   This skill must:

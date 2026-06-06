@@ -44,7 +44,7 @@ If the TMC server is available: register on start (name, intent, files), lock fi
   - **ONE feature branch at a time** — even with multiple agents working concurrently. Reuse it.
   - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.
   - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
-- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it.
+- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
 - **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
@@ -67,6 +67,22 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 - **SaaS / server apps:** persist to database, but database/file writes MUST be async — never block the request path.
 - **NEVER log PII** (names, emails, phone, IPs unless audit with consent).
 - **NEVER log secrets.** Log `"key: present"` or a truncated hash, never the value.
+
+## Duplication — Deslop (MANDATORY)
+
+> Keep this section ONLY if this repo's language is Deslop-supported (Rust, C#, Dart, Python).
+> Delete it otherwise. Spec: REPO-STANDARDS-SPEC [CI-DESLOP]. Docs: https://deslop.live/docs/for-ai/
+
+Deslop earns its keep through **prevention, not cleanup.** Use its MCP tools on every code change:
+
+- **BEFORE you author** any function, method, class, helper, fixture, or test setup → call the **`find-similar`** MCP tool.
+  - `signals.fused ≥ 0.85`, or an `identical` / `nearly_identical` bucket → **REUSE the existing code. Do NOT write a duplicate.**
+  - `0.6 ≤ fused < 0.85` → open the canonical occurrence and bias hard toward reusing/extending it.
+  - `fused < 0.6` or empty → proceed and write the new code.
+- **AFTER you change code** → call **`rescan`**, then **`top-offenders`** (worst clusters by severity) and **`cluster-by-id`** (full members + signals for a cluster you intend to merge). Use **`report-for-file`** / **`report-for-range`** to inspect a specific file or selection. Call **`schema-doc`** once per session to learn the report shape.
+- **NEVER game the gate.** Do not silence findings by widening `max_duplication_percent`, marking code `hidden`, or splitting it into trivially different shapes.
+
+The duplication budget lives in committed `.deslop.toml` (`max_duplication_percent`). CI runs `deslop .` and the build **TANKS** (exit 3) if duplication exceeds it. The threshold ratchets **DOWN only** — lower it in the same PR when you reduce duplication; never raise it without written justification.
 
 ## Hard Rules — Language-Specific
 
@@ -137,7 +153,7 @@ make ci      # lint + test + build (full CI simulation)
 make setup   # post-create dev environment setup
 ```
 
-**There are exactly 7 targets. No others.** `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
+These are the **canonical** target names — use only the subset that applies to this repo, and never a synonym (see REPO-STANDARDS-SPEC [MAKE-TARGETS]). Repo-specific targets live in a separate section below the standard ones. `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
 
 **`make fmt`** formats code in-place. **`make lint`** runs linters/analyzers (read-only, no formatting). **`make test`** runs tests with coverage. Three separate targets — no overlap.
 
