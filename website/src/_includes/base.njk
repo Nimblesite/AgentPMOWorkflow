@@ -13,7 +13,10 @@
   <meta property="og:url" content="{{ site.url }}{{ page.url }}">
   <meta property="og:title" content="{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO — Stop Watching. Start Running Twenty.{% endif %}">
   <meta property="og:description" content="{{ description if description else site.description }}">
-  <meta property="og:image" content="{{ site.url }}/assets/social-preview.svg">
+  <meta property="og:image" content="{{ site.url }}{{ site.socialImage }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Agent PMO — stop watching, start running twenty. One developer, 20+ parallel projects.">
   <meta property="og:site_name" content="Agent PMO">
   <meta property="og:locale" content="en_US">
 
@@ -21,7 +24,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO — Stop Watching. Start Running Twenty.{% endif %}">
   <meta name="twitter:description" content="{{ description if description else site.description }}">
-  <meta name="twitter:image" content="{{ site.url }}/assets/social-preview.svg">
+  <meta name="twitter:image" content="{{ site.url }}{{ site.socialImage }}">
+  <meta name="twitter:image:alt" content="Agent PMO — stop watching, start running twenty. One developer, 20+ parallel projects.">
 
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">

@@ -66,10 +66,11 @@ For each area below, record: what exists, what's missing, what's under a wrong n
   `git commit`/`git push`/tag mutation, source-control version bumps after the tag, ad hoc `sed`
   stamping of structured files, and missing tests for build-time version stamping.
 - **2c. Makefile.** If present, read in full. Classify every public target per spec [MAKE-TARGETS]:
-  - (i) One of the 7 standard targets → note whether present/missing/wrongly-implemented.
-  - (ii) Duplicates/shadows a standard target (e.g. `test-all`, `lint-fix`, `build-release`) → candidate for merge+delete.
+  - (i) A standard target that applies to this repo → note whether present/missing/wrongly-implemented. Do NOT flag an absent standard target as missing if it has nothing to do here (no `build` on a docs-only repo) — only the targets that apply are required.
+  - (ii) Duplicates/shadows a standard target under a synonym (e.g. `test-all`, `lint-fix`, `build-release`) → candidate for merge+delete.
   - (iii) Agent-pmo-stamped but source no longer in standards repo → orphan per [MARKER-CLEANUP].
-  - (iv) Genuine repo-specific target → belongs in `Repo-Specific Targets` section, preserved.
+  - (iv) Genuine repo-specific target → belongs in `Repo-Specific Targets`; **preserve verbatim** — never delete, rename, reorder, or regenerate it ([MAKE-REPO-SPECIFIC]).
+  - (v) Editor extension build (`.vsix`/Zed/etc.) with no `rebuild-install-<kind>` target → note for addition ([MAKE-IDE-EXT]).
   Flag cross-platform violations ([MAKE-CROSS-PLATFORM]): raw `rm -rf`/`mkdir -p` instead of `$(RM)`/`$(MKDIR)`. If a `justfile`/`Taskfile.yml` is used instead, ask the user before replacing.
 - **2d. Linter configs.** Look for legacy/alternate-name configs per spec [LINT]. ESLint v0-v8 files → `eslint.config.mjs`. Old Prettier variants → `.prettierrc.json`. Python `.flake8`/`setup.cfg`/`tox.ini` → Basilisk+ruff+pyright ([LINT-PYTHON-BASILISK]). `.golangci.yaml` → `.golangci.yml`. Migrating means **delete the old file** once the new one covers it.
 - **2e. Formatter configs.** Check CSharpier, Fantomas, Prettier, rustfmt, ruff format per spec [FMT] / [FMT-TOOLS]. `[tool.black]` in pyproject → migrate to `[tool.ruff.format]`.
@@ -121,15 +122,16 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
 
 - **3a. Docs folder.** Rename `doco/`/`documentation/`/`doc/`/`documents/` → `docs/`. Merge if both exist, then delete the non-standard one. Create `docs/specs/` and `docs/plans/`. Classify loose markdown files: specs = behavior/requirements; plans = how-to with TODO checklists. Update internal references that pointed to the old folder name.
 - **3a-ii. Spec ID rule.** Ensure the rule is present in the canonical instruction file. Validation/renaming of existing spec IDs is the `spec-check` skill's job, not this one.
-- **3b. Makefile.** Per spec [MAKE-TARGETS] and [MAKE-TEMPLATE]. The Makefile has two sections:
-  - `Standard Targets` — the 7 fixed targets (`build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`). No substitutions, no extras allowed here.
-  - `Repo-Specific Targets` — a separate section below, varies per repo, **preserved**.
+- **3b. Makefile.** Per spec [MAKE-TARGETS], [MAKE-REPO-SPECIFIC], [MAKE-IDE-EXT], [MAKE-TEMPLATE]. Edit the existing Makefile **surgically** — never overwrite the whole file to "regenerate" it. The Makefile has two sections:
+  - `Standard Targets` — canonical names (`build`, `test`, `lint`, `fmt`, `clean`, `ci`, `setup`), but ONLY the subset that applies to this repo. No synonyms, no extras here, and no hollow no-op target added just to complete the set.
+  - `Repo-Specific Targets` — a separate section below, owned by the repo, varies per repo, **preserved byte-for-byte** unless agent-pmo stamped it.
 
   Act on the Step 2c classification:
-  - (i) missing/wrong standard target → add/fix in `Standard Targets`.
-  - (ii) duplicate of a standard target → merge useful logic into the standard target, delete the duplicate, update callers.
+  - (i) applicable standard target missing/wrong → add/fix in `Standard Targets`. A standard target that doesn't apply here is NOT missing — leave it out.
+  - (ii) synonym/duplicate of a standard target → merge useful logic into the standard target, delete the duplicate, update callers.
   - (iii) orphan → [MARKER-CLEANUP]: merge useful logic into the correct standard target, delete the orphan.
-  - (iv) genuine repo-specific target in the wrong place → move it down into `Repo-Specific Targets`. Do not delete. Do not "tidy up".
+  - (iv) genuine repo-specific target → leave it exactly as-is. If it sits inside `Standard Targets`, move it down into `Repo-Specific Targets` unchanged. Never delete, rename, reorder, or "tidy up".
+  - (v) editor extension with no `rebuild-install-<kind>` target → add one in `Repo-Specific Targets` ([MAKE-IDE-EXT]): uninstall → clean → rebuild → package → install-if-supported, via underscore-prefixed sub-recipes.
 
   Other rules from the spec: cross-platform ([MAKE-CROSS-PLATFORM]); `_lint` and `_fmt` do not overlap; `_test` uses the fail-fast flag AND calls `_coverage_check` last ([TEST-RULES]); uncomment only the language blocks that apply.
 - **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-SHIPWRIGHT], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:

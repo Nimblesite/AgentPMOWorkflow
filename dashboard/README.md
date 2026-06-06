@@ -52,10 +52,10 @@ A launchd agent runs the script every 3 minutes:
 
 ```bash
 # Load
-launchctl load ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
+launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist
 
 # Unload
-launchctl unload ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist
+launchctl unload ~/Library/LaunchAgents/com.agentpmo.repo-report.plist
 
 # Check status
 launchctl list | grep repo-report

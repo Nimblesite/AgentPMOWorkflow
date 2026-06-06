@@ -20,21 +20,31 @@ else
   RMFILE = rm -f
 endif
 
-.PHONY: build dashboard test _test_fsharp _test_e2e lint fmt clean ci \
-        install-skill-claude install-skill-claude-unix install-skill-claude-windows \
-        uninstall-skill-claude uninstall-skill-claude-unix uninstall-skill-claude-windows \
-        install-skill-codex install-skill-codex-unix install-skill-codex-windows \
-        uninstall-skill-codex uninstall-skill-codex-unix uninstall-skill-codex-windows \
-        install-skill-copilot install-skill-copilot-unix install-skill-copilot-windows \
-        uninstall-skill-copilot uninstall-skill-copilot-unix uninstall-skill-copilot-windows \
-        install-skill-cline install-skill-cline-unix install-skill-cline-windows \
-        uninstall-skill-cline uninstall-skill-cline-unix uninstall-skill-cline-windows \
-        install-skill-roo install-skill-roo-unix install-skill-roo-windows \
-        uninstall-skill-roo uninstall-skill-roo-unix uninstall-skill-roo-windows \
-        install-skill-opencode install-skill-opencode-unix install-skill-opencode-windows \
-        uninstall-skill-opencode uninstall-skill-opencode-unix uninstall-skill-opencode-windows \
-        install-skill-all uninstall-skill-all \
-        website-build website-run setup help
+# Public targets — the ones users invoke directly.
+.PHONY: build dashboard test lint fmt clean ci setup help \
+        website-build website-run \
+        install-skill-claude   uninstall-skill-claude \
+        install-skill-codex    uninstall-skill-codex \
+        install-skill-copilot  uninstall-skill-copilot \
+        install-skill-cline    uninstall-skill-cline \
+        install-skill-roo      uninstall-skill-roo \
+        install-skill-opencode uninstall-skill-opencode \
+        install-skill-all      uninstall-skill-all
+
+# Private helpers — internal plumbing, underscore-prefixed so tooling hides them.
+.PHONY: _test_fsharp _test_e2e \
+        _install-skill-claude-unix   _install-skill-claude-windows \
+        _uninstall-skill-claude-unix   _uninstall-skill-claude-windows \
+        _install-skill-codex-unix    _install-skill-codex-windows \
+        _uninstall-skill-codex-unix    _uninstall-skill-codex-windows \
+        _install-skill-copilot-unix  _install-skill-copilot-windows \
+        _uninstall-skill-copilot-unix  _uninstall-skill-copilot-windows \
+        _install-skill-cline-unix    _install-skill-cline-windows \
+        _uninstall-skill-cline-unix    _uninstall-skill-cline-windows \
+        _install-skill-roo-unix      _install-skill-roo-windows \
+        _uninstall-skill-roo-unix      _uninstall-skill-roo-windows \
+        _install-skill-opencode-unix _install-skill-opencode-windows \
+        _uninstall-skill-opencode-unix _uninstall-skill-opencode-windows
 
 # =============================================================================
 # PRIMARY TARGETS — exactly 7 (REPO-STANDARDS-SPEC §1.1 [MAKE-TARGETS]):
@@ -169,138 +179,138 @@ SKILL_DIR_OPENCODE = $(HOME)/.config/opencode/skills
 # CLAUDE CODE — ~/.claude/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-claude: install-skill-claude-windows
-uninstall-skill-claude: uninstall-skill-claude-windows
+install-skill-claude: _install-skill-claude-windows
+uninstall-skill-claude: _uninstall-skill-claude-windows
 else
-install-skill-claude: install-skill-claude-unix
-uninstall-skill-claude: uninstall-skill-claude-unix
+install-skill-claude: _install-skill-claude-unix
+uninstall-skill-claude: _uninstall-skill-claude-unix
 endif
 
-install-skill-claude-unix:
+_install-skill-claude-unix:
 	$(call _install_skill_unix,Claude Code,$(SKILL_DIR_CLAUDE))
 
-uninstall-skill-claude-unix:
+_uninstall-skill-claude-unix:
 	$(call _uninstall_skill_unix,Claude Code,$(SKILL_DIR_CLAUDE))
 
-install-skill-claude-windows:
+_install-skill-claude-windows:
 	$(call _install_skill_windows,Claude Code,$(SKILL_DIR_CLAUDE))
 
-uninstall-skill-claude-windows:
+_uninstall-skill-claude-windows:
 	$(call _uninstall_skill_windows,Claude Code,$(SKILL_DIR_CLAUDE))
 
 # =============================================================================
 # OPENAI CODEX — ~/.agents/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-codex: install-skill-codex-windows
-uninstall-skill-codex: uninstall-skill-codex-windows
+install-skill-codex: _install-skill-codex-windows
+uninstall-skill-codex: _uninstall-skill-codex-windows
 else
-install-skill-codex: install-skill-codex-unix
-uninstall-skill-codex: uninstall-skill-codex-unix
+install-skill-codex: _install-skill-codex-unix
+uninstall-skill-codex: _uninstall-skill-codex-unix
 endif
 
-install-skill-codex-unix:
+_install-skill-codex-unix:
 	$(call _install_skill_unix,OpenAI Codex,$(SKILL_DIR_CODEX))
 
-uninstall-skill-codex-unix:
+_uninstall-skill-codex-unix:
 	$(call _uninstall_skill_unix,OpenAI Codex,$(SKILL_DIR_CODEX))
 
-install-skill-codex-windows:
+_install-skill-codex-windows:
 	$(call _install_skill_windows,OpenAI Codex,$(SKILL_DIR_CODEX))
 
-uninstall-skill-codex-windows:
+_uninstall-skill-codex-windows:
 	$(call _uninstall_skill_windows,OpenAI Codex,$(SKILL_DIR_CODEX))
 
 # =============================================================================
 # GITHUB COPILOT — ~/.copilot/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-copilot: install-skill-copilot-windows
-uninstall-skill-copilot: uninstall-skill-copilot-windows
+install-skill-copilot: _install-skill-copilot-windows
+uninstall-skill-copilot: _uninstall-skill-copilot-windows
 else
-install-skill-copilot: install-skill-copilot-unix
-uninstall-skill-copilot: uninstall-skill-copilot-unix
+install-skill-copilot: _install-skill-copilot-unix
+uninstall-skill-copilot: _uninstall-skill-copilot-unix
 endif
 
-install-skill-copilot-unix:
+_install-skill-copilot-unix:
 	$(call _install_skill_unix,GitHub Copilot,$(SKILL_DIR_COPILOT))
 
-uninstall-skill-copilot-unix:
+_uninstall-skill-copilot-unix:
 	$(call _uninstall_skill_unix,GitHub Copilot,$(SKILL_DIR_COPILOT))
 
-install-skill-copilot-windows:
+_install-skill-copilot-windows:
 	$(call _install_skill_windows,GitHub Copilot,$(SKILL_DIR_COPILOT))
 
-uninstall-skill-copilot-windows:
+_uninstall-skill-copilot-windows:
 	$(call _uninstall_skill_windows,GitHub Copilot,$(SKILL_DIR_COPILOT))
 
 # =============================================================================
 # CLINE — ~/.cline/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-cline: install-skill-cline-windows
-uninstall-skill-cline: uninstall-skill-cline-windows
+install-skill-cline: _install-skill-cline-windows
+uninstall-skill-cline: _uninstall-skill-cline-windows
 else
-install-skill-cline: install-skill-cline-unix
-uninstall-skill-cline: uninstall-skill-cline-unix
+install-skill-cline: _install-skill-cline-unix
+uninstall-skill-cline: _uninstall-skill-cline-unix
 endif
 
-install-skill-cline-unix:
+_install-skill-cline-unix:
 	$(call _install_skill_unix,Cline,$(SKILL_DIR_CLINE))
 
-uninstall-skill-cline-unix:
+_uninstall-skill-cline-unix:
 	$(call _uninstall_skill_unix,Cline,$(SKILL_DIR_CLINE))
 
-install-skill-cline-windows:
+_install-skill-cline-windows:
 	$(call _install_skill_windows,Cline,$(SKILL_DIR_CLINE))
 
-uninstall-skill-cline-windows:
+_uninstall-skill-cline-windows:
 	$(call _uninstall_skill_windows,Cline,$(SKILL_DIR_CLINE))
 
 # =============================================================================
 # ROO CODE — ~/.roo/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-roo: install-skill-roo-windows
-uninstall-skill-roo: uninstall-skill-roo-windows
+install-skill-roo: _install-skill-roo-windows
+uninstall-skill-roo: _uninstall-skill-roo-windows
 else
-install-skill-roo: install-skill-roo-unix
-uninstall-skill-roo: uninstall-skill-roo-unix
+install-skill-roo: _install-skill-roo-unix
+uninstall-skill-roo: _uninstall-skill-roo-unix
 endif
 
-install-skill-roo-unix:
+_install-skill-roo-unix:
 	$(call _install_skill_unix,Roo Code,$(SKILL_DIR_ROO))
 
-uninstall-skill-roo-unix:
+_uninstall-skill-roo-unix:
 	$(call _uninstall_skill_unix,Roo Code,$(SKILL_DIR_ROO))
 
-install-skill-roo-windows:
+_install-skill-roo-windows:
 	$(call _install_skill_windows,Roo Code,$(SKILL_DIR_ROO))
 
-uninstall-skill-roo-windows:
+_uninstall-skill-roo-windows:
 	$(call _uninstall_skill_windows,Roo Code,$(SKILL_DIR_ROO))
 
 # =============================================================================
 # OPENCODE — ~/.config/opencode/skills/
 # =============================================================================
 ifeq ($(OS),Windows_NT)
-install-skill-opencode: install-skill-opencode-windows
-uninstall-skill-opencode: uninstall-skill-opencode-windows
+install-skill-opencode: _install-skill-opencode-windows
+uninstall-skill-opencode: _uninstall-skill-opencode-windows
 else
-install-skill-opencode: install-skill-opencode-unix
-uninstall-skill-opencode: uninstall-skill-opencode-unix
+install-skill-opencode: _install-skill-opencode-unix
+uninstall-skill-opencode: _uninstall-skill-opencode-unix
 endif
 
-install-skill-opencode-unix:
+_install-skill-opencode-unix:
 	$(call _install_skill_unix,OpenCode,$(SKILL_DIR_OPENCODE))
 
-uninstall-skill-opencode-unix:
+_uninstall-skill-opencode-unix:
 	$(call _uninstall_skill_unix,OpenCode,$(SKILL_DIR_OPENCODE))
 
-install-skill-opencode-windows:
+_install-skill-opencode-windows:
 	$(call _install_skill_windows,OpenCode,$(SKILL_DIR_OPENCODE))
 
-uninstall-skill-opencode-windows:
+_uninstall-skill-opencode-windows:
 	$(call _uninstall_skill_windows,OpenCode,$(SKILL_DIR_OPENCODE))
 
 # =============================================================================

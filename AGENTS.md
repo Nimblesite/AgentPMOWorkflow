@@ -121,15 +121,15 @@ The F# and E2E sub-suites are private `_test_fsharp` / `_test_e2e` recipes calle
 
 ### launchd polling (runs every 3 minutes)
 
-- **Plist:** `~/Library/LaunchAgents/com.christianfindlay.repo-report.plist`
+- **Plist:** `~/Library/LaunchAgents/com.agentpmo.repo-report.plist`
 - **Command:** `zsh -l -c "MAX_REPOS=30 dotnet fsi dashboard/repo-report.fsx"`
-- **Interval:** 300 seconds
+- **Interval:** 180 seconds
 - **RunAtLoad:** true
 
 ```bash
 launchctl list | grep repo-report                # check status
-launchctl unload ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist  # stop
-launchctl load ~/Library/LaunchAgents/com.christianfindlay.repo-report.plist    # start
+launchctl unload ~/Library/LaunchAgents/com.agentpmo.repo-report.plist  # stop
+launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist    # start
 dotnet fsi dashboard/repo-report.fsx             # run manually
 ```
 

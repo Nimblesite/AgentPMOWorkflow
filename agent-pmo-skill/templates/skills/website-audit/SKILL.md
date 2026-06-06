@@ -5,6 +5,12 @@ description: Audits a website for SEO, AI search performance, structured data, m
 
 # Website Audit
 
+> ⚠️ **OPERATE AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** Make the
+> reasonable default decision, document it in the final report, and keep going. Never
+> block the audit waiting on user input — pick the sensible option (e.g. canonical URL,
+> license, copy wording) and proceed. The only output the user wants is finished work
+> plus a report of what you decided. No clarifying questions. No mid-run check-ins. ⚠️
+
 Performs a comprehensive website audit and fixes issues affecting search visibility and AI discoverability.
 
 Copy this checklist and track your progress:
@@ -172,6 +178,7 @@ Summarize the audit results:
 
 ## Rules
 
+- **Operate autonomously — never stop to ask the user questions.** Make the reasonable default decision, record it in the report, and keep going to completion.
 - **Fix issues directly** — don't just report them. Only flag issues as warnings when they require human judgment (e.g., content tone, keyword selection).
 - **One step at a time** — complete each step before moving to the next.
 - **Preserve existing content** — improve structure and metadata without rewriting the author's voice.

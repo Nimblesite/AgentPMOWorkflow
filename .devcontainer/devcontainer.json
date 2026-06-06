@@ -1,24 +1,24 @@
 {
-  "name": "project_status (Flutter)",
-  "build": {
-    "dockerfile": "Dockerfile"
+  "name": "Agent PMO Workflow",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-8.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "remoteUser": "vscode",
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "customizations": {
     "vscode": {
       "extensions": [
-        "Dart-Code.flutter",
-        "Dart-Code.dart-code",
+        "Ionide.Ionide-fsharp",
+        "ms-dotnettools.csharp",
+        "ms-playwright.playwright",
         "usernamehw.errorlens"
       ],
       "settings": {
-        "editor.formatOnSave": true,
-        "[dart]": {
-          "editor.defaultFormatter": "Dart-Code.dart-code",
-          "editor.rulers": [80]
-        },
-        "dart.flutterSdkPath": "/flutter"
+        "editor.formatOnSave": true
       }
     }
   }

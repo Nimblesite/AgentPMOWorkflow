@@ -29,7 +29,10 @@ COVERAGE_THRESHOLDS_FILE := coverage-thresholds.json
 # =============================================================================
 # Standard Targets
 #
-# These 7 targets are portfolio-wide and identical across every repo.
+# Canonical portfolio-wide names. Keep only the targets that APPLY to this repo
+# and delete the rest — do not ship a hollow no-op target (e.g. an empty `build`
+# on a docs-only repo) just to "have all 7". When a target is present it MUST use
+# the name below — never a synonym. Also trim .PHONY to match.
 # Do NOT add extra public targets here — put them in the Repo-Specific
 # Targets section at the bottom of this file.
 # See REPO-STANDARDS-SPEC [MAKE-TARGETS].

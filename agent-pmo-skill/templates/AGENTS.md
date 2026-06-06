@@ -6,6 +6,11 @@
 
 > Read this file in full. Rules below are NON-NEGOTIABLE — violations are rejected in review.
 
+> ⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is
+> ambiguous, choose the most reasonable default, note the assumption, and keep working
+> to completion. Do not pause for confirmation, clarification, or approval mid-task.
+> Deliver finished work plus a short summary of any assumptions you made. ⚠️
+
 <!--
 TEMPLATE NOTE FOR THE AGENT APPLYING THIS FILE (delete after rendering):
 This file is a multi-language STARTING POINT. Before writing it to a target repo:

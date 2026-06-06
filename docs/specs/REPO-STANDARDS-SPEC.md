@@ -26,8 +26,11 @@
 
 ## [MAKE] Universal Makefile Standard
 
-Every repo MUST have a root `Makefile` with **exactly** these target names.
-Language-specific work is delegated internally; the external interface never changes.
+Every repo MUST have a root `Makefile`. The target *names* below are canonical: a
+repo uses these names for the concepts that apply to it. It does NOT have to deploy
+all of them — only the ones that mean something for this repo. Language-specific work
+is delegated internally; when a standard target is present, its name and behaviour
+never change.
 
 ### [MAKE-CROSS-PLATFORM] Cross-Platform Requirements (Linux, macOS, Windows)
 
@@ -53,32 +56,61 @@ endif
 - The `grep`/`awk`/`jq` coverage parsing in `_coverage_check` is Unix-only. Acceptable because CI runs on Linux; Windows devs use WSL or Git Bash.
 - Platform-specific repos (e.g., macOS-only apps) document the limitation at the top of the Makefile but still use OS detection for portable targets.
 
-### [MAKE-TARGETS] Standard Targets (exactly 7, identical across all repos)
+### [MAKE-TARGETS] Standard Targets (canonical names, applicable subset)
 
 Every Makefile is organised into two sections:
 
-1. **`Standard Targets`** — the 7 portfolio-wide targets below. Implementations vary per language; the names never do.
-2. **`Repo-Specific Targets`** — targets unique to this repo (e.g. `dashboard`, `website-build`). Skills MUST NOT delete these during remediation just because they're not in the list of 7.
+1. **`Standard Targets`** — the portfolio-wide targets below that apply to this repo. Implementations vary per language; the names never do.
+2. **`Repo-Specific Targets`** — targets unique to this repo (e.g. `dashboard`, `website-build`, `rebuild-install-vsix`). This section is owned by the repo, not the skill. See [MAKE-REPO-SPECIFIC].
 
-The 7 standard targets:
+The standard target vocabulary:
 
-| Target | What it does |
-|--------|-------------|
-| `make build` | Compile/assemble all artifacts |
-| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See [TEST-RULES]. |
-| `make lint` | Run all linters/analyzers (read-only). Does NOT format — that's `make fmt`. |
-| `make fmt` | Format all code in-place |
-| `make clean` | Delete all build artifacts |
-| `make ci` | `lint` + `test` + `build` (full CI simulation locally) |
-| `make setup` | Post-create dev environment setup (devcontainer hook) |
+| Target | What it does | When to include |
+|--------|-------------|-----------------|
+| `make test` | Run full test suite **fail-fast** (stop on first failure) **with coverage collection AND threshold enforcement**. See [TEST-RULES]. | Any repo with tests (≈ all). |
+| `make lint` | Run all linters/analyzers (read-only). Does NOT format — that's `make fmt`. | Any repo with a linter/analyzer. |
+| `make ci` | The local CI simulation: chains whichever of `lint` / `test` / `build` exist. | Any repo with at least one of those. |
+| `make fmt` | Format all code in-place | Any repo with a formatter. |
+| `make clean` | Delete all build artifacts | Any repo that produces build artifacts. |
+| `make build` | Compile/assemble all artifacts | Repos that produce a build artifact. Omit for interpreted/docs-only repos with nothing to compile (don't add an empty no-op). |
+| `make setup` | Post-create dev environment setup (devcontainer hook) | Any repo with a devcontainer or non-trivial setup. |
 
 **Rules:**
 
-- All 7 standard targets MUST be present in `Standard Targets`. No substitutions, no omissions.
-- The `Standard Targets` section contains ONLY those 7 public targets. Anything else belongs in `Repo-Specific Targets` (or merged into a standard target if it shadows one).
-- Repo-specific targets MUST NOT shadow the 7 (no `test-all`, `build-release`, `lint-fix` — merge into the corresponding standard target).
+- **Only deploy the targets that apply.** Do NOT add a target whose body would be empty or a meaningless no-op just to "have all 7". A docs-only repo with nothing to compile has no `build`; a repo with no formatter has no `fmt`. Including a hollow target is a defect, not compliance.
+- **Use the canonical name for any concept that has one.** If the repo has the concept, it uses the standard name — never a synonym. No `test-all`, `build-release`, `lint-fix`, `check`, `tidy`: merge those into `test` / `build` / `lint` / `fmt`.
+- The `Standard Targets` section contains ONLY standard public targets. Anything else belongs in `Repo-Specific Targets`.
 - Internal sub-recipes (`_test_unit`, `_coverage_check`) chain inside standard recipes but MUST be underscore-prefixed and MUST NOT appear in `.PHONY`.
-- Agent-pmo-stamped public targets outside the 7 are orphans ([MARKER-CLEANUP]). Non-stamped public targets are preserved.
+- Agent-pmo-stamped public targets that duplicate a standard concept under a non-standard name are orphans ([MARKER-CLEANUP]). Non-stamped public targets are preserved.
+
+### [MAKE-REPO-SPECIFIC] Repo-Specific Targets are owned by the repo — do not clobber
+
+The `Repo-Specific Targets` section belongs to the repo, not the skill. Most repos
+have one, and it sits **after** the agent-pmo standard targets.
+
+- **NEVER delete, rename, reorder, or rewrite a repo-specific target** during remediation just because it isn't in the standard vocabulary. They are intentional.
+- **NEVER overwrite the whole Makefile** to "regenerate" it. Edit surgically: add a missing standard target, fix a broken one — leave everything else byte-for-byte.
+- The ONLY repo-specific target a skill may touch is one it stamped itself (`# agent-pmo:<sha>`) that has since been orphaned ([MARKER-CLEANUP]).
+- If a repo-specific target *shadows* a standard concept under a different name (e.g. `make test-all`), merge its logic into the standard target and remove the shadow — but preserve any unique behaviour. When unsure, leave it and report it for human review rather than deleting.
+
+### [MAKE-IDE-EXT] IDE / Editor Extension Targets
+
+If the repo builds one or more editor extensions (VS Code `.vsix`, Zed, JetBrains
+plugin, Sublime, etc.), add **one repo-specific target per extension** that does a
+full clean rebuild-and-reinstall cycle. These live in `Repo-Specific Targets`, not
+the standard vocabulary.
+
+**Naming:** `rebuild-install-<kind>` — e.g. `rebuild-install-vsix`, `rebuild-install-zed`. One per extension the repo produces; suffix with the extension name if a repo ships several of the same kind.
+
+Each target chains these steps in order (skip a step only if the toolchain has no equivalent):
+
+1. **Uninstall** the currently-installed extension (e.g. `code --uninstall-extension <publisher>.<name>`).
+2. **Clean** the extension's build output (delete the packaged artifact + build dir; use `$(RM)`).
+3. **Rebuild** the extension from source (compile/bundle).
+4. **Package** the extension into its distributable (`vsce package`, `zed extension package`, etc.).
+5. **Install** the freshly-packaged artifact **if the toolchain supports local install** (e.g. `code --install-extension <file>.vsix`). If there's no local-install path, stop after packaging and echo where the artifact landed.
+
+Implement the steps as underscore-prefixed sub-recipes (`_vsix_uninstall`, `_vsix_package`, …) chained from the public `rebuild-install-<kind>` target, consistent with [MAKE-TARGETS].
 
 ### [MAKE-TEMPLATE] Standard Makefile Template
 
@@ -787,8 +819,9 @@ STRUCTURE
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
-[ ] Makefile has the 7 standard targets: build, test, lint, fmt, clean, ci, setup ([MAKE-TARGETS])
-[ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section ([MAKE-TARGETS])
+[ ] Makefile uses canonical names for every standard target that applies; no hollow no-op targets, no synonyms ([MAKE-TARGETS])
+[ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section and were left intact ([MAKE-REPO-SPECIFIC])
+[ ] Editor extensions (.vsix/Zed/etc.) each have a `rebuild-install-<kind>` target ([MAKE-IDE-EXT])
 [ ] Makefile `_lint` runs linters/analyzers only (no formatting)
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
@@ -901,7 +934,7 @@ Any `agent-pmo:`-stamped artifact (file, Makefile target, CI step) whose source 
 **Process:**
 1. Scan target repo for all `agent-pmo:` markers.
 2. Verify each source still exists in the standards repo.
-3. If orphaned: merge useful logic into the correct standard artifact (e.g., orphaned Makefile target → one of the 7), then delete the orphan.
+3. If orphaned: merge useful logic into the correct standard artifact (e.g., orphaned Makefile target → the matching standard target), then delete the orphan.
 4. If merging is unsafe or purpose unclear, alert the user instead of deleting.
 5. Report all handled orphans.
 
@@ -934,7 +967,9 @@ The hash enables traceability: `git log --oneline <hash>..HEAD` in the standards
 2. MISSING items: add from [`templates/`](templates/).
 3. WRONG items:
    - CI job names wrong → rename to `lint`, `test`, `build`.
-   - Makefile has agent-pmo-stamped targets outside the 7 → merge into the correct standard target, delete the orphan ([MARKER-CLEANUP]). Leave non-stamped repo-specific targets alone.
+   - Makefile uses a synonym for a standard concept (`test-all`, `lint-fix`) → merge into the canonical target, delete the synonym. Leave non-stamped repo-specific targets ALONE — do not delete, reorder, or regenerate them ([MAKE-REPO-SPECIFIC]).
+   - Makefile missing a standard target that DOES apply → add it. Do NOT add a target that has nothing to do (no empty `build` on a docs repo) ([MAKE-TARGETS]).
+   - Repo builds an editor extension with no `rebuild-install-<kind>` target → add one ([MAKE-IDE-EXT]).
    - `make test` not fail-fast → add the runner's flag ([TEST-RULES]).
    - `make test` not enforcing coverage → call `_coverage_check` from `_test`.
    - `make lint` doing formatting → remove; formatting belongs in `make fmt`.
