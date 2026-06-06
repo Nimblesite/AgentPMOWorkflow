@@ -137,6 +137,8 @@ The duplication budget lives in committed `.deslop.toml` (`max_duplication_perce
 
 ## Website (if one exists)
 
+**Theme is MANDATORY for dev-tool / docs sites:** build with [`eleventy-plugin-techdoc`](https://github.com/Nimblesite/eleventy-plugin-techdoc) on Eleventy 3.x. Supply only your color CSS variables; the plugin owns layouts, SEO metadata, and structure. Any other theme/SSG is non-compliant. Keep the plugin upgraded.
+
 **Optimise for SEO + AI search.** When writing web content, apply:
 - [Succeeding in Google's AI search experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
 - [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
