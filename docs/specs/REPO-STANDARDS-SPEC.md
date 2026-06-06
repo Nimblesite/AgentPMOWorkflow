@@ -125,11 +125,17 @@ Implement the steps as underscore-prefixed sub-recipes (`_vsix_uninstall`, `_vsi
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `.github/workflows/ci.yml` | PR to `main`, push to `main` | Lint → test → build validation |
-| `.github/workflows/release.yml` | Push tag `v*` | Build release artifacts, publish, deploy |
+| `.github/workflows/ci.yml` | **PR to `main` only** | Lint → test → build validation |
+| `.github/workflows/release.yml` | **Push tag `v*` only** | Build release artifacts, publish, deploy website |
 | `.github/workflows/deploy-pages.yml` | `workflow_dispatch` (triggered by release.yml) | Deploy static site (if applicable) |
 
-**Website deploys ONLY on release** — never on push to `main`. The website must not get ahead of the actual release. `release.yml` triggers `deploy-pages.yml` via `workflow_dispatch` after the GitHub release is created.
+**Trigger rules (non-negotiable):**
+
+- **CI runs on PR to the default branch (`main`) only.** That is the gate.
+- **Merges/pushes to `main` trigger NOTHING.** No CI, no deploy, no release on a push to `main`. `main` is already-validated code — every commit on it arrived through a green PR. Re-running CI on the merge is wasted runner time. `ci.yml` MUST NOT have `push: branches: [main]`.
+  - Exception: if a repo permits commits to `main` *outside* the verified-PR flow, CI MAY also run on push to `main` to catch them. Default is PR-only; add push only with a comment explaining why.
+- **Release happens ONLY when a version tag (`v*`) is pushed.** No release on merge to `main`, no release on a schedule. Tag → release. Model repos: **Basilisk, TooManyCooks, Deslop**.
+- **The release workflow MUST deploy the website if the repo has one.** `release.yml` triggers `deploy-pages.yml` via `workflow_dispatch` at the release ref, after the GitHub release is created. **Website deploys ONLY on release** — never on push to `main` — so the site never gets ahead of the released artifact. A repo with a website and no website-deploy step in `release.yml` is non-compliant.
 
 ### [CI-JOBS] Standard CI Job Names (exact — do not deviate)
 
@@ -168,6 +174,8 @@ Runs on tag push (`v*`) and executes these jobs in order:
 
 Critical release rules:
 
+- **Release fires ONLY on a version tag push (`v*`).** Never on merge/push to `main`, never on a schedule. Model repos that follow this exactly: **Basilisk, TooManyCooks, Deslop**.
+- **If the repo has a website, the release MUST deploy it** (the `deploy-pages` job above). No website-deploy in `release.yml` for a repo that has a site = non-compliant ([CI-WORKFLOWS]).
 - Source-controlled deployable versions SHOULD remain a valid placeholder such as `0.0.0-dev`.
 - Version stamping MUST be a first-class script or build target that accepts the tag version. Tests
   MUST be able to pass their own semantic version into the same path.
@@ -801,9 +809,11 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 
 ### [GITHUB-PROTECTION] Branch Protection
 
-If no branch protection exists, add a ruleset requiring:
-- PRs to `main` (no direct pushes)
-- CI status checks must pass before merge
+**Every repo MUST protect its default branch (`main`).** If no branch protection exists, add a ruleset requiring:
+- A PR to `main` — no direct pushes
+- The `ci` status check (the job from `ci.yml`, [CI-JOBS]) passes before merge
+
+This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR, protection makes that green check mandatory to merge, and nothing re-runs on the merge itself.
 
 If protection already exists, leave it alone.
 
@@ -892,6 +902,9 @@ LOGGING ([LOG])
 [ ] No PII or secrets in log output
 
 CI
+[ ] ci.yml triggers on PR to `main` ONLY — no `push: branches: [main]` (merges to main trigger nothing) ([CI-WORKFLOWS])
+[ ] release.yml triggers on `v*` tag push ONLY — no release on merge/schedule ([CI-WORKFLOWS], [CI-RELEASE])
+[ ] release.yml deploys the website if the repo has one ([CI-WORKFLOWS])
 [ ] ci.yml has a single `ci` job with sequential steps: `make lint` → `make test` → `make build`
 [ ] ci.yml has concurrency cancel-in-progress
 [ ] ci.yml: `make lint` runs linters/analyzers only

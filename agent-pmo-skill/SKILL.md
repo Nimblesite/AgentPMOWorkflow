@@ -62,7 +62,11 @@ For each area below, record: what exists, what's missing, what's under a wrong n
 
 - **2a. Docs folder.** Look for `docs/` (standard) or variants `doco/`, `documentation/`, `doc/`, `documents/`. Check for `docs/specs/` and `docs/plans/` subdirs. Flag loose markdown files in `docs/` for classification.
 - **2b. CI workflows.** List `.github/workflows/*.yml`. Identify any existing workflow that does what `ci.yml`/`release.yml`/`deploy-pages.yml` should do, under any filename. Per spec [CI-WORKFLOWS] / [CI-JOBS] these will be renamed in Step 3, not re-created.
-  For release workflows, flag these as critical blockers: checkout `ref: main` in tag jobs, any
+  Flag these trigger violations per [CI-WORKFLOWS]:
+  - `ci.yml` triggering on `push: branches: [main]` (merges to main must trigger nothing — PR-only, unless the repo allows non-PR commits to main, which must be commented).
+  - `release.yml` triggering on anything other than a `v*` tag push (no release on merge/schedule).
+  - A repo that HAS a website but whose `release.yml` has no website-deploy step (release MUST deploy the site).
+  For release workflows, also flag these as critical blockers: checkout `ref: main` in tag jobs, any
   `git commit`/`git push`/tag mutation, source-control version bumps after the tag, ad hoc `sed`
   stamping of structured files, and missing tests for build-time version stamping.
 - **2c. Makefile.** If present, read in full. Classify every public target per spec [MAKE-TARGETS]:
