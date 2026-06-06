@@ -182,6 +182,10 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
      - Content-preserving skills (`website-audit`, `spec-check`, `submit-pr`, any skill without multi-language examples): copy the step-by-step procedure verbatim. Add repo-specific context if useful, but never drop/merge/summarize/rewrite/gut steps. Diff source vs output — the only differences should be repo-specific additions.
 
   If an existing canonical file has substantial custom content, **merge** into it instead of overwriting. Result must read as a coherent document for this repo, not a generic template with the name swapped in.
+- **3h-web. Website theme + upgrade** (only if the repo has a website). Per spec [WEB-TECHDOC] / [WEB-UPGRADE]:
+  - Dev-tool/docs sites MUST use `eleventy-plugin-techdoc` on Eleventy 3.x. If on another theme/SSG, flag for migration.
+  - **Always upgrade `eleventy-plugin-techdoc` (and `@11ty/eleventy`) to latest**, update the lockfile, and rebuild.
+  - **Then run the `website-audit` skill** and record the result in the Step 5 report.
 - **3i. VS Code title bar colorization** (only if `.vscode/` or `.vscode/settings.json` exists).
   1. Find the project's primary brand color. Check in order: `designsystem/`/`design-system/`/`design/`, CSS custom properties (`--color-*`, `--brand-*`, `--primary`) in `website/`/`site/`/`docs/`, `tailwind.config.*` theme, `theme.*`/`colors.*` files, README color scheme.
   2. Extract the dominant accent (not white/black/grey).
