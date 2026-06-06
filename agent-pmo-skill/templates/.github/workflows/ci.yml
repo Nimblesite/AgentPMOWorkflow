@@ -1,10 +1,11 @@
 name: CI
 
 on:
-  # CI always runs for PRs. 
-  # It may or may not run for pushes to main, depending on the repo settings,
-  # but if the repo allows commits outside the verified PR commits, the CI should
-  # run for pushes to main as well. Make a note of this to the user when appropriate
+  # CI runs on PRs to the default branch ONLY ([CI-WORKFLOWS]).
+  # Merges/pushes to main trigger NOTHING — main is already-validated code that
+  # arrived through a green PR; re-running CI on the merge is wasted runner time.
+  # EXCEPTION: if this repo permits commits to main outside the verified-PR flow,
+  # add `push: branches: [main]` below with a comment saying why. Default: PR-only.
   pull_request:
     branches: [main]
 
