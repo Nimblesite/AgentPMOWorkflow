@@ -758,13 +758,16 @@ All repos: `main` (never `master`)
 These rules exist because agents reliably get git wrong. The canonical instruction file
 ([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
 
-- **NEVER push to `main` directly.** Every change ships through CI on a PR. No exceptions.
+- **NEVER push to the default branch (`main`) directly.** Every change ships through CI on a PR, then merges. The flow is always PR → CI green → merge. No exceptions.
 - **NEVER list yourself (the agent) as a commit co-author.** No `Co-Authored-By` trailer, no
   agent attribution in the commit message.
-- **ONE feature branch at a time** — even when multiple agents work the repo concurrently. Reuse
-  the existing feature branch; do not open a second.
+- **Work on exactly ONE branch at a time. Always.** Even when multiple agents work the repo
+  concurrently. Reuse the existing feature branch; never open a second.
 - **NEVER start a new branch when a feature branch already exists.** Check first; if one is open,
   work on it.
+- **If multiple feature branches already exist, merge them into one IMMEDIATELY, before doing any
+  other work.** Converge to a single branch first — do not start the task on top of a fragmented
+  set of branches.
 - **Worktrees are forbidden.** Never run `git worktree`. (Not a judgement on the feature — agents
   consistently corrupt their state with it.)
 
@@ -779,6 +782,19 @@ The canonical instruction file ([AGENT-TEMPLATE]) MUST direct the agent to opera
 - This applies to *instruction files*. A skill MAY still ask up-front scoping questions when the
   repo's purpose is genuinely unclear (e.g. the agent-pmo standards skill) — but once work is
   underway, the autonomy rule governs.
+
+### [AGENT-AUTOMEMORY] Auto-memory OFF in every repo
+
+**Disable the agent's automatic-memory / auto-learning feature in EVERY repo.** Agents that
+silently accrete "memories" pollute the repo's instructions with unreviewed, unversioned state.
+All durable rules live in the canonical instruction file ([AGENT-TEMPLATE]) and the spec — nowhere
+else.
+
+- The agent-pmo skill MUST turn auto-memory off via the agent's own settings file (consult
+  [AGENT-DOCS] for the exact key). For **Claude Code**, set `"autoMemoryEnabled": false` in
+  `.claude/settings.json` (committed). For other agents, disable the equivalent feature per their docs.
+- The canonical instruction file SHOULD state that auto-memory is off and that all persistent rules
+  go through a reviewed PR to the instruction file, not auto-captured memory.
 
 ---
 
@@ -885,8 +901,9 @@ STRUCTURE
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
 [ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
-[ ] Canonical instruction file has all required sections (CLAUDE.md or AGENTS.md per [AGENT-PLACEMENT])
+[ ] Canonical instruction file has all required sections (AGENTS.md by default, or CLAUDE.md if pre-existing per [AGENT-PLACEMENT])
 [ ] Non-canonical instruction file is a pointer to canonical file ([AGENT-POINTERS])
+[ ] Auto-memory disabled ([AGENT-AUTOMEMORY]) — Claude: `"autoMemoryEnabled": false` in `.claude/settings.json`
 [ ] .clinerules/00-read-instructions.md (pointer → canonical file)
 [ ] .cursorrules (pointer → canonical file)
 [ ] .windsurfrules (pointer → canonical file)
@@ -941,7 +958,7 @@ FORMATTING
 BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
-[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): no direct push to main, no agent co-author, one feature branch at a time, never branch when one exists, no worktrees
+[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): no direct push to default branch, no agent co-author, exactly one branch at a time, never branch when one exists, merge multiple branches immediately, no worktrees
 [ ] Developer-tool repos: Shipwright supply-chain audit run ([CI-SHIPWRIGHT])
 
 GITHUB REPO SETTINGS ([GITHUB-SETTINGS])

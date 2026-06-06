@@ -174,9 +174,10 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
 
   **The canonical file MUST be fully customised.** Fill every placeholder, strip every language/tool/framework section that does not apply, fill the project overview and architecture section with real content. The test: ZERO references to languages or tools the repo does not use. **Keep the `Duplication — Deslop` section iff the repo is in a Deslop-supported language** (Rust, C#, Dart, Python) per [CI-DESLOP]; delete it otherwise.
 
-  1. Write the canonical file (Claude → `CLAUDE.md`; others → `AGENTS.md`; Copilot → `.github/copilot-instructions.md`).
-  2. Every other agent instruction file becomes a trivial pointer to the canonical file. See spec [AGENT-POINTERS]. **Strip existing content** from non-canonical files — no headings, no preamble, no leftover rules — leave only the marker line and `@<canonical_file>` redirect. Use `templates/CLAUDE.md` as the pointer template.
-  3. Place skills from `templates/skills/` into the target agent's native directory per spec [SKILL-PLACEMENT]. Apply spec [MODES-CUSTOMIZE]:
+  1. Write the canonical file. **Default to the generic `AGENTS.md` for every agent, Claude included** ([DESIGN] 5a, [AGENT-PLACEMENT]) — unless a pre-existing canonical `CLAUDE.md` was detected, in which case merge into it. (Copilot's own file is `.github/copilot-instructions.md`.)
+  2. **Disable auto-memory** per [AGENT-AUTOMEMORY]: for Claude Code, ensure `"autoMemoryEnabled": false` in `.claude/settings.json` (create/merge, committed); for other agents disable the equivalent per [AGENT-DOCS].
+  3. Every other agent instruction file becomes a trivial pointer to the canonical file. See spec [AGENT-POINTERS]. **Strip existing content** from non-canonical files — no headings, no preamble, no leftover rules — leave only the marker line and `@<canonical_file>` redirect. Use `templates/CLAUDE.md` as the pointer template.
+  4. Place skills from `templates/skills/` into the target agent's native directory per spec [SKILL-PLACEMENT]. Apply spec [MODES-CUSTOMIZE]:
      - Language-customizable skills (`code-dedup`, `ci-prep`, `upgrade-packages`): strip irrelevant language sections, fill placeholders.
      - Content-preserving skills (`website-audit`, `spec-check`, `submit-pr`, any skill without multi-language examples): copy the step-by-step procedure verbatim. Add repo-specific context if useful, but never drop/merge/summarize/rewrite/gut steps. Diff source vs output — the only differences should be repo-specific additions.
 
