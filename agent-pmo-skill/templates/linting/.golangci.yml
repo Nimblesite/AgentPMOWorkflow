@@ -1,0 +1,39 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    # These conflict with the codebase's patterns or are too noisy:
+    - gocognit         # cognitive complexity — use cyclop instead
+    - depguard         # dependency management — handled by go.mod
+    - exhaustruct      # exhaustive struct init — too strict for config structs
+    - varnamelen       # variable name length — conflicts with Go idioms (err, ok, i)
+    - gocritic         # some rules conflict with other linters
+    - wsl              # whitespace — too opinionated
+    - whitespace       # duplicate of wsl
+    - nestif           # if nesting — handled by cognitive complexity
+    - prealloc         # slice preallocation — premature optimisation
+    - gochecknoinits   # init functions — sometimes necessary
+    - dupl             # code duplication — too many false positives in tests
+    - forbidigo        # forbidden identifiers — configure if needed
+    - forcetypeassert  # type assertion — covered by errcheck
+    - ireturn          # return interface — conflicts with Result pattern
+    - nilnil           # nil,nil return — conflicts with Go error patterns
+    - paralleltest     # parallel tests — opt-in only
+    - testpackage      # external test packages — style preference only
+    - wrapcheck        # error wrapping — too strict for all cases
+    - thelper          # test helper — opt-in
+
+linters-settings:
+  cyclop:
+    max-complexity: 15
+  funlen:
+    lines: 80
+    statements: 50
+  gocyclo:
+    min-complexity: 15
+
+output:
+  formats:
+    - format: colored-line-number
+  sort-results: true

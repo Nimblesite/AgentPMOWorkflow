@@ -1,0 +1,24 @@
+{
+  "name": "{{REPO_NAME}} (Go)",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.23",
+  "remoteUser": "vscode",
+  "postCreateCommand": "make setup",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "usernamehw.errorlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "go.useLanguageServer": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast"],
+        "go.formatTool": "goimports"
+      }
+    }
+  }
+}

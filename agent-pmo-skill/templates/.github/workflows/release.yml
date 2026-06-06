@@ -1,0 +1,188 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Extract release version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      source_sha: ${{ steps.extract.outputs.source_sha }}
+    steps:
+      - name: Extract version from tag
+        id: extract
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "source_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+  build-cross-platform:
+    name: Build packages
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_sha }}
+
+      # ---- language setup (uncomment what applies) ----
+
+      # ---- stamp versions in the runner working tree only ----
+      # Source-controlled versions should remain a placeholder such as 0.0.0-dev.
+      # Use a repo-owned structured stamper or build target; do not commit/push here.
+      # Examples:
+      # - run: node scripts/stamp-release-version.mjs "${{ needs.version.outputs.version }}"
+      # - run: make release-stamp VERSION="${{ needs.version.outputs.version }}"
+
+      - name: Build
+        run: make build
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/
+            out/
+
+  build-platform:
+    name: Build (${{ matrix.artifact_name }})
+    needs: version
+    strategy:
+      # Native VSIX extensions use the Microsoft platform/arch matrix from [CI-VSIX-PLATFORM]
+      # instead of Rust target triples, then run: npx vsce package --target <vsceTarget>.
+      matrix:
+        include:
+          # Uncomment targets that apply
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: macos-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: macos-arm64
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   artifact_name: windows-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_sha }}
+
+      # ---- language setup (uncomment what applies) ----
+      # VSIX native-binary packaging uses Node 22.x per the Microsoft platform-specific sample.
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '22.x'
+      #     cache: 'npm'
+
+      # ---- stamp versions in the runner working tree only ----
+      # - run: node scripts/stamp-release-version.mjs "${{ needs.version.outputs.version }}"
+      # - run: make release-stamp VERSION="${{ needs.version.outputs.version }}"
+
+      - name: Build
+        run: make build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            dist/
+            target/release/
+
+  release:
+    name: Create release
+    needs: [version, build-cross-platform, build-platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+
+  publish:
+    name: Publish to registries
+    needs: [version, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      # ---- language setup (uncomment what applies) ----
+
+      # ---- publish to registries (uncomment per target) ----
+      # Requires secrets configured in repo Settings → Secrets → Actions.
+
+      # npm:
+      # - run: npm publish
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # NuGet:
+      # - run: dotnet nuget push "artifacts/packages/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      # PyPI:
+      # - run: pip install twine && twine upload artifacts/packages/*
+      #   env:
+      #     TWINE_USERNAME: __token__
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      # pub.dev:
+      # - run: dart pub publish --force
+      #   env:
+      #     PUB_TOKEN: ${{ secrets.PUB_DEV_TOKEN }}
+
+      # VS Code Marketplace:
+      # Native VSIX extensions publish all target VSIX files in one job.
+      # - run: npx vsce publish --packagePath $(find . -iname *.vsix)
+      #   env:
+      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # crates.io:
+      # - run: cargo publish
+      #   env:
+      #     CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+
+  deploy-pages:
+    name: Trigger website deploy
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger deploy-pages workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              ref: context.ref,
+            });

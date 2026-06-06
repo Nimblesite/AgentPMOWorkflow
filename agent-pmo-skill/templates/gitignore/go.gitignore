@@ -1,0 +1,10 @@
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+# go.sum MUST be committed — do not add it here

@@ -1,0 +1,469 @@
+---
+layout: base.njk
+title: "Get Started — Install Agent PMO in Minutes"
+description: "Set up Agent PMO in minutes. One command installs everything — .NET SDK, gh CLI, the PMO dashboard, and the scheduled refresh. Works on macOS, Linux, and Windows."
+---
+
+<section class="page-hero" aria-label="Page header">
+  <div class="page-hero-inner">
+    <div class="hero-badge">Quick Setup</div>
+    <h1>One command.<br>Running in minutes.</h1>
+    <p class="tagline">
+      Agent PMO installs itself. One script handles .NET, the gh CLI, the dashboard,
+      and the scheduled refresh. macOS, Linux, and Windows supported.
+    </p>
+  </div>
+</section>
+
+<!-- ── Install Banner ─────────────────────────── -->
+<section class="install-banner" aria-label="One-line install command">
+  <div class="install-banner-inner">
+    <div class="fade-in">
+      <p class="install-tagline">Copy. Paste. Done.</p>
+      <div class="install-block" role="group" aria-label="Install command">
+        <div class="install-tabs">
+          <button class="install-tab active" data-cmd="curl" aria-pressed="true">macOS / Linux</button>
+          <button class="install-tab" data-cmd="windows" aria-pressed="false">Windows</button>
+          <button class="install-tab" data-cmd="git" aria-pressed="false">git clone</button>
+        </div>
+        <div class="install-cmd-wrap">
+          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash</code>
+          <button class="copy-btn" aria-label="Copy install command" id="copy-btn" title="Copy to clipboard">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <span id="copy-label">Copy</span>
+          </button>
+        </div>
+      </div>
+      <p class="install-note">Works on macOS, Linux, and Windows. .NET SDK and gh CLI installed automatically if missing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Prerequisites ──────────────────────────── -->
+<section class="section" aria-label="Prerequisites">
+  <div class="section-inner">
+    <div class="fade-in">
+      <div class="section-label">What you need</div>
+      <h2 class="section-heading">Prerequisites</h2>
+      <p class="section-subheading">
+        The setup script handles most of this automatically. But here's what you're working with.
+      </p>
+    </div>
+
+    <div class="prereq-grid fade-in delay-1">
+      <div class="prereq-item">
+        <span class="prereq-icon" aria-hidden="true">💻</span>
+        <div>
+          <h3>macOS, Linux, or Windows</h3>
+          <p>macOS 12+ (Homebrew recommended), Debian/Ubuntu/Fedora Linux, or Windows 10+ (winget/choco). The setup script detects your OS.</p>
+        </div>
+      </div>
+      <div class="prereq-item">
+        <span class="prereq-icon" aria-hidden="true">🔑</span>
+        <div>
+          <h3>GitHub account with CLI auth</h3>
+          <p>The dashboard uses <code>gh</code> to fetch PR and CI status. Run <code>gh auth login</code> once after install.</p>
+        </div>
+      </div>
+      <div class="prereq-item">
+        <span class="prereq-icon" aria-hidden="true">📁</span>
+        <div>
+          <h3>Repos under <code>~/Documents/Code/</code></h3>
+          <p>The dashboard scans this directory. If your repos live elsewhere, edit <code>config.json</code> after setup.</p>
+        </div>
+      </div>
+      <div class="prereq-item">
+        <span class="prereq-icon" aria-hidden="true">🟣</span>
+        <div>
+          <h3>.NET SDK (auto-installed)</h3>
+          <p>The dashboard is an F# script. The setup script installs .NET 8 via Homebrew (macOS) or apt/script (Linux).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Step-by-step manual ────────────────────── -->
+<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Manual setup steps">
+  <div class="section-inner">
+    <div class="fade-in">
+      <div class="section-label">Manual setup</div>
+      <h2 class="section-heading">Step by step</h2>
+      <p class="section-subheading">
+        The one-liner does all of this automatically. But here's what's happening under the hood.
+      </p>
+    </div>
+
+    <div class="setup-steps fade-in delay-1">
+
+      <div class="setup-step">
+        <div class="setup-step-num">1</div>
+        <div>
+          <h3>Clone the repo</h3>
+          <p>Clone Agent PMO into your code directory.</p>
+          <pre><code>git clone https://github.com/Nimblesite/AgentPMOWorkflow.git
+cd AgentPMOWorkflow</code></pre>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-num">2</div>
+        <div>
+          <h3>Install .NET SDK</h3>
+          <p>The dashboard is an F# script run via <code>dotnet fsi</code>. Install .NET 8+:</p>
+          <pre><code># macOS (Homebrew)
+brew install dotnet
+
+# Ubuntu / Debian
+sudo apt-get update &amp;&amp; sudo apt-get install -y dotnet-sdk-8.0
+
+# Windows (winget)
+winget install Microsoft.DotNet.SDK.8
+
+# Or download from: https://dot.net</code></pre>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-num">3</div>
+        <div>
+          <h3>Install and authenticate gh CLI</h3>
+          <p>The dashboard fetches PR and CI status via the GitHub CLI.</p>
+          <pre><code># macOS
+brew install gh
+
+# Ubuntu / Debian
+sudo apt install gh
+
+# Windows
+winget install GitHub.cli
+
+# Authenticate (all platforms)
+gh auth login</code></pre>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-num">4</div>
+        <div>
+          <h3>Run the report manually</h3>
+          <p>Verify everything works before setting up the scheduler.</p>
+          <pre><code>dotnet fsi dashboard/repo-report.fsx
+# Opens dashboard/repo-report.html</code></pre>
+          <p>If you see your repos in the report, you're good to go.</p>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-num">5</div>
+        <div>
+          <h3>Set up the scheduled refresh</h3>
+          <p>The setup script handles this. Manual instructions:</p>
+          <pre><code># macOS — launchd (runs every 3 minutes)
+cp com.agentpmo.repo-report.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist
+
+# Linux — cron job
+echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | crontab -
+
+# Windows — Task Scheduler (PowerShell, admin)
+# The setup.ps1 script handles this automatically</code></pre>
+        </div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-num">6</div>
+        <div>
+          <h3>Install the enforcement skill (optional)</h3>
+          <p>To standardise your other repos with the Claude skill:</p>
+          <pre><code>make install-skill-claude
+# Copies agent-pmo skill into ~/.claude/skills/</code></pre>
+          <p>Then in any repo: tell Claude to run the <strong>agent-pmo</strong> skill.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Config ────────────────────────────────── -->
+<section class="section" aria-label="Configuration options">
+  <div class="section-inner">
+    <div class="fade-in">
+      <div class="section-label">Configuration</div>
+      <h2 class="section-heading">Tailor it to your setup</h2>
+      <p class="section-subheading">
+        Copy <code>dashboard/config.example.json</code> to <code>dashboard/config.json</code> to customise.
+      </p>
+    </div>
+
+    <div class="fade-in delay-1">
+      <pre><code>{
+  "scanDir": "/Users/you/Documents/Code",
+  "githubOwners": "your-github-username",
+  "maxRepos": "20",
+  "excludeRepos": "",
+  "excludeAuthor": "",
+  "excludeRepoDomain": ""
+}</code></pre>
+
+      <div class="callout callout-accent">
+        <strong>Point <code>scanDir</code> at your code directory.</strong> Set <code>githubOwners</code> to your GitHub username so the dashboard can filter repos. Use <code>excludeRepos</code> to skip specific repos by name.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Next steps ────────────────────────────── -->
+<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Next steps">
+  <div class="section-inner">
+    <div class="section-center fade-in">
+      <div class="section-label">What's next</div>
+      <h2 class="section-heading">You're set up. Now what?</h2>
+    </div>
+
+    <div class="feature-grid fade-in delay-1">
+      <div class="feature-card">
+        <span class="feature-card-icon" aria-hidden="true">📐</span>
+        <h3>Standardise your repos</h3>
+        <p>Run the <strong>agent-pmo</strong> Claude skill on each of your repos. Give every project the same interface so agents can navigate them without help.</p>
+        <a href="/features/#standards" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about standards →</a>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon" aria-hidden="true">🌿</span>
+        <h3>Set up worktrees for monorepos</h3>
+        <p>Got a large codebase? Create worktrees so multiple agents can work simultaneously without conflicts.</p>
+        <a href="/features/#worktrees" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about worktrees →</a>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon" aria-hidden="true">🎭</span>
+        <h3>Enable TMC</h3>
+        <p>When TMC is available, enable it for cross-project orchestration. Agents coordinate, lock files, and avoid conflicts automatically.</p>
+        <a href="/features/#tmc" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about TMC →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────── -->
+<section class="section cta-banner" aria-label="Call to action">
+  <div class="section-inner">
+    <div class="fade-in">
+      <h2>Questions? Issues? PRs?</h2>
+      <p>Agent PMO is open source. Bugs, feature requests, and contributions are welcome on GitHub.</p>
+      <div class="cta-actions">
+        <a href="{{ site.githubUrl }}/issues" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Open an Issue →</a>
+        <a href="{{ site.githubUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* ── Install banner styles ─────────────────────── */
+.install-banner {
+  background: linear-gradient(145deg, #030807, #060f0a);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 4rem 1.25rem;
+}
+
+[data-theme="light"] .install-banner {
+  background: linear-gradient(145deg, #0a1a12, #0d2818);
+}
+
+.install-banner-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.install-tagline {
+  color: #7fac93;
+  font-size: 1rem;
+  margin: 0 0 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.install-block {
+  background: #050d08;
+  border: 1px solid rgba(25, 208, 120, 0.25);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(25, 208, 120, 0.1), 0 20px 60px rgba(0, 0, 0, 0.5);
+  text-align: left;
+}
+
+.install-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(25, 208, 120, 0.1);
+  background: #0d1a14;
+}
+
+.install-tab {
+  padding: 0.6rem 1.25rem;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: color var(--transition);
+  border-bottom: 2px solid transparent;
+  min-height: 44px;
+}
+
+.install-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.install-cmd-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.install-cmd {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: clamp(0.72rem, 2.5vw, 0.92rem);
+  color: var(--color-primary);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--color-primary-subtle);
+  border: 1px solid rgba(25, 208, 120, 0.2);
+  border-radius: var(--radius);
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition);
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.copy-btn:hover {
+  background: var(--color-primary-glow);
+  border-color: var(--color-primary);
+}
+
+.copy-btn.copied {
+  color: #28c840;
+  border-color: #28c840;
+  background: rgba(40, 200, 64, 0.1);
+}
+
+.install-note {
+  color: #4a7a5e;
+  font-size: 0.82rem;
+  margin: 1.25rem 0 0;
+}
+
+/* ── Prereq grid ─────────────────────────────── */
+.prereq-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.prereq-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  align-items: flex-start;
+}
+
+.prereq-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.prereq-item h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  color: var(--color-heading);
+}
+
+.prereq-item p {
+  color: var(--color-muted);
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+@media (min-width: 640px) {
+  .prereq-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+
+<script defer>
+document.addEventListener('DOMContentLoaded', function () {
+  const cmds = {
+    curl: 'curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash',
+    windows: 'irm https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.ps1 | iex',
+    git:  'git clone https://github.com/Nimblesite/AgentPMOWorkflow.git && cd AgentPMOWorkflow && make setup'
+  };
+
+  const display = document.getElementById('install-cmd-display');
+  const tabs = document.querySelectorAll('.install-tab');
+  const copyBtn = document.getElementById('copy-btn');
+  const copyLabel = document.getElementById('copy-label');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-pressed', 'true');
+      display.textContent = cmds[tab.dataset.cmd];
+    });
+  });
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const text = display.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.classList.add('copied');
+        copyLabel.textContent = 'Copied!';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyLabel.textContent = 'Copy';
+        }, 2000);
+      } catch (e) {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        copyLabel.textContent = 'Copied!';
+        setTimeout(() => { copyLabel.textContent = 'Copy'; }, 2000);
+      }
+    });
+  }
+});
+</script>

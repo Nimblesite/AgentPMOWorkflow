@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test:*)",
+      "Bash(make test-mock:*)",
+      "Bash(dotnet fsi:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx --version)",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:resources.anthropic.com)"
+    ]
+  },
+  "autoMemoryEnabled": false
+}

@@ -1,0 +1,14 @@
+{
+  "_agent_pmo": "PLACEHOLDER",
+  "_doc": "Single source of truth for code coverage thresholds. See REPO-STANDARDS-SPEC.md §3.3 [COVERAGE-THRESHOLDS-JSON]. NO GitHub repo variables. NO env vars. NO public `make coverage-check` target — that name is banned (§1.1 [MAKE-BANNED]). This file is read by the internal `_coverage_check` recipe inside `make test`. `make test` exits non-zero if measured coverage < threshold. Thresholds are monotonically increasing — only ratchet UP, never down.",
+  "default_threshold": 90,
+  "projects": {
+    "path/to/project-a": {
+      "threshold": 90
+    },
+    "path/to/project-b": {
+      "threshold": 80,
+      "include": "[Project.B]*,[Project.B.Shared]*"
+    }
+  }
+}

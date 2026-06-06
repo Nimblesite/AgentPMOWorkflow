@@ -1,0 +1,14 @@
+{
+  "name": "agent-pmo-dashboard",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for the Agent PMO dashboard report",
+  "private": true,
+  "scripts": {
+    "test": "playwright test"
+  },
+  "author": "Nimblesite",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

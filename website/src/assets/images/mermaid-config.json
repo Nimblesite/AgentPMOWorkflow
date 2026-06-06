@@ -1,0 +1,29 @@
+{
+  "theme": "dark",
+  "themeVariables": {
+    "primaryColor": "#0d1a14",
+    "primaryTextColor": "#e8f5ee",
+    "primaryBorderColor": "#19d078",
+    "lineColor": "#19d078",
+    "secondaryColor": "#0d1a14",
+    "tertiaryColor": "#0d1a14",
+    "edgeLabelBackground": "transparent",
+    "clusterBkg": "#0d1a14",
+    "clusterBorder": "#1a2b22",
+    "fontFamily": "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, Arial, sans-serif",
+    "fontSize": "14px",
+    "labelTextColor": "#c8d8cf",
+    "nodeBorder": "#19d078",
+    "mainBkg": "#0d1a14",
+    "nodeTextColor": "#e8f5ee",
+    "arrowheadColor": "#19d078"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "padding": 20,
+    "nodeSpacing": 60,
+    "rankSpacing": 70,
+    "useMaxWidth": false
+  }
+}

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO — Stop Watching. Start Running Twenty.{% endif %}</title>
+  <meta name="description" content="{{ description if description else site.description }}">
+  <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="{{ ogType if ogType else 'website' }}">
+  <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+  <meta property="og:title" content="{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO — Stop Watching. Start Running Twenty.{% endif %}">
+  <meta property="og:description" content="{{ description if description else site.description }}">
+  <meta property="og:image" content="{{ site.url }}{{ site.socialImage }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Agent PMO — stop watching, start running twenty. One developer, 20+ parallel projects.">
+  <meta property="og:site_name" content="Agent PMO">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO — Stop Watching. Start Running Twenty.{% endif %}">
+  <meta name="twitter:description" content="{{ description if description else site.description }}">
+  <meta name="twitter:image" content="{{ site.url }}{{ site.socialImage }}">
+  <meta name="twitter:image:alt" content="Agent PMO — stop watching, start running twenty. One developer, 20+ parallel projects.">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "{{ site.nimblesite }}/#organization",
+        "name": "NIMBLESITE",
+        "url": "{{ site.nimblesite }}"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Agent PMO",
+        "description": "{{ site.description }}",
+        "url": "{{ site.url }}",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "creator": {
+          "@id": "{{ site.nimblesite }}/#organization"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "url": "{{ site.url }}{{ page.url }}",
+        "name": "{% if title %}{{ title }} | Agent PMO{% else %}Agent PMO{% endif %}",
+        "description": "{{ description if description else site.description }}",
+        "isPartOf": {
+          "@type": "WebSite",
+          "url": "{{ site.url }}",
+          "name": "Agent PMO"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+      <a href="/" class="logo" aria-label="Agent PMO home">
+        <span class="logo-mark">▶</span> Agent PMO
+      </a>
+
+      <button class="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-links">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <ul class="nav-links" id="nav-links" role="list">
+        <li><a href="/" class="nav-link {% if page.url == '/' %}active{% endif %}">Home</a></li>
+        <li><a href="/how-it-works/" class="nav-link {% if '/how-it-works' in page.url %}active{% endif %}">How It Works</a></li>
+        <li><a href="/features/" class="nav-link {% if '/features' in page.url %}active{% endif %}">Features</a></li>
+        <li><a href="/get-started/" class="nav-link {% if '/get-started' in page.url %}active{% endif %}">Get Started</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="{{ site.githubUrl }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          GitHub
+        </a>
+        <button class="theme-toggle" aria-label="Toggle colour theme" title="Toggle colour theme">☀️</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    {{ content | safe }}
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>Agent PMO</h3>
+          <ul role="list">
+            <li><a href="/">Home</a></li>
+            <li><a href="/how-it-works/">How It Works</a></li>
+            <li><a href="/features/">Features</a></li>
+            <li><a href="/get-started/">Get Started</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Resources</h3>
+          <ul role="list">
+            <li><a href="{{ site.githubUrl }}" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+            <li><a href="{{ site.githubUrl }}/issues" target="_blank" rel="noopener noreferrer">Report an Issue</a></li>
+            <li><a href="{{ site.githubUrl }}/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+            <li><a href="/sitemap.xml">Sitemap</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>NIMBLESITE</h3>
+          <a href="https://nimblesite.co" class="footer-nimble-logo" target="_blank" rel="noopener noreferrer" aria-label="Visit nimblesite.co">
+            <img src="/assets/images/nimblesite-logo.png" alt="NIMBLESITE" width="32" height="32" loading="lazy">
+          </a>
+          <p class="footer-nimble-desc">Developer productivity in the AI era. Flutter, .NET, and AI integration consulting.</p>
+          <ul role="list">
+            <li><a href="https://nimblesite.co" target="_blank" rel="noopener noreferrer">nimblesite.co</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>Agent PMO &middot; Built by <a href="https://nimblesite.co" target="_blank" rel="noopener noreferrer"><strong>NIMBLESITE</strong></a> &middot; <a href="{{ site.githubUrl }}" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a> &middot; &copy; {{ site.year }} Nimblesite</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      // Theme init — run before paint to prevent flash
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      const toggleEl = document.querySelector('.theme-toggle');
+      if (toggleEl) toggleEl.textContent = saved === 'dark' ? '☀️' : '🌙';
+    })();
+  </script>
+
+  <script defer>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Theme toggle
+      const toggle = document.querySelector('.theme-toggle');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const html = document.documentElement;
+          const current = html.getAttribute('data-theme');
+          const next = current === 'dark' ? 'light' : 'dark';
+          html.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+        });
+      }
+
+      // Mobile nav
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const navLinks = document.getElementById('nav-links');
+      if (menuToggle && navLinks) {
+        menuToggle.addEventListener('click', () => {
+          const open = navLinks.classList.toggle('open');
+          menuToggle.setAttribute('aria-expanded', String(open));
+          menuToggle.classList.toggle('open', open);
+        });
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+          if (!menuToggle.contains(e.target) && !navLinks.contains(e.target)) {
+            navLinks.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            menuToggle.classList.remove('open');
+          }
+        });
+      }
+
+      // Scroll fade-in animations
+      const fadeEls = document.querySelectorAll('.fade-in');
+      if (fadeEls.length && 'IntersectionObserver' in window) {
+        const obs = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              obs.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+        fadeEls.forEach(el => obs.observe(el));
+      } else {
+        fadeEls.forEach(el => el.classList.add('visible'));
+      }
+
+      // Animated counters
+      function runCounter(el) {
+        const target = parseInt(el.dataset.target, 10);
+        const suffix = el.dataset.suffix || '';
+        const prefix = el.dataset.prefix || '';
+        const duration = 1200;
+        const startTime = performance.now();
+        function step(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const ease = 1 - Math.pow(1 - progress, 3);
+          el.textContent = prefix + Math.floor(target * ease) + suffix;
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+      const counterEls = document.querySelectorAll('.counter');
+      if (counterEls.length && 'IntersectionObserver' in window) {
+        const cObs = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && !entry.target.dataset.counted) {
+              entry.target.dataset.counted = 'true';
+              runCounter(entry.target);
+              cObs.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.5 });
+        counterEls.forEach(el => cObs.observe(el));
+      } else {
+        counterEls.forEach(el => {
+          el.textContent = (el.dataset.prefix || '') + el.dataset.target + (el.dataset.suffix || '');
+        });
+      }
+
+      // Hero install copy button
+      const heroCopyBtn = document.getElementById('hero-copy-btn');
+      const heroCmdEl = document.getElementById('hero-cmd');
+      if (heroCopyBtn && heroCmdEl) {
+        heroCopyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(heroCmdEl.textContent.trim());
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = heroCmdEl.textContent.trim();
+            ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          heroCopyBtn.style.color = '#28c840';
+          heroCopyBtn.style.borderColor = '#28c840';
+          setTimeout(() => { heroCopyBtn.style.color = ''; heroCopyBtn.style.borderColor = ''; }, 1800);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

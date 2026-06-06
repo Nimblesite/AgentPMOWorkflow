@@ -1,0 +1,8 @@
+# Build output
+_site/
+
+# Dependencies
+node_modules/
+
+# Playwright artifacts
+.playwright-mcp/
