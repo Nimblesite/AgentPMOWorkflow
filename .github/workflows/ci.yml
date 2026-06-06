@@ -13,25 +13,41 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Run inside Microsoft's official Playwright image: browsers + OS deps are
+    # pre-baked, so we skip `playwright install` entirely. The native runner
+    # deterministically hangs at 100% of the chromium download; the container
+    # avoids that download. Tag MUST match the @playwright/test version in
+    # dashboard/package-lock.json (currently 1.58.2).
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
       - uses: actions/checkout@v4
+
+      # The Playwright image is minimal: ensure make (build entrypoint) and git
+      # (the F# fixture tests init/inspect temp repos) are present.
+      - name: Install make and git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make git
+
+      # Match GitHub's native runner: mock repos in the F# fixture tests are
+      # created with `git init`, and the tests expect the default branch `main`.
+      # The container's git would otherwise default to `master`.
+      - name: Configure git defaults
+        run: |
+          git config --global init.defaultBranch main
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-
-      - name: Install Playwright dependencies
+      - name: Install Node dependencies
         working-directory: dashboard
         run: npm ci
 
-      - name: Install Playwright browsers
-        working-directory: dashboard
-        run: npx playwright install --with-deps chromium
-
+      # No `playwright install` — browsers ship with the container image.
       # `make test` runs F# fixture tests (which generate the report HTML)
       # then Playwright E2E tests against the generated HTML, fail-fast.
       - name: Test

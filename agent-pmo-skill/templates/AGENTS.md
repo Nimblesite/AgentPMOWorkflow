@@ -39,11 +39,13 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 ## Hard Rules — Universal (no exceptions)
 
 - **Git discipline — agents get this wrong, so it is spelled out:**
-  - **NEVER push to `main` directly.** Every change ships through CI on a PR. No exceptions.
+  - **NEVER push to the default branch (`main`) directly.** Always PR → CI green → merge. No exceptions.
   - **NEVER list yourself as a commit co-author.** No `Co-Authored-By` trailer, no agent attribution.
-  - **ONE feature branch at a time** — even with multiple agents working concurrently. Reuse it.
+  - **Work on exactly ONE branch at a time, always** — even with multiple agents working concurrently. Reuse it.
   - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.
+  - **If multiple feature branches exist, merge them into one IMMEDIATELY before doing any other work.**
   - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
+- **Auto-memory is OFF.** Persistent rules go through a reviewed PR to this file — never auto-captured memory. (Claude Code: `"autoMemoryEnabled": false` in `.claude/settings.json`.)
 - **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
@@ -134,6 +136,8 @@ The duplication budget lives in committed `.deslop.toml` (`max_duplication_perce
 - **VS Code extension E2E:** interact only via `vscode.commands.executeCommand`.
 
 ## Website (if one exists)
+
+**Theme is MANDATORY for dev-tool / docs sites:** build with [`eleventy-plugin-techdoc`](https://github.com/Nimblesite/eleventy-plugin-techdoc) on Eleventy 3.x. Supply only your color CSS variables; the plugin owns layouts, SEO metadata, and structure. Any other theme/SSG is non-compliant. Keep the plugin upgraded.
 
 **Optimise for SEO + AI search.** When writing web content, apply:
 - [Succeeding in Google's AI search experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
