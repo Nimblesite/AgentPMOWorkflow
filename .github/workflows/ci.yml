@@ -30,6 +30,15 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends make git
 
+      # Match GitHub's native runner: mock repos in the F# fixture tests are
+      # created with `git init`, and the tests expect the default branch `main`.
+      # The container's git would otherwise default to `master`.
+      - name: Configure git defaults
+        run: |
+          git config --global init.defaultBranch main
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
