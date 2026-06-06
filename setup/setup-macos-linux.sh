@@ -14,12 +14,27 @@ success() { echo -e "${GREEN}[agent-pmo] ✓${RESET} $*"; }
 warn()    { echo -e "${YELLOW}[agent-pmo] ⚠${RESET} $*"; }
 error()   { echo -e "${RED}[agent-pmo] ✗${RESET} $*" >&2; exit 1; }
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve the repo root from the script location (this file lives in setup/, so
+# the repo is its parent dir). When piped via `curl | bash` there is no script
+# file and BASH_SOURCE is unset — guard against that under `set -u`.
+SCRIPT_SRC="${BASH_SOURCE[0]:-}"
+if [[ -z "$SCRIPT_SRC" ]]; then
+  error "This script must be run from a cloned repo, not piped from curl.
+       git clone https://github.com/Nimblesite/AgentPMOWorkflow.git
+       cd AgentPMOWorkflow && make setup"
+fi
+REPO_DIR="$(cd "$(dirname "$SCRIPT_SRC")/.." && pwd)"
+
+# Sanity check: the dashboard script must exist under the resolved repo root.
+if [[ ! -f "${REPO_DIR}/dashboard/repo-report.fsx" ]]; then
+  error "Could not find the repo at ${REPO_DIR}.
+       Run this from a cloned repo via: make setup"
+fi
 
 case "$(uname -s)" in
   Darwin) OS="macos" ;;
   Linux)  OS="linux" ;;
-  *)      error "Unsupported OS: $(uname -s). Use setup.ps1 for Windows." ;;
+  *)      error "Unsupported OS: $(uname -s). Use setup-windows.ps1 for Windows." ;;
 esac
 
 info "OS: ${BOLD}${OS}${RESET}  Repo: ${REPO_DIR}"

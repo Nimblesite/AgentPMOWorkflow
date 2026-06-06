@@ -9,7 +9,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
     <div class="hero-badge">Quick Setup</div>
     <h1>One command.<br>Running in minutes.</h1>
     <p class="tagline">
-      Agent PMO installs itself. One script handles .NET, the gh CLI, the dashboard,
+      Clone the repo and run <code>make setup</code>. It handles .NET, the gh CLI, the dashboard,
       and the scheduled refresh. macOS, Linux, and Windows supported.
     </p>
   </div>
@@ -21,20 +21,15 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
     <div class="fade-in">
       <p class="install-tagline">Copy. Paste. Done.</p>
       <div class="install-block" role="group" aria-label="Install command">
-        <div class="install-tabs">
-          <button class="install-tab active" data-cmd="curl" aria-pressed="true">macOS / Linux</button>
-          <button class="install-tab" data-cmd="windows" aria-pressed="false">Windows</button>
-          <button class="install-tab" data-cmd="git" aria-pressed="false">git clone</button>
-        </div>
         <div class="install-cmd-wrap">
-          <code class="install-cmd" id="install-cmd-display">curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash</code>
+          <code class="install-cmd" id="install-cmd-display">git clone https://github.com/Nimblesite/AgentPMOWorkflow.git &amp;&amp; cd AgentPMOWorkflow &amp;&amp; make setup</code>
           <button class="copy-btn" aria-label="Copy install command" id="copy-btn" title="Copy to clipboard">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             <span id="copy-label">Copy</span>
           </button>
         </div>
       </div>
-      <p class="install-note">Works on macOS, Linux, and Windows. .NET SDK and gh CLI installed automatically if missing.</p>
+      <p class="install-note">Works on macOS, Linux, and Windows. <code>make setup</code> auto-detects your OS and installs the .NET SDK and gh CLI if they're missing.</p>
     </div>
   </div>
 </section>
@@ -90,7 +85,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
       <div class="section-label">Manual setup</div>
       <h2 class="section-heading">Step by step</h2>
       <p class="section-subheading">
-        The one-liner does all of this automatically. But here's what's happening under the hood.
+        <code>make setup</code> does all of this automatically. But here's what's happening under the hood.
       </p>
     </div>
 
@@ -167,7 +162,7 @@ launchctl load ~/Library/LaunchAgents/com.agentpmo.repo-report.plist
 echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | crontab -
 
 # Windows — Task Scheduler (PowerShell, admin)
-# The setup.ps1 script handles this automatically</code></pre>
+# The setup-windows.ps1 script handles this automatically</code></pre>
         </div>
       </div>
 
@@ -296,31 +291,6 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
   text-align: left;
 }
 
-.install-tabs {
-  display: flex;
-  border-bottom: 1px solid rgba(25, 208, 120, 0.1);
-  background: #0d1a14;
-}
-
-.install-tab {
-  padding: 0.6rem 1.25rem;
-  background: none;
-  border: none;
-  color: var(--color-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  transition: color var(--transition);
-  border-bottom: 2px solid transparent;
-  min-height: 44px;
-}
-
-.install-tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
 .install-cmd-wrap {
   display: flex;
   align-items: center;
@@ -419,25 +389,9 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
 
 <script defer>
 document.addEventListener('DOMContentLoaded', function () {
-  const cmds = {
-    curl: 'curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash',
-    windows: 'irm https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.ps1 | iex',
-    git:  'git clone https://github.com/Nimblesite/AgentPMOWorkflow.git && cd AgentPMOWorkflow && make setup'
-  };
-
   const display = document.getElementById('install-cmd-display');
-  const tabs = document.querySelectorAll('.install-tab');
   const copyBtn = document.getElementById('copy-btn');
   const copyLabel = document.getElementById('copy-label');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
-      tab.classList.add('active');
-      tab.setAttribute('aria-pressed', 'true');
-      display.textContent = cmds[tab.dataset.cmd];
-    });
-  });
 
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {

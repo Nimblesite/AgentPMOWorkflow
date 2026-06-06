@@ -100,10 +100,10 @@ ci: lint test build
 setup:
 ifeq ($(OS),Windows_NT)
 	@echo "==> Running Windows setup (PowerShell)..."
-	powershell -ExecutionPolicy Bypass -File setup/setup.ps1
+	powershell -ExecutionPolicy Bypass -File setup/setup-windows.ps1
 else
 	@echo "==> Running setup..."
-	bash setup/setup.sh
+	bash setup/setup-macos-linux.sh
 endif
 
 # =============================================================================
