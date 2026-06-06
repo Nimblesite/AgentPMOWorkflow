@@ -23,9 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # git is required by the F# fixture tests (they init/inspect temp repos).
-      - name: Ensure git present
-        run: git --version || (apt-get update && apt-get install -y git)
+      # The Playwright image is minimal: ensure make (build entrypoint) and git
+      # (the F# fixture tests init/inspect temp repos) are present.
+      - name: Install make and git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make git
 
       - uses: actions/setup-dotnet@v4
         with:
