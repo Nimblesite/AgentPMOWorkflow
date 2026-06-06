@@ -866,6 +866,8 @@ STRUCTURE
 [ ] pyproject.toml [tool.ruff]             (Python repos)
 [ ] coverlet.runsettings                   (C#/.NET repos)
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
+[ ] .deslop.toml + ci.yml `deslop .` gate   (Rust/C#/Dart/Python repos — stored, ratcheted-down threshold, [CI-DESLOP])
+[ ] Canonical instruction file has the Deslop MCP agent-loop section (Rust/C#/Dart/Python repos, [CI-DESLOP])
 [ ] Makefile uses canonical names for every standard target that applies; no hollow no-op targets, no synonyms ([MAKE-TARGETS])
 [ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section and were left intact ([MAKE-REPO-SPECIFIC])
 [ ] Editor extensions (.vsix/Zed/etc.) each have a `rebuild-install-<kind>` target ([MAKE-IDE-EXT])

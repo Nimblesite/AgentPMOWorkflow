@@ -168,7 +168,7 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
 - **3g. GitHub repo settings.** Apply spec [GITHUB-SETTINGS] / [GITHUB-MERGE] / [GITHUB-FEATURES] / [GITHUB-PROTECTION] / [GITHUB-CLI] via the commands in `templates/.github/common-repo-settings.md`. Applies to both new and existing repos. If the repo is local-only (no remote yet), skip and note for after-first-push. If `gh` was skipped in Step 2i, skip here too and record in the Step 5 report.
 - **3h. Agent instruction files.** Per spec [AGENT] / [AGENT-TEMPLATE] / [AGENT-POINTERS].
 
-  **The canonical file MUST be fully customised.** Fill every placeholder, strip every language/tool/framework section that does not apply, fill the project overview and architecture section with real content. The test: ZERO references to languages or tools the repo does not use.
+  **The canonical file MUST be fully customised.** Fill every placeholder, strip every language/tool/framework section that does not apply, fill the project overview and architecture section with real content. The test: ZERO references to languages or tools the repo does not use. **Keep the `Duplication — Deslop` section iff the repo is in a Deslop-supported language** (Rust, C#, Dart, Python) per [CI-DESLOP]; delete it otherwise.
 
   1. Write the canonical file (Claude → `CLAUDE.md`; others → `AGENTS.md`; Copilot → `.github/copilot-instructions.md`).
   2. Every other agent instruction file becomes a trivial pointer to the canonical file. See spec [AGENT-POINTERS]. **Strip existing content** from non-canonical files — no headings, no preamble, no leftover rules — leave only the marker line and `@<canonical_file>` redirect. Use `templates/CLAUDE.md` as the pointer template.
@@ -204,6 +204,7 @@ After all changes, verify:
 3. **Coverage configs** — no both-of (`.coveragerc` AND `[tool.coverage]`). No leftover coverage shell scripts.
 4. **Formatter configs** — one per tool. No both-of (`[tool.black]` AND `[tool.ruff.format]`).
 5. **Build files** — no competing systems with identical targets (e.g. `Makefile` AND `Taskfile.yml`).
+5b. **Deslop** (supported-language repos) — exactly one `.deslop.toml` holding the threshold; `ci.yml` has the `deslop .` gate with no hardcoded threshold; no duplicate threshold in env vars/GH variables. ([CI-DESLOP])
 6. **Docs folders** — exactly one, called `docs/`. `docs/specs/` and `docs/plans/` exist. No loose markdown that belongs in a subdir.
 7. **Skills** — no duplicates across agent-native skill directories. Consolidate to the primary agent's dir per spec [SKILL-PLACEMENT].
 8. **Agent instruction files** — exactly ONE canonical file with full rules. All others are pointers (marker + `@<canonical>` only). Rename legacy pointer filenames (`.clinerules/00-read-claude-md.md` → `.clinerules/00-read-instructions.md`).
