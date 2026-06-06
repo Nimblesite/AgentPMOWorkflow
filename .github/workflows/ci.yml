@@ -30,6 +30,11 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: dashboard
+        # DEBIAN_FRONTEND/NEEDRESTART_MODE stop the apt `--with-deps` phase from
+        # hanging on the interactive needrestart prompt on ubuntu-24.04 runners.
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
         run: npx playwright install --with-deps chromium
 
       # `make test` runs F# fixture tests (which generate the report HTML)
