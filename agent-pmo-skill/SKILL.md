@@ -32,6 +32,14 @@ If the paths above do not exist, report an error and stop. Do not search the fil
 - **Stamp every file you create or substantively modify** with `agent-pmo:<hash>` per spec [MARKER] / [MARKER-FORMAT]. Get the hash with `git -C "{{STANDARDS_REPO}}" rev-parse --short HEAD`.
 - **Never stamp a file whose source does not exist in `{{STANDARDS_REPO}}/agent-pmo-skill/templates/`.** Verify by reading the source first. Applies especially to skills — list `templates/skills/` and only create what is actually there.
 - **Never run git write commands.** Read-only git is fine.
+- **Release tags build immutable source.** For tag-triggered releases, build the tagged SHA. Do not
+  check out `main`, commit/push version bumps, or move tags/branches during release. See
+  [CI-RELEASE].
+- **Version stamping is a build input.** Deployable repos SHOULD keep source versions at
+  `0.0.0-dev` and stamp the tag/test version via a first-class script or build target before build,
+  verify, package, and publish. Do not use ad hoc `sed` against structured files.
+- **Developer-tool repos MUST run the shipwright-compliance skill.** It is authoritative for VSIX
+  bundling, manifest, version stamping, and publishing. See [CI-SHIPWRIGHT].
 
 ## Instructions
 
@@ -39,7 +47,7 @@ If the paths above do not exist, report an error and stop. Do not search the fil
 
 1. Read `{{STANDARDS_REPO}}/docs/specs/REPO-STANDARDS-SPEC.md`. All file contents, configs, CI workflows, and commands come from the spec. Do not improvise.
 2. Detect languages from build files (`Cargo.toml`, `package.json`, `pubspec.yaml`, `*.csproj`/`*.fsproj`/`*.sln`, `go.mod`, `pyproject.toml`, `setup.py`, `requirements.txt`).
-3. Determine repo type (library, CLI, app/service, extension, static site) for the coverage threshold per spec [COVERAGE-THRESHOLDS]. Default 90%.
+3. Determine repo type (library, CLI, app/service, extension, static site) for the coverage threshold per spec [COVERAGE-THRESHOLDS]. Default 90%. **If the repo ships a developer tool** (VS Code `.vsix`, CLI/binary published to Homebrew/Scoop/npm/NuGet/PyPI/crates.io, IDE plugin, installer), flag it for the mandatory Shipwright audit in Step 3c per spec [CI-SHIPWRIGHT].
 4. **Identify the canonical instruction file** per spec [AGENT-CANONICAL] and [AGENT-PLACEMENT]:
    - `AGENTS.md` with substantial content (>10 lines, not a pointer) → canonical.
    - Else `CLAUDE.md` with substantial content → canonical.
@@ -54,6 +62,9 @@ For each area below, record: what exists, what's missing, what's under a wrong n
 
 - **2a. Docs folder.** Look for `docs/` (standard) or variants `doco/`, `documentation/`, `doc/`, `documents/`. Check for `docs/specs/` and `docs/plans/` subdirs. Flag loose markdown files in `docs/` for classification.
 - **2b. CI workflows.** List `.github/workflows/*.yml`. Identify any existing workflow that does what `ci.yml`/`release.yml`/`deploy-pages.yml` should do, under any filename. Per spec [CI-WORKFLOWS] / [CI-JOBS] these will be renamed in Step 3, not re-created.
+  For release workflows, flag these as critical blockers: checkout `ref: main` in tag jobs, any
+  `git commit`/`git push`/tag mutation, source-control version bumps after the tag, ad hoc `sed`
+  stamping of structured files, and missing tests for build-time version stamping.
 - **2c. Makefile.** If present, read in full. Classify every public target per spec [MAKE-TARGETS]:
   - (i) One of the 7 standard targets → note whether present/missing/wrongly-implemented.
   - (ii) Duplicates/shadows a standard target (e.g. `test-all`, `lint-fix`, `build-release`) → candidate for merge+delete.
@@ -121,11 +132,23 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
   - (iv) genuine repo-specific target in the wrong place → move it down into `Repo-Specific Targets`. Do not delete. Do not "tidy up".
 
   Other rules from the spec: cross-platform ([MAKE-CROSS-PLATFORM]); `_lint` and `_fmt` do not overlap; `_test` uses the fail-fast flag AND calls `_coverage_check` last ([TEST-RULES]); uncomment only the language blocks that apply.
-- **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:
+- **3c. GitHub Actions workflows.** Rename the existing workflow from Step 2b rather than creating a parallel one. Follow spec [CI-WORKFLOWS], [CI-JOBS], [CI-TEMPLATE], [CI-RELEASE], [CI-VSIX-PLATFORM], [CI-PAGES]. Default to a single `ci` job with sequential steps `make lint → make test → make build`; only split into parallel jobs if individual tasks are 5+ minutes each. **Every job MUST have `timeout-minutes: 10`** — deviate only with a comment above explaining why:
   ```yaml
   # TIMEOUT EXCEPTION: Full integration test suite against live staging env requires ~15 min
   timeout-minutes: 15
   ```
+
+  For release workflows, ensure every build/publish job uses the tagged SHA and runner-local version
+  stamping only. If the target repo publishes a native VS Code extension, enforce Microsoft-style
+  per-target VSIX packaging and package-content verification before upload/publish.
+
+  **CRITICAL — Shipwright audit (developer-tool repos).** If Step 1 flagged this repo as a developer
+  tool, you MUST run a Shipwright audit per spec [CI-SHIPWRIGHT] to protect the release/distribution
+  path against supply-chain attacks. Use the `shipwright-compliance` skill if present, or follow
+  https://github.com/Nimblesite/Shipwright/blob/main/docs/agents/shipwright-compliance/SKILL.md
+  (checklist: https://github.com/Nimblesite/Shipwright/blob/main/docs/agents/shipwright-compliance/reference/audit-checklist.md).
+  This is non-optional for `.vsix`/extension and other developer-tool repos. Record the audit
+  outcome in the Step 5 report.
 - **3d. Coverage.** Read spec [TEST] in full before doing anything here. `make test` = fail-fast + coverage + threshold, one indivisible operation. Thresholds ONLY in `coverage-thresholds.json` per [COVERAGE-THRESHOLDS-JSON].
 
   This skill must:

@@ -124,12 +124,32 @@ deploy    — deploy preview/staging (depends on build)
 
 Runs on tag push (`v*`) and executes these jobs in order:
 
-1. **version** — extract version from tag, stamp into project manifests, commit/push to `main`.
-2. **build-cross-platform** — build platform-independent packages on ubuntu.
-3. **build-platform** — build platform-specific binaries on their respective OS.
+1. **version** — extract version from tag and expose the exact tagged source SHA.
+2. **build-cross-platform** — check out the tagged SHA, stamp versions in the runner working tree,
+   then build platform-independent packages on ubuntu.
+3. **build-platform** — check out the tagged SHA, stamp versions in the runner working tree, then
+   build platform-specific binaries on their respective OS.
 4. **release** — download artifacts, create GitHub release with notes.
 5. **publish** — push to registries (npm, NuGet, PyPI, pub.dev, crates.io, VS Code Marketplace). Requires secrets in repo Settings.
-6. **deploy-pages** — trigger `deploy-pages.yml` via `workflow_dispatch`.
+6. **deploy-pages** — trigger `deploy-pages.yml` via `workflow_dispatch` at the release ref.
+
+Critical release rules:
+
+- Source-controlled deployable versions SHOULD remain a valid placeholder such as `0.0.0-dev`.
+- Version stamping MUST be a first-class script or build target that accepts the tag version. Tests
+  MUST be able to pass their own semantic version into the same path.
+- Tag-triggered releases MUST build the exact source SHA that the tag points at. Do not check out
+  `main` in release jobs.
+- Release workflows MUST NOT commit, push, or move tags/branches after the tag exists. Stamping is
+  a runner-local build step only.
+- Stamping MUST update every deployed version carrier: project manifests, package manifests, lock
+  files that carry project versions, release manifests, and bundled extension manifests.
+
+### [CI-SHIPWRIGHT] Developer-tool releases — Shipwright audit (CRITICAL)
+
+If the repo ships a developer tool (VS Code `.vsix`, CLI/binary via Homebrew/Scoop/npm/NuGet/PyPI/crates.io, IDE plugin, installer), the agent MUST run the **shipwright-compliance** skill and follow it end to end. It is authoritative for VSIX bundling, manifest, version stamping, and publishing — defending the release path against supply-chain attacks.
+
+- Skill: https://github.com/Nimblesite/Shipwright/blob/main/docs/agents/shipwright-compliance/SKILL.md
 
 ### [CI-PAGES] deploy-pages.yml Template
 
@@ -658,6 +678,21 @@ All repos: `main` (never `master`)
 - Squash-merge preferred for feature branches
 - Delete branch after merge
 
+### [BRANCH-AGENT] Agent git discipline (canonical instruction file MUST state these)
+
+These rules exist because agents reliably get git wrong. The canonical instruction file
+([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
+
+- **NEVER push to `main` directly.** Every change ships through CI on a PR. No exceptions.
+- **NEVER list yourself (the agent) as a commit co-author.** No `Co-Authored-By` trailer, no
+  agent attribution in the commit message.
+- **ONE feature branch at a time** — even when multiple agents work the repo concurrently. Reuse
+  the existing feature branch; do not open a second.
+- **NEVER start a new branch when a feature branch already exists.** Check first; if one is open,
+  work on it.
+- **Worktrees are forbidden.** Never run `git worktree`. (Not a judgement on the feature — agents
+  consistently corrupt their state with it.)
+
 ---
 
 ## [GITHUB-SETTINGS] GitHub Repository Settings
@@ -811,6 +846,8 @@ FORMATTING
 BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
+[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): no direct push to main, no agent co-author, one feature branch at a time, never branch when one exists, no worktrees
+[ ] Developer-tool repos: Shipwright supply-chain audit run ([CI-SHIPWRIGHT])
 
 GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Squash merge only (merge commit and rebase disabled)

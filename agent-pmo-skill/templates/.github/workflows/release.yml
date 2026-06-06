@@ -10,57 +10,18 @@ permissions:
 
 jobs:
   version:
-    name: Update versions
+    name: Extract release version
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       version: ${{ steps.extract.outputs.version }}
+      source_sha: ${{ steps.extract.outputs.source_sha }}
     steps:
-      - uses: actions/checkout@v4
-
       - name: Extract version from tag
         id: extract
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      # ---- language setup (uncomment what applies) ----
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '20'
-      #     cache: 'npm'
-
-      # - uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.12'
-
-      # - uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: '9.0.x'
-
-      # - uses: subosito/flutter-action@v2
-      #   with:
-      #     flutter-version: '3.27.4'
-      #     channel: 'stable'
-
-      # ---- update version in project files ----
-      # Uncomment per language. Each stamps the tag version into the project manifest.
-      # Rust:
-      # - run: sed -i "s/^version = .*/version = \"${{ steps.extract.outputs.version }}\"/" Cargo.toml
-      # TypeScript:
-      # - run: npm version ${{ steps.extract.outputs.version }} --no-git-tag-version
-      # Python:
-      # - run: sed -i "s/^version = .*/version = \"${{ steps.extract.outputs.version }}\"/" pyproject.toml
-      # C#/.NET:
-      # - run: sed -i "s/<Version>.*<\/Version>/<Version>${{ steps.extract.outputs.version }}<\/Version>/" Directory.Build.props
-      # Dart/Flutter:
-      # - run: sed -i "s/^version: .*/version: ${{ steps.extract.outputs.version }}/" pubspec.yaml
-
-      - name: Commit version bump
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.extract.outputs.version }}"
-          git push origin HEAD:main
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "source_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
   build-cross-platform:
     name: Build packages
@@ -70,9 +31,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.source_sha }}
 
       # ---- language setup (uncomment what applies) ----
+
+      # ---- stamp versions in the runner working tree only ----
+      # Source-controlled versions should remain a placeholder such as 0.0.0-dev.
+      # Use a repo-owned structured stamper or build target; do not commit/push here.
+      # Examples:
+      # - run: node scripts/stamp-release-version.mjs "${{ needs.version.outputs.version }}"
+      # - run: make release-stamp VERSION="${{ needs.version.outputs.version }}"
 
       - name: Build
         run: make build
@@ -89,6 +57,8 @@ jobs:
     name: Build (${{ matrix.artifact_name }})
     needs: version
     strategy:
+      # Native VSIX extensions use the Microsoft platform/arch matrix from [CI-VSIX-PLATFORM]
+      # instead of Rust target triples, then run: npx vsce package --target <vsceTarget>.
       matrix:
         include:
           # Uncomment targets that apply
@@ -109,9 +79,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.source_sha }}
 
       # ---- language setup (uncomment what applies) ----
+      # VSIX native-binary packaging uses Node 22.x per the Microsoft platform-specific sample.
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '22.x'
+      #     cache: 'npm'
+
+      # ---- stamp versions in the runner working tree only ----
+      # - run: node scripts/stamp-release-version.mjs "${{ needs.version.outputs.version }}"
+      # - run: make release-stamp VERSION="${{ needs.version.outputs.version }}"
 
       - name: Build
         run: make build
@@ -126,11 +105,13 @@ jobs:
 
   release:
     name: Create release
-    needs: [build-cross-platform, build-platform]
+    needs: [version, build-cross-platform, build-platform]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.source_sha }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
@@ -143,13 +124,13 @@ jobs:
 
   publish:
     name: Publish to registries
-    needs: release
+    needs: [version, release]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.source_sha }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
@@ -179,7 +160,8 @@ jobs:
       #     PUB_TOKEN: ${{ secrets.PUB_DEV_TOKEN }}
 
       # VS Code Marketplace:
-      # - run: npx @vscode/vsce publish --packagePath artifacts/packages/*.vsix
+      # Native VSIX extensions publish all target VSIX files in one job.
+      # - run: npx vsce publish --packagePath $(find . -iname *.vsix)
       #   env:
       #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
@@ -202,5 +184,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'deploy-pages.yml',
-              ref: 'main',
+              ref: context.ref,
             });

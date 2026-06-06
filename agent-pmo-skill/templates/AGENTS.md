@@ -33,7 +33,12 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 
 ## Hard Rules — Universal (no exceptions)
 
-- **NO git commands.** No `add`, `commit`, `push`, `checkout`, `merge`, `rebase`, etc. CI handles git.
+- **Git discipline — agents get this wrong, so it is spelled out:**
+  - **NEVER push to `main` directly.** Every change ships through CI on a PR. No exceptions.
+  - **NEVER list yourself as a commit co-author.** No `Co-Authored-By` trailer, no agent attribution.
+  - **ONE feature branch at a time** — even with multiple agents working concurrently. Reuse it.
+  - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.
+  - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
 - **ZERO DUPLICATION.** Search before writing. Move code, don't copy it.
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
