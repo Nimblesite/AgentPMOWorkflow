@@ -1,7 +1,7 @@
 ---
 layout: base.njk
 title: "How It Works — The Parallel Agent Workflow"
-description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch, quality gates, and the TMC conductor for cross-project orchestration."
+description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch, quality gates, and the TMC conductor coordinating agents in a shared working tree."
 ---
 
 <section class="page-hero" aria-label="Page header">
@@ -101,24 +101,26 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
             an agent dropped into any project already knows how to run, test, and ship. No setup. No hand-holding.
           </p>
           <p>
-            For monorepos or multi-service codebases, <strong>git worktrees</strong> let multiple agents work on the same repo simultaneously,
-            each on an isolated branch at a different path. A monolith becomes multiple parallel workstreams.
+            For monorepos or multi-service codebases, multiple agents work the same repo simultaneously in
+            <strong>one working tree</strong> — no git worktrees (they're banned; agents corrupt them).
+            <strong>Too Many Cooks</strong> coordinates them with advisory file locks: an agent claims a file
+            before editing it, and everyone else sees the claim instantly.
           </p>
           <div class="terminal">
             <div class="terminal-header">
               <span class="terminal-dot terminal-dot-red"></span>
               <span class="terminal-dot terminal-dot-yellow"></span>
               <span class="terminal-dot terminal-dot-green"></span>
-              <span class="terminal-title">~ git worktrees for parallel agents</span>
+              <span class="terminal-title">~ TMC file locks for parallel agents</span>
             </div>
             <div class="terminal-body">
-<pre><span class="terminal-dim"># Agent A — feature branch</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree add ../myrepo-feature feature/auth</span>
+<pre><span class="terminal-dim"># Agent A claims a file before editing</span>
+<span class="terminal-ok">[TMC]</span> agent-A locked: src/auth/login.ts
 
-<span class="terminal-dim"># Agent B — hotfix branch (same repo, different path)</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree add ../myrepo-hotfix hotfix/api-timeout</span>
+<span class="terminal-dim"># Agent B picks a different file — same repo, same tree</span>
+<span class="terminal-ok">[TMC]</span> agent-B locked: src/api/routes.ts
 
-<span class="terminal-dim"># Both agents work independently — zero conflicts</span>
+<span class="terminal-dim"># Both work in parallel — locks prevent collisions</span>
 <span class="terminal-ok">✓ Parallel workstreams active</span></pre>
             </div>
           </div>
@@ -128,11 +130,12 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
       <div class="how-step fade-in">
         <div class="how-step-num">04</div>
         <div>
-          <h3>TMC conducts cross-project orchestration</h3>
+          <h3>TMC coordinates the agents</h3>
           <p>
-            <strong>Too Many Cooks (TMC)</strong> is project-level agent orchestration. When multiple agents are active
-            simultaneously, TMC prevents conflicts — agents register intent, lock files before editing, and release
-            locks when done. TMC sequences, not just parallelises.
+            <strong>Too Many Cooks (TMC)</strong> is the MCP server every agent in a workspace connects to. When
+            multiple agents are active at once, TMC keeps them out of each other's way — they register, broadcast
+            a plan, lock files before editing, message each other, and release locks when done. Every lock and
+            message is pushed live, so no agent edits a file another already holds.
           </p>
           <p>
             <a href="/features/#tmc" class="btn btn-outline btn-sm">Full TMC protocol →</a>

@@ -196,16 +196,16 @@ description: "Agent PMO is an AI-native project management system. One developer
         <p>Lint. Type check. Format. Unit tests. Integration tests. Coverage thresholds — monotonically increasing. No soft-fail mode. Code ships clean.</p>
       </div>
       <div class="feature-card" role="listitem">
-        <span class="feature-card-icon">🌿</span>
+        <span class="feature-card-icon">🔒</span>
         <span class="feature-card-tag">Parallelism</span>
-        <h3>Git Worktrees</h3>
-        <p>Even monorepos run parallel agents. Each agent gets an isolated worktree — same repo, different path, zero conflicts. A monolith becomes multiple workstreams.</p>
+        <h3>Parallel Agents, One Tree</h3>
+        <p>Even monorepos run parallel agents — in a single working tree, no worktrees. TMC's advisory file locks let many agents edit the same repo at once without stepping on each other.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">🎭</span>
         <span class="feature-card-tag">Orchestration</span>
         <h3>TMC — The Conductor</h3>
-        <p>Too Many Cooks manages cross-project agent coordination. File locks, dependency sequencing, conflict avoidance. Agents register, lock, release.</p>
+        <p>Too Many Cooks is the MCP server every agent connects to. Advisory file locks, broadcast messages, shared plans — pushed live so agents register, lock, coordinate, release.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">🧭</span>

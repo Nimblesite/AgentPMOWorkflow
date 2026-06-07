@@ -1,7 +1,7 @@
 ---
 layout: base.njk
 title: "Features — Real-Time Dashboard & Quality Gates"
-description: "Agent PMO features: real-time PMO dashboard, repo standards enforcement, quality gates, git worktrees, TMC orchestration, and flexible involvement levels."
+description: "Agent PMO features: real-time PMO dashboard, repo standards enforcement, quality gates, parallel agents in one working tree, TMC orchestration, and flexible involvement levels."
 ---
 
 <section class="page-hero" aria-label="Page header">
@@ -180,27 +180,27 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
       </div>
     </div>
 
-    <!-- Git Worktrees -->
-    <div class="feature-detail fade-in" id="worktrees">
+    <!-- Parallel agents, one working tree -->
+    <div class="feature-detail fade-in" id="parallelism">
       <div class="feature-detail-body">
-        <div class="feature-detail-icon" aria-hidden="true">🌿</div>
+        <div class="feature-detail-icon" aria-hidden="true">🔒</div>
         <span class="feature-card-tag">Parallelism</span>
-        <h3>Git Worktrees</h3>
+        <h3>Parallel Agents, One Working Tree</h3>
         <p>
-          Got a monolith or multi-service codebase that can't be split up? Git worktrees solve this.
-          Each agent gets its own worktree — an isolated branch at a different filesystem path.
-          Same repo. No conflicts. No stepping on each other.
+          Got a monolith or multi-service codebase that can't be split up? Multiple agents work the
+          <strong>same</strong> repo at the same time — one checkout, one branch, no extra copies on disk.
         </p>
         <p>
-          A monolith becomes multiple parallel workstreams. Three agents can work on three different
-          features of the same codebase simultaneously, each with a clean working tree,
-          each on its own branch, each running its own tests.
+          <strong>Git worktrees are banned.</strong> Agents reliably wreck them — orphaned trees, detached
+          HEADs, branches stranded on disk. Agent PMO coordinates concurrency at the <em>file</em> level
+          instead: Too Many Cooks hands out advisory locks, so before an agent edits a file it claims it, and
+          every other agent sees that claim in real time.
         </p>
         <ul>
-          <li>Same repo, different paths — no file conflicts</li>
-          <li>Each worktree has its own branch and index</li>
-          <li>Agents can build and test independently</li>
-          <li>TMC coordinates when branches need to merge</li>
+          <li>One working tree, one feature branch — no worktrees, no stray copies</li>
+          <li>Advisory file locks stop two agents editing the same file</li>
+          <li>Plans and messages broadcast intent before any work starts</li>
+          <li>Conflicts are prevented up front, not merged away after the fact</li>
         </ul>
       </div>
       <div class="feature-detail-visual">
@@ -209,17 +209,16 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
             <span class="terminal-dot terminal-dot-red"></span>
             <span class="terminal-dot terminal-dot-yellow"></span>
             <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ git worktree list</span>
+            <span class="terminal-title">~ tmc lock list</span>
           </div>
           <div class="terminal-body">
-<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">git worktree list</span>
+<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">tmc lock list</span>
 
-<span class="terminal-ok">~/Code/myapp</span>          <span class="terminal-dim">main</span>
-<span class="terminal-ok">~/Code/myapp-feat-auth</span> <span class="terminal-dim">feat/auth</span>
-<span class="terminal-ok">~/Code/myapp-fix-api</span>   <span class="terminal-dim">fix/api-timeout</span>
-<span class="terminal-ok">~/Code/myapp-coverage</span>  <span class="terminal-dim">chore/coverage</span>
+<span class="terminal-ok">src/auth/login.ts</span>      <span class="terminal-dim">agent-A · editing</span>
+<span class="terminal-ok">src/api/routes.ts</span>      <span class="terminal-dim">agent-B · editing</span>
+<span class="terminal-ok">src/db/schema.prisma</span>   <span class="terminal-dim">agent-C · editing</span>
 
-<span class="terminal-dim">3 agents · 3 branches · 0 conflicts</span></pre>
+<span class="terminal-dim">3 agents · 1 working tree · 0 conflicts</span></pre>
           </div>
         </div>
       </div>
@@ -232,12 +231,15 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         <span class="feature-card-tag">Orchestration</span>
         <h3>TMC — Too Many Cooks</h3>
         <p>
-          When the TMC server is available, it acts as the conductor for cross-project agent orchestration.
-          TMC dispatches work, manages dependencies, and avoids conflicts across agents and projects.
+          <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks</a> is an
+          MCP server every agent in a workspace connects to. They all see the same live picture — who's
+          editing what, who's planning what — so concurrent agents stop colliding.
         </p>
         <p>
-          TMC <em>sequences</em>, not just parallelises. If a feature branch needs passing tests before
-          a PR opens, TMC enforces that. If two projects share a library, TMC knows.
+          It exposes five tools: <code>register</code>, <code>lock</code> (advisory file locks),
+          <code>message</code> (direct or broadcast), <code>plan</code> (shared intent), and
+          <code>status</code>. Lock changes, messages, and plan updates are pushed to every agent in real
+          time — no polling.
         </p>
         <p>Agent protocol when TMC is available:</p>
         <ul>
@@ -389,7 +391,7 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
           <tr>
             <td>Monorepo parallelism</td>
             <td class="check-no">One agent, one branch</td>
-            <td class="check-yes">Multiple worktrees, no conflicts</td>
+            <td class="check-yes">Many agents, one tree — file locks, no conflicts</td>
           </tr>
           <tr>
             <td>Cross-agent coordination</td>

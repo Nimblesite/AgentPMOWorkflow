@@ -225,15 +225,15 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
         <a href="/features/#standards" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about standards →</a>
       </div>
       <div class="feature-card">
-        <span class="feature-card-icon" aria-hidden="true">🌿</span>
-        <h3>Set up worktrees for monorepos</h3>
-        <p>Got a large codebase? Create worktrees so multiple agents can work simultaneously without conflicts.</p>
-        <a href="/features/#worktrees" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about worktrees →</a>
+        <span class="feature-card-icon" aria-hidden="true">🔒</span>
+        <h3>Run agents in parallel</h3>
+        <p>Got a large codebase? Point several agents at the same working tree — no worktrees. TMC's file locks keep them from colliding.</p>
+        <a href="/features/#parallelism" class="btn btn-outline btn-sm" style="margin-top: 1rem;">How parallelism works →</a>
       </div>
       <div class="feature-card">
         <span class="feature-card-icon" aria-hidden="true">🎭</span>
         <h3>Enable TMC</h3>
-        <p>When TMC is available, enable it for cross-project orchestration. Agents coordinate, lock files, and avoid conflicts automatically.</p>
+        <p>Run the <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks</a> MCP server and connect each agent. They share locks, messages, and plans so concurrent edits never conflict.</p>
         <a href="/features/#tmc" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about TMC →</a>
       </div>
     </div>
