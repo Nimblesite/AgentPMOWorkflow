@@ -65,8 +65,17 @@ Agents don't hand you rough drafts. Lint, type check, format, unit tests, integr
 
 ## Get Started
 
+The easiest way: clone the repo and run the setup target. `make setup` auto-detects your OS and runs the right script ([`setup/setup-macos-linux.sh`](setup/setup-macos-linux.sh) or [`setup/setup-windows.ps1`](setup/setup-windows.ps1)) — installing dependencies, generating the dashboard, and scheduling the 3-minute refresh.
+
 ```bash
-make setup       # install dependencies
+git clone https://github.com/Nimblesite/AgentPMOWorkflow.git
+cd AgentPMOWorkflow
+make setup       # install dependencies + configure (auto-detects OS)
+```
+
+Then the standard targets:
+
+```bash
 make build       # generate the HTML dashboard
 make test        # run full test suite
 make ci          # lint + test + build

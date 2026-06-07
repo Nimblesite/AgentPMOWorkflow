@@ -2,6 +2,9 @@ import { EleventyHtmlBasePlugin } from "@11ty/eleventy";
 
 export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/assets");
+  // Custom domain for GitHub Pages — must land at the site root so the
+  // Actions deploy keeps agentpmo.dev pinned on every build.
+  eleventyConfig.addPassthroughCopy("src/CNAME");
 
   eleventyConfig.addPlugin(EleventyHtmlBasePlugin);
 

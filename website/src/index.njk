@@ -21,12 +21,12 @@ description: "Agent PMO is an AI-native project management system. One developer
 
       <div class="hero-install" aria-label="Quick install command">
         <div class="hero-install-cmd">
-          <code id="hero-cmd">curl -fsSL https://raw.githubusercontent.com/Nimblesite/AgentPMOWorkflow/main/setup/setup.sh | bash</code>
+          <code id="hero-cmd">git clone https://github.com/Nimblesite/AgentPMOWorkflow.git &amp;&amp; cd AgentPMOWorkflow &amp;&amp; make setup</code>
           <button class="hero-copy-btn" aria-label="Copy install command" id="hero-copy-btn" title="Copy">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           </button>
         </div>
-        <p class="hero-install-note">macOS &amp; Linux · .NET &amp; gh CLI auto-installed · <a href="/get-started/">full guide →</a></p>
+        <p class="hero-install-note">macOS, Linux &amp; Windows · <code>make setup</code> auto-detects your OS · .NET &amp; gh CLI auto-installed · <a href="/get-started/">full guide →</a></p>
       </div>
     </div>
 
@@ -196,16 +196,16 @@ description: "Agent PMO is an AI-native project management system. One developer
         <p>Lint. Type check. Format. Unit tests. Integration tests. Coverage thresholds — monotonically increasing. No soft-fail mode. Code ships clean.</p>
       </div>
       <div class="feature-card" role="listitem">
-        <span class="feature-card-icon">🌿</span>
+        <span class="feature-card-icon">🔒</span>
         <span class="feature-card-tag">Parallelism</span>
-        <h3>Git Worktrees</h3>
-        <p>Even monorepos run parallel agents. Each agent gets an isolated worktree — same repo, different path, zero conflicts. A monolith becomes multiple workstreams.</p>
+        <h3>Parallel Agents, One Tree</h3>
+        <p>Even monorepos run parallel agents — in a single working tree, no worktrees. TMC's advisory file locks let many agents edit the same repo at once without stepping on each other.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">🎭</span>
         <span class="feature-card-tag">Orchestration</span>
         <h3>TMC — The Conductor</h3>
-        <p>Too Many Cooks manages cross-project agent coordination. File locks, dependency sequencing, conflict avoidance. Agents register, lock, release.</p>
+        <p>Too Many Cooks is the MCP server every agent connects to. Advisory file locks, broadcast messages, shared plans — pushed live so agents register, lock, coordinate, release.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">🧭</span>

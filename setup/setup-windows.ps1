@@ -10,7 +10,16 @@ function Success($msg) { Write-Host "[agent-pmo] ✓ $msg" -ForegroundColor Gree
 function Warn($msg)    { Write-Host "[agent-pmo] ⚠ $msg" -ForegroundColor Yellow }
 function Fail($msg)    { Write-Host "[agent-pmo] ✗ $msg" -ForegroundColor Red; exit 1 }
 
-$RepoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# Resolve the repo root from the script location (this file lives in setup\, so
+# the repo is its parent dir). When piped via `irm | iex` there is no script
+# file, so $PSCommandPath is null — bail out with clone instructions.
+if (-not $PSCommandPath) {
+    Fail "This script must be run from a cloned repo, not piped from the web.`n       git clone https://github.com/Nimblesite/AgentPMOWorkflow.git`n       cd AgentPMOWorkflow; make setup"
+}
+$RepoDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+if (-not (Test-Path (Join-Path $RepoDir "dashboard\repo-report.fsx"))) {
+    Fail "Could not find the repo at $RepoDir. Run from a cloned repo via: make setup"
+}
 Info "Repo: $RepoDir"
 
 # ── 1. .NET SDK ──────────────────────────────────────────────────────────────
