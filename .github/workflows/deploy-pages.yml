@@ -3,9 +3,6 @@ name: Deploy Agent PMO Website to GitHub Pages
 on:
   push:
     branches: [main]
-    paths:
-      - "website/**"
-  workflow_dispatch:
 
 permissions:
   contents: read

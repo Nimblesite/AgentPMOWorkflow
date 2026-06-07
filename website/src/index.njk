@@ -1,18 +1,19 @@
 ---
 layout: base.njk
-title: "Stop Watching. Start Running Twenty."
-description: "Agent PMO is an AI-native project management system. One developer. Twenty parallel projects. Real-time dashboard, enforced quality gates, and agent orchestration."
+title: "Agent PMO — Repo Standards & Quality Gates for AI Agents"
+description: "Agent PMO is a set of templates — quality gates, skills, release scripts, CI — plus a skill that converts an existing repo into a standardized workspace agents can build, test, and ship behind enforced quality gates."
 ---
 
 <!-- ── Hero ────────────────────────────────────── -->
 <section class="hero" aria-label="Hero">
   <div class="hero-inner">
     <div class="hero-text fade-in">
-      <div class="hero-badge">Agent PMO · AI-Native Development</div>
-      <h1>Stop watching.<br><em>Start running twenty.</em></h1>
+      <div class="hero-badge">Agent PMO · Repo Standards for AI Agents</div>
+      <h1>Turn any repo into an<br><em>Agent PMO workspace.</em></h1>
       <p class="tagline">
-        In the AI era, you're watching one agent work. That's the bottleneck.
-        Agent PMO turns you into an engineering director — one person, twenty projects, all moving forward.
+        A set of templates — quality gates, skills, release scripts, CI — plus one skill that
+        converts an existing repo into a standardized workspace agents can build, test, and ship
+        behind enforced quality gates.
       </p>
       <div class="hero-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started →</a>
@@ -31,27 +32,24 @@ description: "Agent PMO is an AI-native project management system. One developer
     </div>
 
     <div class="hero-visual fade-in delay-2">
-      <div class="terminal" role="img" aria-label="PMO Dashboard terminal output showing four active projects">
+      <div class="terminal" role="img" aria-label="Terminal output of the agent-pmo skill applying repo standards">
         <div class="terminal-header">
           <span class="terminal-dot terminal-dot-red"></span>
           <span class="terminal-dot terminal-dot-yellow"></span>
           <span class="terminal-dot terminal-dot-green"></span>
-          <span class="terminal-title">~ agent-pmo status</span>
+          <span class="terminal-title">~ agent-pmo skill</span>
         </div>
         <div class="terminal-body">
-<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">agent-pmo dashboard</span>
+<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">claude "run the agent-pmo skill"</span>
 
-┌──────────────────────────────────────────┐
-│           PMO Dashboard  ·  4 active     │
-├──────────────────────────────────────────┤
-│ <span class="terminal-ok">✓</span> app-backend    PR #47   CI <span class="terminal-ok">● green</span>    │
-│ <span class="terminal-warn">⚠</span> data-pipeline  3 fail   CI <span class="terminal-warn">● running</span>  │
-│ <span class="terminal-ok">✓</span> mobile-client  review   CI <span class="terminal-ok">● green</span>    │
-│ <span class="terminal-dim">↻</span> api-gateway    linting  CI <span class="terminal-dim">● pending</span>  │
-└──────────────────────────────────────────┘
+<span class="terminal-dim">[agent-pmo] applying repo standards…</span>
+<span class="terminal-ok">✓</span> Makefile        <span class="terminal-dim">7 standard targets</span>
+<span class="terminal-ok">✓</span> CI workflow     <span class="terminal-dim">PR gate + release</span>
+<span class="terminal-ok">✓</span> quality gates   <span class="terminal-dim">lint · types · tests · coverage</span>
+<span class="terminal-ok">✓</span> AGENTS.md       <span class="terminal-dim">agent instructions</span>
+<span class="terminal-ok">✓</span> release script  <span class="terminal-dim">tag → build → deploy</span>
 
-<span class="terminal-dim">  ↓ dispatch       ↓ dispatch     ↓ dispatch</span>
-<span class="terminal-accent"> [feature dev]  [CI fix]    [coverage]</span>
+<span class="terminal-accent">✓ repo is now an Agent PMO workspace</span>
 
 <span class="terminal-prompt">$ </span><span class="cursor">▋</span></pre>
         </div>
@@ -65,27 +63,27 @@ description: "Agent PMO is an AI-native project management system. One developer
   <div class="value-props-inner">
     <div class="value-item fade-in">
       <div class="value-number">
-        <span class="counter" data-target="20" data-suffix="+">20+</span>
+        <span class="counter" data-target="1">1</span>
       </div>
-      <div class="value-label">projects in parallel</div>
+      <div class="value-label">skill to convert any repo</div>
     </div>
     <div class="value-item fade-in delay-1">
       <div class="value-number">
-        <span class="counter" data-target="3" data-suffix="m">3m</span>
+        <span class="counter" data-target="7">7</span>
       </div>
-      <div class="value-label">dashboard refresh</div>
+      <div class="value-label">standard Make targets</div>
     </div>
     <div class="value-item fade-in delay-2">
       <div class="value-number">
         <span class="counter" data-target="5">5</span>
       </div>
-      <div class="value-label">quality gates</div>
+      <div class="value-label">enforced quality gates</div>
     </div>
     <div class="value-item fade-in delay-3">
       <div class="value-number">
-        <span class="counter" data-target="0">0</span>
+        <span class="counter" data-target="7">7</span>
       </div>
-      <div class="value-label">dead time</div>
+      <div class="value-label">language toolchains</div>
     </div>
   </div>
 </section>
@@ -95,20 +93,36 @@ description: "Agent PMO is an AI-native project management system. One developer
   <div class="narrative-inner">
     <div class="fade-in">
       <blockquote>
-        "Most of the user's day is watching the agent write code, push PRs, and wait for CI — only to repeat when it fails. <em>The agent is productive. You're serialized.</em>"
+        "Every repo is different — different structure, scripts, CI. <em>Agents can't navigate chaos, so every project needs hand-holding and ships unverified code.</em>"
       </blockquote>
       <p>
-        One project. One agent. One task at a time — with dead time between every step.
-        That's the default experience of AI-assisted development.
+        Inconsistent repos are the real bottleneck. When the build, test, and release commands differ
+        everywhere, agents guess, and nothing guarantees the code is gated before it ships.
       </p>
       <p>
-        Agent PMO is the solution. It's a Project Management Office where the staff are AI agents.
-        The job isn't making one agent faster — it's making <em>you</em> capable of directing multiple
-        parallel projects with minimal cognitive load.
+        Agent PMO fixes that with templates and one skill. The skill rewrites an existing repo to a
+        single standard: one <code>Makefile</code> interface, enforced quality gates, agent instructions,
+        and a release script — so any agent already knows how to build, test, and ship it.
       </p>
       <p class="big-statement">
-        While one agent fights through CI, you've dispatched two others. You're not waiting. You're deciding what to review next.
+        Run the skill once. The repo becomes easy to deploy, sits behind quality gates, and every agent works it the same way.
       </p>
+    </div>
+  </div>
+</section>
+
+<section class="section consulting-cta" aria-label="Work with Nimblesite on AI-ready DevEx">
+  <div class="section-inner">
+    <div class="consulting-cta-inner">
+      <div>
+        <div class="section-label">Work With Nimblesite</div>
+        <h2>Bring this AI development process into your team.</h2>
+        <p>Nimblesite helps engineering teams improve DevEx, standardise repos, add quality gates, and adopt AI coding workflows without losing control of review, testing, and delivery.</p>
+      </div>
+      <div class="consulting-cta-actions">
+        <a href="{{ site.contactUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
+      </div>
     </div>
   </div>
 </section>
@@ -168,7 +182,7 @@ description: "Agent PMO is an AI-native project management system. One developer
 </section>
 
 <!-- ── Features Overview ──────────────────────── -->
-<section class="section" aria-label="Features overview" style="background: var(--color-surface); border-top: 1px solid var(--color-border);">
+<section class="section surface-band" aria-label="Features overview">
   <div class="section-inner">
     <div class="section-center fade-in">
       <div class="section-label">Capabilities</div>
@@ -181,7 +195,7 @@ description: "Agent PMO is an AI-native project management system. One developer
         <span class="feature-card-icon">📡</span>
         <span class="feature-card-tag">Dashboard</span>
         <h3>Real-Time PMO Dashboard</h3>
-        <p>F# script scans every repo under <code>~/Documents/Code/</code>. CI status, open PRs, uncommitted changes, push status — refreshed every 3 minutes via launchd.</p>
+        <p>Scans every repo under <code>~/Documents/Code/</code> — CI status, open PRs, uncommitted changes, push status — and refreshes automatically every few minutes.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">📐</span>
@@ -196,22 +210,136 @@ description: "Agent PMO is an AI-native project management system. One developer
         <p>Lint. Type check. Format. Unit tests. Integration tests. Coverage thresholds — monotonically increasing. No soft-fail mode. Code ships clean.</p>
       </div>
       <div class="feature-card" role="listitem">
-        <span class="feature-card-icon">🔒</span>
-        <span class="feature-card-tag">Parallelism</span>
-        <h3>Parallel Agents, One Tree</h3>
-        <p>Even monorepos run parallel agents — in a single working tree, no worktrees. TMC's advisory file locks let many agents edit the same repo at once without stepping on each other.</p>
-      </div>
-      <div class="feature-card" role="listitem">
-        <span class="feature-card-icon">🎭</span>
+        <span class="feature-card-icon">🤝</span>
         <span class="feature-card-tag">Orchestration</span>
-        <h3>TMC — The Conductor</h3>
-        <p>Too Many Cooks is the MCP server every agent connects to. Advisory file locks, broadcast messages, shared plans — pushed live so agents register, lock, coordinate, release.</p>
+        <h3>Agents Self-Organize with TMC</h3>
+        <p>No conductor — agents organize among themselves. Through <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks</a>, they register, lock files, broadcast plans, and message each other on one MCP server, so many work the same repo at once — one tree, no worktrees, no collisions.</p>
       </div>
       <div class="feature-card" role="listitem">
         <span class="feature-card-icon">🧭</span>
         <span class="feature-card-tag">Control</span>
         <h3>Your Level of Involvement</h3>
         <p>Review every commit. Or every PR. Or just check the dashboard. You operate at the altitude that suits you — all options produce shipping code.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Released Tools -->
+<section class="section tool-proof" aria-label="Released tools using Agent PMO">
+  <div class="section-inner">
+    <div class="section-center fade-in">
+      <div class="section-label">Released Tools</div>
+      <h2 class="section-heading">Agent PMO is already running real products.</h2>
+      <p class="section-subheading">
+        Public Nimblesite repos built on these standards.
+        <a href="https://www.nimblesite.co/tools" target="_blank" rel="noopener noreferrer">See all Nimblesite tools →</a>
+      </p>
+    </div>
+
+    <div class="tool-proof-grid fade-in delay-1" role="list">
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">Coordination</span>
+          <a href="https://github.com/Nimblesite/too-many-cooks" target="_blank" rel="noopener noreferrer">Too Many Cooks</a>
+        </div>
+        <p>
+          The coordination layer Agent PMO agents use. Its repo is managed by the same loop:
+          agents register, lock files, publish plans, run standard targets, and ship MCP plus VS Code releases together.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">VS Code</span>
+          <a href="https://github.com/Nimblesite/CommandTree" target="_blank" rel="noopener noreferrer">CommandTree</a>
+        </div>
+        <p>
+          Workspace command discovery. Agent PMO gives every agent the same command contract,
+          coverage thresholds, and CI gate while TMC keeps extension and website work coordinated.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">API Testing</span>
+          <a href="https://github.com/Nimblesite/Napper" target="_blank" rel="noopener noreferrer">Napper</a>
+        </div>
+        <p>
+          API testing CLI and editor tooling. Agent PMO keeps .NET, Rust, TypeScript,
+          generated types, VSIX packaging, release binaries, and docs moving under one dashboard.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">Code Generation</span>
+          <a href="https://github.com/Nimblesite/typeDiagram" target="_blank" rel="noopener noreferrer">typeDiagram</a>
+        </div>
+        <p>
+          Schema DSL, code generator, web app, and VSIX. Agent PMO standardizes package tests,
+          coverage ratchets, build checks, release checks, and multi-agent work across the repo.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">.NET Data</span>
+          <a href="https://github.com/Nimblesite/DataProvider" target="_blank" rel="noopener noreferrer">DataProvider</a>
+        </div>
+        <p>
+          .NET data toolkit. Agent PMO coordinates LQL, migrations, sync, generator packages,
+          specs, coverage thresholds, and CI so separate agents can own different product surfaces.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">Code Quality</span>
+          <a href="https://github.com/Nimblesite/Deslop" target="_blank" rel="noopener noreferrer">Deslop</a>
+        </div>
+        <p>
+          Live duplicate-code analysis for humans and agents. Agent PMO uses it as a quality gate,
+          and Deslop itself is built with PMO standards, TMC coordination, and Shipwright release verification.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">Supply Chain</span>
+          <a href="https://github.com/Nimblesite/Shipwright" target="_blank" rel="noopener noreferrer">Shipwright</a>
+        </div>
+        <p>
+          Version-matched binaries and IDE extensions. Agent PMO drives the specs, release tooling,
+          coverage gates, and downstream adoption checklists that keep packaged tools honest.
+        </p>
+      </article>
+
+      <article class="tool-proof-card" role="listitem">
+        <div class="tool-proof-card-top">
+          <span class="tool-proof-kicker">Language Server</span>
+          <a href="https://github.com/Nimblesite/Basilisk" target="_blank" rel="noopener noreferrer">Basilisk</a>
+        </div>
+        <p>
+          Python language server and toolchain. Agent PMO coordinates the Rust core, editor extensions,
+          website, Deslop checks, Shipwright manifests, coverage, and multi-agent PR flow.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section consulting-cta" aria-label="Adopt the Agent PMO operating model">
+  <div class="section-inner">
+    <div class="consulting-cta-inner">
+      <div>
+        <div class="section-label">AI-Ready Delivery</div>
+        <h2>Want the same guardrails for your codebase?</h2>
+        <p>Use Nimblesite to audit your current workflow, remove DevEx bottlenecks, and install the repo standards, dashboards, and agent coordination needed for safe AI-assisted development.</p>
+      </div>
+      <div class="consulting-cta-actions">
+        <a href="{{ site.contactUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Talk to Nimblesite →</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See the consulting offer</a>
       </div>
     </div>
   </div>
@@ -269,7 +397,7 @@ description: "Agent PMO is an AI-native project management system. One developer
       <div class="spec-text">
         <div class="section-label">Traceability</div>
         <h2 class="section-heading">Every line traces back<br>to a requirement.</h2>
-        <p style="color: var(--color-muted); font-size: 1.02rem; line-height: 1.7; margin: 0 0 1.5rem;">
+        <p class="spec-section-copy">
           Every spec section gets a unique ID — <code>[AUTH-LOGIN]</code>, <code>[AUTH-TOKEN-VERIFY]</code>.
           Code references the spec it implements. Tests reference the spec they verify.
           PRs list the spec IDs they address. Full bidirectional traceability across the entire portfolio.
@@ -303,11 +431,11 @@ description: "Agent PMO is an AI-native project management system. One developer
 <section class="section cta-banner" aria-label="Call to action">
   <div class="section-inner">
     <div class="fade-in">
-      <h2>You're not watching agents work.<br>You're directing an engineering organisation.</h2>
-      <p>That's Agent PMO. One person. Twenty projects. All moving forward.</p>
+      <h2>Build your AI development operating model.</h2>
+      <p>Install Agent PMO yourself, or work with Nimblesite to make your team's DevEx and AI delivery process production-ready.</p>
       <div class="cta-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started — it's free →</a>
-        <a href="/how-it-works/" class="btn btn-secondary">See how it works</a>
+        <a href="{{ site.contactUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a>
       </div>
     </div>
   </div>

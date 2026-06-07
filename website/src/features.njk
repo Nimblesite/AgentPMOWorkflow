@@ -19,16 +19,115 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
 <section class="section" aria-label="Feature details">
   <div class="section-inner">
 
+    <!-- Repo Standards -->
+    <div class="feature-detail fade-in" id="standards">
+      <div class="feature-detail-body prose">
+        <div class="feature-detail-icon" aria-hidden="true">📐</div>
+        <span class="feature-card-tag">Component 2</span>
+        <h3>Repo Standards Enforcement</h3>
+        <p>
+          Agents can't navigate chaos. If every project has a different structure, different scripts,
+          different CI config — every project requires hand-holding. That hand-holding is what keeps you serialised.
+        </p>
+        <p>
+          <strong>Consistency solves this.</strong> The enforcement skill applies portfolio-wide templates to any repo:
+        </p>
+        <ul>
+          <li>Standardised <code>Makefile</code> with identical targets across all repos</li>
+          <li>Unified CI pipeline templates (GitHub Actions)</li>
+          <li>Linter configs for every supported language</li>
+          <li>Coverage config with monotonically-increasing thresholds</li>
+          <li>Dev container configs for consistent environments</li>
+          <li>Language-specific <code>.gitignore</code> templates</li>
+          <li><code>CLAUDE.md</code> injected into every repo so agents know the rules</li>
+        </ul>
+        <p>
+          Drop an agent into any project and it already knows how to run, test, and ship — no setup, no babysitting.
+          That's what makes twenty projects manageable instead of twenty separate headaches.
+        </p>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ make (any repo)</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-dim"># Same 7 targets, every repo:</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make build</span>   <span class="terminal-dim"># compile</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># fail-fast tests + coverage + threshold</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + format check + typecheck</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code in place</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make clean</span>   <span class="terminal-dim"># remove artifacts</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># lint + test + build</span>
+<span class="terminal-prompt">$ </span><span class="terminal-cmd">make setup</span>   <span class="terminal-dim"># bootstrap dev env</span>
+
+<span class="terminal-ok">✓ Agent knows how to work in any repo</span>
+<span class="terminal-ok">✓ Zero project-specific setup</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates -->
+    <div class="feature-detail fade-in" id="quality-gates">
+      <div class="feature-detail-body prose">
+        <div class="feature-detail-icon" aria-hidden="true">🔒</div>
+        <span class="feature-card-tag">Non-negotiable</span>
+        <h3>Automated Quality Gates</h3>
+        <p>
+          Agents don't hand you rough drafts. They fight through quality gates the entire way.
+          There is no soft-fail mode.
+        </p>
+        <ul>
+          <li><strong>Lint</strong> — format violations tank the pipeline</li>
+          <li><strong>Type check</strong> — strict mode, no <code>any</code> escapes</li>
+          <li><strong>Code format</strong> — enforced by CI, not just recommended</li>
+          <li><strong>Unit tests</strong> — must pass; no skipping</li>
+          <li><strong>Integration tests</strong> — end-to-end verification</li>
+          <li><strong>Coverage thresholds</strong> — monotonically increasing, never regress</li>
+          <li><strong>CI pipeline</strong> — GitHub Actions gate before merge</li>
+        </ul>
+        <p>
+          By the time code reaches you, it has passed every automated check.
+          You're the <strong>final gate</strong> — reviewing for intent, architecture, and edge cases.
+          Not checking whether the tests pass.
+        </p>
+      </div>
+      <div class="feature-detail-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot terminal-dot-red"></span>
+            <span class="terminal-dot terminal-dot-yellow"></span>
+            <span class="terminal-dot terminal-dot-green"></span>
+            <span class="terminal-title">~ CI pipeline output</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="terminal-ok">✓</span> lint          <span class="terminal-dim">0 violations</span>
+<span class="terminal-ok">✓</span> typecheck     <span class="terminal-dim">0 errors</span>
+<span class="terminal-ok">✓</span> format        <span class="terminal-dim">clean</span>
+<span class="terminal-ok">✓</span> unit tests    <span class="terminal-dim">142 passed</span>
+<span class="terminal-ok">✓</span> integration   <span class="terminal-dim">28 passed</span>
+<span class="terminal-ok">✓</span> coverage      <span class="terminal-dim">87% ≥ 85%</span>
+
+<span class="terminal-ok">✓ All gates passed — ready for review</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PMO Dashboard -->
     <div class="feature-detail fade-in" id="dashboard">
-      <div class="feature-detail-body">
+      <div class="feature-detail-body prose">
         <div class="feature-detail-icon" aria-hidden="true">📡</div>
         <span class="feature-card-tag">Component 1</span>
         <h3>PMO Dashboard</h3>
         <p>
-          Your control panel. An F# script scans every repo under <code>~/Documents/Code/</code>,
-          gathers status from the git index and GitHub API, and generates a self-contained
-          HTML report — refreshed every 3 minutes via launchd. No server. No login. No cloud.
+          Your control panel. It scans every repo under <code>~/Documents/Code/</code>,
+          gathers status from git and the GitHub API, and generates a self-contained
+          HTML report that refreshes automatically every few minutes. No server. No login. No cloud.
         </p>
         <p>Per-repo it collects:</p>
         <ul>
@@ -81,111 +180,12 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
       </div>
     </div>
 
-    <!-- Repo Standards -->
-    <div class="feature-detail fade-in" id="standards">
-      <div class="feature-detail-body">
-        <div class="feature-detail-icon" aria-hidden="true">📐</div>
-        <span class="feature-card-tag">Component 2</span>
-        <h3>Repo Standards Enforcement</h3>
-        <p>
-          Agents can't navigate chaos. If every project has a different structure, different scripts,
-          different CI config — every project requires hand-holding. That hand-holding is what keeps you serialised.
-        </p>
-        <p>
-          <strong>Consistency solves this.</strong> The enforcement skill applies portfolio-wide templates to any repo:
-        </p>
-        <ul>
-          <li>Standardised <code>Makefile</code> with identical targets across all repos</li>
-          <li>Unified CI pipeline templates (GitHub Actions)</li>
-          <li>Linter configs for every supported language</li>
-          <li>Coverage config with monotonically-increasing thresholds</li>
-          <li>Dev container configs for consistent environments</li>
-          <li>Language-specific <code>.gitignore</code> templates</li>
-          <li><code>CLAUDE.md</code> injected into every repo so agents know the rules</li>
-        </ul>
-        <p>
-          Drop an agent into any project and it already knows how to run, test, and ship — no setup, no babysitting.
-          That's what makes twenty projects manageable instead of twenty separate headaches.
-        </p>
-      </div>
-      <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ make (any repo)</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-dim"># Same 7 targets, every repo:</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make build</span>   <span class="terminal-dim"># compile</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># fail-fast tests + coverage + threshold</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + format check + typecheck</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code in place</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make clean</span>   <span class="terminal-dim"># remove artifacts</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># lint + test + build</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make setup</span>   <span class="terminal-dim"># bootstrap dev env</span>
-
-<span class="terminal-ok">✓ Agent knows how to work in any repo</span>
-<span class="terminal-ok">✓ Zero project-specific setup</span></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quality Gates -->
-    <div class="feature-detail fade-in" id="quality-gates">
-      <div class="feature-detail-body">
-        <div class="feature-detail-icon" aria-hidden="true">🔒</div>
-        <span class="feature-card-tag">Non-negotiable</span>
-        <h3>Automated Quality Gates</h3>
-        <p>
-          Agents don't hand you rough drafts. They fight through quality gates the entire way.
-          There is no soft-fail mode.
-        </p>
-        <ul>
-          <li><strong>Lint</strong> — format violations tank the pipeline</li>
-          <li><strong>Type check</strong> — strict mode, no <code>any</code> escapes</li>
-          <li><strong>Code format</strong> — enforced by CI, not just recommended</li>
-          <li><strong>Unit tests</strong> — must pass; no skipping</li>
-          <li><strong>Integration tests</strong> — end-to-end verification</li>
-          <li><strong>Coverage thresholds</strong> — monotonically increasing, never regress</li>
-          <li><strong>CI pipeline</strong> — GitHub Actions gate before merge</li>
-        </ul>
-        <p>
-          By the time code reaches you, it has passed every automated check.
-          You're the <strong>final gate</strong> — reviewing for intent, architecture, and edge cases.
-          Not checking whether the tests pass.
-        </p>
-      </div>
-      <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ CI pipeline output</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-ok">✓</span> lint          <span class="terminal-dim">0 violations</span>
-<span class="terminal-ok">✓</span> typecheck     <span class="terminal-dim">0 errors</span>
-<span class="terminal-ok">✓</span> format        <span class="terminal-dim">clean</span>
-<span class="terminal-ok">✓</span> unit tests    <span class="terminal-dim">142 passed</span>
-<span class="terminal-ok">✓</span> integration   <span class="terminal-dim">28 passed</span>
-<span class="terminal-ok">✓</span> coverage      <span class="terminal-dim">87% ≥ 85%</span>
-
-<span class="terminal-ok">✓ All gates passed — ready for review</span></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Parallel agents, one working tree -->
+    <!-- Parallel agents in one working tree, coordinated by TMC -->
     <div class="feature-detail fade-in" id="parallelism">
-      <div class="feature-detail-body">
+      <div class="feature-detail-body prose">
         <div class="feature-detail-icon" aria-hidden="true">🔒</div>
-        <span class="feature-card-tag">Parallelism</span>
-        <h3>Parallel Agents, One Working Tree</h3>
+        <span class="feature-card-tag">Parallelism &amp; Orchestration</span>
+        <h3 id="tmc">Parallel Agents, One Working Tree</h3>
         <p>
           Got a monolith or multi-service codebase that can't be split up? Multiple agents work the
           <strong>same</strong> repo at the same time — one checkout, one branch, no extra copies on disk.
@@ -193,62 +193,27 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         <p>
           <strong>Git worktrees are banned.</strong> Agents reliably wreck them — orphaned trees, detached
           HEADs, branches stranded on disk. Agent PMO coordinates concurrency at the <em>file</em> level
-          instead: Too Many Cooks hands out advisory locks, so before an agent edits a file it claims it, and
-          every other agent sees that claim in real time.
+          instead, through <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many
+          Cooks</a> (TMC) — an MCP server every agent in the workspace connects to. They all see the same live
+          picture, so before an agent touches a file it claims it, and every other agent sees that claim in
+          real time.
+        </p>
+        <p>
+          TMC exposes five tools: <code>register</code>, <code>lock</code> (advisory file locks),
+          <code>message</code> (direct or broadcast), <code>plan</code> (shared intent), and
+          <code>status</code> — all pushed to every connected agent in real time, no polling.
         </p>
         <ul>
           <li>One working tree, one feature branch — no worktrees, no stray copies</li>
-          <li>Advisory file locks stop two agents editing the same file</li>
-          <li>Plans and messages broadcast intent before any work starts</li>
-          <li>Conflicts are prevented up front, not merged away after the fact</li>
-        </ul>
-      </div>
-      <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ tmc lock list</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">tmc lock list</span>
-
-<span class="terminal-ok">src/auth/login.ts</span>      <span class="terminal-dim">agent-A · editing</span>
-<span class="terminal-ok">src/api/routes.ts</span>      <span class="terminal-dim">agent-B · editing</span>
-<span class="terminal-ok">src/db/schema.prisma</span>   <span class="terminal-dim">agent-C · editing</span>
-
-<span class="terminal-dim">3 agents · 1 working tree · 0 conflicts</span></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TMC -->
-    <div class="feature-detail fade-in" id="tmc">
-      <div class="feature-detail-body">
-        <div class="feature-detail-icon" aria-hidden="true">🎭</div>
-        <span class="feature-card-tag">Orchestration</span>
-        <h3>TMC — Too Many Cooks</h3>
-        <p>
-          <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks</a> is an
-          MCP server every agent in a workspace connects to. They all see the same live picture — who's
-          editing what, who's planning what — so concurrent agents stop colliding.
-        </p>
-        <p>
-          It exposes five tools: <code>register</code>, <code>lock</code> (advisory file locks),
-          <code>message</code> (direct or broadcast), <code>plan</code> (shared intent), and
-          <code>status</code>. Lock changes, messages, and plan updates are pushed to every agent in real
-          time — no polling.
-        </p>
-        <p>Agent protocol when TMC is available:</p>
-        <ul>
-          <li>Register immediately: descriptive name, intent, files to touch</li>
+          <li>Register on connect: descriptive name, intent, files to touch</li>
           <li>Lock files before editing — never edit a locked file</li>
-          <li>Broadcast plans before starting work</li>
-          <li>Check messages every few minutes</li>
-          <li>Release locks immediately when done</li>
+          <li>Broadcast plans before starting; check messages as you go</li>
+          <li>Release locks when done — conflicts are prevented up front, not merged away after</li>
         </ul>
+        <p>
+          Learn more at the <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks website</a>,
+          or watch agents coordinate live in the <a href="https://github.com/Nimblesite/too-many-cooks" target="_blank" rel="noopener noreferrer">VS&nbsp;Code extension</a>.
+        </p>
       </div>
       <div class="feature-detail-visual">
         <div class="terminal">
@@ -273,9 +238,9 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
 
     <!-- Spec-Driven Traceability -->
     <div class="feature-detail fade-in" id="traceability">
-      <div class="feature-detail-body">
+      <div class="feature-detail-body prose">
         <div class="feature-detail-icon" aria-hidden="true">🔗</div>
-        <span class="feature-card-tag" style="background: var(--color-accent-subtle); color: var(--color-accent); border-color: rgba(167,139,250,0.15);">Killer Feature</span>
+        <span class="feature-card-tag feature-card-tag-accent">Killer Feature</span>
         <h3>Spec-Driven Traceability</h3>
         <p>
           When 20 agents are building across 20 projects simultaneously, you need to know exactly
@@ -344,8 +309,24 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
   </div>
 </section>
 
+<section class="section consulting-cta" aria-label="Get help implementing Agent PMO features">
+  <div class="section-inner">
+    <div class="consulting-cta-inner">
+      <div>
+        <div class="section-label">Implementation Help</div>
+        <h2>These features are a process, not just a tool.</h2>
+        <p>Nimblesite can help you implement repo standards, dashboards, coverage gates, TMC coordination, and AI-ready review workflows inside your engineering organisation.</p>
+      </div>
+      <div class="consulting-cta-actions">
+        <a href="{{ site.contactUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Plan an AI DevEx uplift →</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── Comparison table ───────────────────────── -->
-<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Comparison table">
+<section class="section surface-band" aria-label="Comparison table">
   <div class="section-inner">
     <div class="section-center fade-in">
       <div class="section-label">Before &amp; After</div>
@@ -413,11 +394,11 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
 <section class="section cta-banner" aria-label="Call to action">
   <div class="section-inner">
     <div class="fade-in">
-      <h2>See all of this in action.</h2>
-      <p>Set up Agent PMO in minutes. One command. Open source and free.</p>
+      <h2>Make AI development safer for your team.</h2>
+      <p>Start with the open source workflow, or bring in Nimblesite to improve your DevEx and AI delivery approach end to end.</p>
       <div class="cta-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started →</a>
-        <a href="/how-it-works/" class="btn btn-secondary">How it works</a>
+        <a href="{{ site.contactUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Talk to Nimblesite</a>
       </div>
     </div>
   </div>

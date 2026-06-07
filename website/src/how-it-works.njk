@@ -35,8 +35,24 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
   </div>
 </section>
 
+<section class="section consulting-cta" aria-label="Apply this AI development workflow with Nimblesite">
+  <div class="section-inner">
+    <div class="consulting-cta-inner">
+      <div>
+        <div class="section-label">Apply The Process</div>
+        <h2>Nimblesite can help your team run this workflow safely.</h2>
+        <p>We assess your DevEx, standardise your repos, wire up CI and quality gates, and design AI agent workflows that keep humans in control.</p>
+      </div>
+      <div class="consulting-cta-actions">
+        <a href="{{ site.contactUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── Step-by-step ────────────────────────────── -->
-<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Step by step walkthrough">
+<section class="section surface-band" aria-label="Step by step walkthrough">
   <div class="section-inner">
     <div class="section-center fade-in">
       <div class="section-label">The Five Steps</div>
@@ -47,19 +63,19 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 
       <div class="how-step fade-in">
         <div class="how-step-num">01</div>
-        <div>
+        <div class="prose">
           <h3>Dashboard scans all repos</h3>
           <p>
-            An F# script runs every 3 minutes via <code>launchd</code> (macOS) or <code>cron</code> (Linux).
-            It scans every git repo under your code directory and collects CI status, open PRs, uncommitted changes,
-            push status, and latest releases — then generates a self-contained HTML report. No server needed.
+            The dashboard refreshes automatically every few minutes. It scans every git repo under your code
+            directory and collects CI status, open PRs, uncommitted changes, push status, and latest releases —
+            then generates a self-contained HTML report. No server needed.
           </p>
           <div class="terminal">
             <div class="terminal-header">
               <span class="terminal-dot terminal-dot-red"></span>
               <span class="terminal-dot terminal-dot-yellow"></span>
               <span class="terminal-dot terminal-dot-green"></span>
-              <span class="terminal-title">~ launchd · runs every 180 seconds</span>
+              <span class="terminal-title">~ dashboard · auto-refresh</span>
             </div>
             <div class="terminal-body">
 <pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">dotnet fsi dashboard/repo-report.fsx</span>
@@ -76,7 +92,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 
       <div class="how-step fade-in delay-1">
         <div class="how-step-num">02</div>
-        <div>
+        <div class="prose">
           <h3>You review the dashboard and prioritize</h3>
           <p>
             Open <code>repo-report.html</code> in a browser. The dashboard tells you — at a glance — exactly which projects
@@ -94,7 +110,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 
       <div class="how-step fade-in delay-2">
         <div class="how-step-num">03</div>
-        <div>
+        <div class="prose">
           <h3>Dispatch agents into standardised repos</h3>
           <p>
             Because every repo uses the same structure — same Makefile targets, same CI pipeline, same lint and format commands —
@@ -129,7 +145,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 
       <div class="how-step fade-in">
         <div class="how-step-num">04</div>
-        <div>
+        <div class="prose">
           <h3>TMC coordinates the agents</h3>
           <p>
             <strong>Too Many Cooks (TMC)</strong> is the MCP server every agent in a workspace connects to. When
@@ -145,7 +161,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 
       <div class="how-step fade-in delay-1">
         <div class="how-step-num">05</div>
-        <div>
+        <div class="prose">
           <h3>Review and ship</h3>
           <p>
             By the time code reaches you, it has passed every automated quality gate:
@@ -169,11 +185,11 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
 <section class="section cta-banner" aria-label="Next steps">
   <div class="section-inner">
     <div class="fade-in">
-      <h2>Ready to direct your own engineering organisation?</h2>
-      <p>Set up Agent PMO in minutes. It's open source and free.</p>
+      <h2>Ready to make your DevEx AI-ready?</h2>
+      <p>Use Agent PMO as the blueprint, or work with Nimblesite to adapt the process to your team, codebase, and delivery constraints.</p>
       <div class="cta-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started →</a>
-        <a href="/features/" class="btn btn-secondary">Explore features</a>
+        <a href="{{ site.contactUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a>
       </div>
     </div>
   </div>
