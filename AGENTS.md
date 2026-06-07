@@ -44,6 +44,14 @@ Hard rules, testing rules, and language-specific rules for target repos live in 
 - **Template AGENTS.md for target repos:** `agent-pmo-skill/templates/AGENTS.md`
 - **Authoritative spec:** `docs/specs/REPO-STANDARDS-SPEC.md`
 
+### Website
+
+- Keep CSS minimal
+- Total CSS budget 1.8 LOC
+- Do not allow the CSS to go over this
+- There are no "blog" CSS class - only PROSE classes
+- All prose pages (blog, docs, etc) use the PROSE classes
+
 When editing those files, that's where coding standards belong. This root AGENTS.md is only for working in this workspace.
 
 ## Too Many Cooks (Multi-Agent Coordination)

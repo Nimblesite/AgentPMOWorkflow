@@ -94,6 +94,7 @@
       </ul>
 
       <div class="nav-actions">
+        <a href="{{ site.consultingUrl }}" class="btn btn-primary btn-sm nav-consulting" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a>
         <a href="{{ site.githubUrl }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
           GitHub
@@ -125,6 +126,7 @@
             <li><a href="{{ site.githubUrl }}" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
             <li><a href="{{ site.githubUrl }}/issues" target="_blank" rel="noopener noreferrer">Report an Issue</a></li>
             <li><a href="{{ site.githubUrl }}/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+            <li><a href="{{ site.consultingUrl }}" target="_blank" rel="noopener noreferrer">DevEx Consulting</a></li>
             <li><a href="/sitemap.xml">Sitemap</a></li>
           </ul>
         </div>
@@ -135,12 +137,14 @@
           </a>
           <p class="footer-nimble-desc">Developer productivity in the AI era. Flutter, .NET, and AI integration consulting.</p>
           <ul role="list">
-            <li><a href="https://nimblesite.co" target="_blank" rel="noopener noreferrer">nimblesite.co</a></li>
+            <li><a href="{{ site.consultingUrl }}" target="_blank" rel="noopener noreferrer">Book a DevEx call</a></li>
+            <li><a href="mailto:{{ site.salesEmail }}">Email {{ site.salesEmail }}</a></li>
+            <li><a href="{{ site.nimblesite }}" target="_blank" rel="noopener noreferrer">nimblesite.co</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <p>Agent PMO &middot; Built by <a href="https://nimblesite.co" target="_blank" rel="noopener noreferrer"><strong>NIMBLESITE</strong></a> &middot; <a href="{{ site.githubUrl }}" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a> &middot; &copy; {{ site.year }} Nimblesite</p>
+        <p>Agent PMO &middot; Built by <a href="{{ site.nimblesite }}" target="_blank" rel="noopener noreferrer"><strong>NIMBLESITE</strong></a> &middot; <a href="{{ site.consultingUrl }}" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a> &middot; <a href="{{ site.githubUrl }}" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a> &middot; &copy; {{ site.year }} Nimblesite</p>
       </div>
     </div>
   </footer>
