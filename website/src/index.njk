@@ -1,19 +1,19 @@
 ---
 layout: base.njk
-title: "Stop Watching. Start Running Twenty."
-description: "Agent PMO is an AI-native project management system. One developer. Twenty parallel projects. Real-time dashboard, enforced quality gates, and agent orchestration."
+title: "Agent PMO — Repo Standards & Quality Gates for AI Agents"
+description: "Agent PMO is a set of templates — quality gates, skills, release scripts, CI — plus a skill that converts an existing repo into a standardized workspace agents can build, test, and ship behind enforced quality gates."
 ---
 
 <!-- ── Hero ────────────────────────────────────── -->
 <section class="hero" aria-label="Hero">
   <div class="hero-inner">
     <div class="hero-text fade-in">
-      <div class="hero-badge">Agent PMO · AI-Native Development</div>
-      <h1>Stop watching.<br><em>Start running twenty.</em></h1>
+      <div class="hero-badge">Agent PMO · Repo Standards for AI Agents</div>
+      <h1>Turn any repo into an<br><em>Agent PMO workspace.</em></h1>
       <p class="tagline">
-        In the AI era, you're watching one agent work. That's the bottleneck.
-        Agent PMO is Nimblesite's process for AI-assisted delivery:
-        one director, many agents, standardised repos, quality gates, and visible progress.
+        A set of templates — quality gates, skills, release scripts, CI — plus one skill that
+        converts an existing repo into a standardized workspace agents can build, test, and ship
+        behind enforced quality gates.
       </p>
       <div class="hero-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started →</a>
@@ -32,27 +32,24 @@ description: "Agent PMO is an AI-native project management system. One developer
     </div>
 
     <div class="hero-visual fade-in delay-2">
-      <div class="terminal" role="img" aria-label="PMO Dashboard terminal output showing four active projects">
+      <div class="terminal" role="img" aria-label="Terminal output of the agent-pmo skill applying repo standards">
         <div class="terminal-header">
           <span class="terminal-dot terminal-dot-red"></span>
           <span class="terminal-dot terminal-dot-yellow"></span>
           <span class="terminal-dot terminal-dot-green"></span>
-          <span class="terminal-title">~ agent-pmo status</span>
+          <span class="terminal-title">~ agent-pmo skill</span>
         </div>
         <div class="terminal-body">
-<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">agent-pmo dashboard</span>
+<pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">claude "run the agent-pmo skill"</span>
 
-┌──────────────────────────────────────────┐
-│           PMO Dashboard  ·  4 active     │
-├──────────────────────────────────────────┤
-│ <span class="terminal-ok">✓</span> app-backend    PR #47   CI <span class="terminal-ok">● green</span>    │
-│ <span class="terminal-warn">⚠</span> data-pipeline  3 fail   CI <span class="terminal-warn">● running</span>  │
-│ <span class="terminal-ok">✓</span> mobile-client  review   CI <span class="terminal-ok">● green</span>    │
-│ <span class="terminal-dim">↻</span> api-gateway    linting  CI <span class="terminal-dim">● pending</span>  │
-└──────────────────────────────────────────┘
+<span class="terminal-dim">[agent-pmo] applying repo standards…</span>
+<span class="terminal-ok">✓</span> Makefile        <span class="terminal-dim">7 standard targets</span>
+<span class="terminal-ok">✓</span> CI workflow     <span class="terminal-dim">PR gate + release</span>
+<span class="terminal-ok">✓</span> quality gates   <span class="terminal-dim">lint · types · tests · coverage</span>
+<span class="terminal-ok">✓</span> AGENTS.md       <span class="terminal-dim">agent instructions</span>
+<span class="terminal-ok">✓</span> release script  <span class="terminal-dim">tag → build → deploy</span>
 
-<span class="terminal-dim">  ↓ dispatch       ↓ dispatch     ↓ dispatch</span>
-<span class="terminal-accent"> [feature dev]  [CI fix]    [coverage]</span>
+<span class="terminal-accent">✓ repo is now an Agent PMO workspace</span>
 
 <span class="terminal-prompt">$ </span><span class="cursor">▋</span></pre>
         </div>
@@ -66,27 +63,27 @@ description: "Agent PMO is an AI-native project management system. One developer
   <div class="value-props-inner">
     <div class="value-item fade-in">
       <div class="value-number">
-        <span class="counter" data-target="20" data-suffix="+">20+</span>
+        <span class="counter" data-target="1">1</span>
       </div>
-      <div class="value-label">projects in parallel</div>
+      <div class="value-label">skill to convert any repo</div>
     </div>
     <div class="value-item fade-in delay-1">
       <div class="value-number">
-        <span class="counter" data-target="3" data-suffix="m">3m</span>
+        <span class="counter" data-target="7">7</span>
       </div>
-      <div class="value-label">dashboard refresh</div>
+      <div class="value-label">standard Make targets</div>
     </div>
     <div class="value-item fade-in delay-2">
       <div class="value-number">
         <span class="counter" data-target="5">5</span>
       </div>
-      <div class="value-label">quality gates</div>
+      <div class="value-label">enforced quality gates</div>
     </div>
     <div class="value-item fade-in delay-3">
       <div class="value-number">
-        <span class="counter" data-target="0">0</span>
+        <span class="counter" data-target="7">7</span>
       </div>
-      <div class="value-label">dead time</div>
+      <div class="value-label">language toolchains</div>
     </div>
   </div>
 </section>
@@ -96,19 +93,19 @@ description: "Agent PMO is an AI-native project management system. One developer
   <div class="narrative-inner">
     <div class="fade-in">
       <blockquote>
-        "Most of the user's day is watching the agent write code, push PRs, and wait for CI — only to repeat when it fails. <em>The agent is productive. You're serialized.</em>"
+        "Every repo is different — different structure, scripts, CI. <em>Agents can't navigate chaos, so every project needs hand-holding and ships unverified code.</em>"
       </blockquote>
       <p>
-        One project. One agent. One task at a time — with dead time between every step.
-        That's the default experience of AI-assisted development.
+        Inconsistent repos are the real bottleneck. When the build, test, and release commands differ
+        everywhere, agents guess, and nothing guarantees the code is gated before it ships.
       </p>
       <p>
-        Agent PMO is the solution. It's a Project Management Office where the staff are AI agents.
-        The job isn't making one agent faster — it's making <em>you</em> capable of directing multiple
-        parallel projects with minimal cognitive load.
+        Agent PMO fixes that with templates and one skill. The skill rewrites an existing repo to a
+        single standard: one <code>Makefile</code> interface, enforced quality gates, agent instructions,
+        and a release script — so any agent already knows how to build, test, and ship it.
       </p>
       <p class="big-statement">
-        While one agent fights through CI, you've dispatched two others. You're not waiting. You're deciding what to review next.
+        Run the skill once. The repo becomes easy to deploy, sits behind quality gates, and every agent works it the same way.
       </p>
     </div>
   </div>
@@ -124,7 +121,7 @@ description: "Agent PMO is an AI-native project management system. One developer
       </div>
       <div class="consulting-cta-actions">
         <a href="{{ site.consultingUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
-        <a href="mailto:{{ site.salesEmail }}" class="btn btn-outline">Email Nimblesite</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
       </div>
     </div>
   </div>
@@ -185,7 +182,7 @@ description: "Agent PMO is an AI-native project management system. One developer
 </section>
 
 <!-- ── Features Overview ──────────────────────── -->
-<section class="section" aria-label="Features overview" style="background: var(--color-surface); border-top: 1px solid var(--color-border);">
+<section class="section surface-band" aria-label="Features overview">
   <div class="section-inner">
     <div class="section-center fade-in">
       <div class="section-label">Capabilities</div>
@@ -241,13 +238,8 @@ description: "Agent PMO is an AI-native project management system. One developer
       <div class="section-label">Released Tools</div>
       <h2 class="section-heading">Agent PMO is already running real products.</h2>
       <p class="section-subheading">
-        These released public repos carry the Agent PMO operating model:
-        standard Make targets, agent instructions, CI and coverage gates,
-        TMC coordination, release checks, and dashboard visibility.
-      </p>
-      <p class="tool-proof-note">
-        Nimblesite's public tools page lists more tools; this section focuses on the released repos
-        that are visibly in the Agent PMO loop.
+        Public Nimblesite repos built on these standards.
+        <a href="https://www.nimblesite.co/tools" target="_blank" rel="noopener noreferrer">See all Nimblesite tools →</a>
       </p>
     </div>
 
@@ -353,7 +345,7 @@ description: "Agent PMO is an AI-native project management system. One developer
       </div>
       <div class="consulting-cta-actions">
         <a href="{{ site.consultingUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Talk to Nimblesite →</a>
-        <a href="mailto:{{ site.salesEmail }}" class="btn btn-outline">Send an email</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See the consulting offer</a>
       </div>
     </div>
   </div>
@@ -411,7 +403,7 @@ description: "Agent PMO is an AI-native project management system. One developer
       <div class="spec-text">
         <div class="section-label">Traceability</div>
         <h2 class="section-heading">Every line traces back<br>to a requirement.</h2>
-        <p style="color: var(--color-muted); font-size: 1.02rem; line-height: 1.7; margin: 0 0 1.5rem;">
+        <p class="spec-section-copy">
           Every spec section gets a unique ID — <code>[AUTH-LOGIN]</code>, <code>[AUTH-TOKEN-VERIFY]</code>.
           Code references the spec it implements. Tests reference the spec they verify.
           PRs list the spec IDs they address. Full bidirectional traceability across the entire portfolio.

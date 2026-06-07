@@ -44,7 +44,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
       </div>
       <div class="consulting-cta-actions">
         <a href="{{ site.consultingUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
-        <a href="mailto:{{ site.salesEmail }}" class="btn btn-outline">Email Nimblesite</a>
+        <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
       </div>
     </div>
   </div>
@@ -95,7 +95,7 @@ description: "Set up Agent PMO in minutes. One command installs everything — .
 </section>
 
 <!-- ── Step-by-step manual ────────────────────── -->
-<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Manual setup steps">
+<section class="section surface-band" aria-label="Manual setup steps">
   <div class="section-inner">
     <div class="fade-in">
       <div class="section-label">Manual setup</div>
@@ -226,7 +226,7 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
 </section>
 
 <!-- ── Next steps ────────────────────────────── -->
-<section class="section" style="background: var(--color-surface); border-top: 1px solid var(--color-border);" aria-label="Next steps">
+<section class="section surface-band" aria-label="Next steps">
   <div class="section-inner">
     <div class="section-center fade-in">
       <div class="section-label">What's next</div>
@@ -238,19 +238,19 @@ echo "*/3 * * * * cd $(pwd) &amp;&amp; dotnet fsi dashboard/repo-report.fsx" | c
         <span class="feature-card-icon" aria-hidden="true">📐</span>
         <h3>Standardise your repos</h3>
         <p>Run the <strong>agent-pmo</strong> Claude skill on each of your repos. Give every project the same interface so agents can navigate them without help.</p>
-        <a href="/features/#standards" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about standards →</a>
+        <a href="/features/#standards" class="btn btn-outline btn-sm feature-card-action">Learn about standards →</a>
       </div>
       <div class="feature-card">
         <span class="feature-card-icon" aria-hidden="true">🔒</span>
         <h3>Run agents in parallel</h3>
         <p>Got a large codebase? Point several agents at the same working tree — no worktrees. TMC's file locks keep them from colliding.</p>
-        <a href="/features/#parallelism" class="btn btn-outline btn-sm" style="margin-top: 1rem;">How parallelism works →</a>
+        <a href="/features/#parallelism" class="btn btn-outline btn-sm feature-card-action">How parallelism works →</a>
       </div>
       <div class="feature-card">
         <span class="feature-card-icon" aria-hidden="true">🎭</span>
         <h3>Enable TMC</h3>
         <p>Run the <a href="https://tmc-mcp.dev" target="_blank" rel="noopener noreferrer">Too Many Cooks</a> MCP server and connect each agent. They share locks, messages, and plans so concurrent edits never conflict.</p>
-        <a href="/features/#tmc" class="btn btn-outline btn-sm" style="margin-top: 1rem;">Learn about TMC →</a>
+        <a href="/features/#tmc" class="btn btn-outline btn-sm feature-card-action">Learn about TMC →</a>
       </div>
     </div>
   </div>

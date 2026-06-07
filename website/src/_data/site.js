@@ -8,6 +8,5 @@ export default {
   socialImage: "/assets/social-preview.png",
   nimblesite: "https://nimblesite.co",
   consultingUrl: "https://www.nimblesite.co/consulting",
-  salesEmail: "sales at nimblesite.co",
   year: new Date().getFullYear(),
 };

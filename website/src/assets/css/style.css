@@ -73,7 +73,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
 
 body {
   background: var(--color-bg);
@@ -106,6 +109,10 @@ a:hover { color: var(--color-primary-hover); }
 }
 
 img, video { max-width: 100%; height: auto; }
+
+main {
+  overflow-x: hidden;
+}
 
 /* Skip link */
 .skip-link {
@@ -616,9 +623,15 @@ img, video { max-width: 100%; height: auto; }
   padding: 4rem 1.25rem;
 }
 
+.surface-band {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
 .section-inner {
   max-width: var(--max-width);
   margin: 0 auto;
+  min-width: 0;
 }
 
 .section-label {
@@ -845,19 +858,21 @@ img, video { max-width: 100%; height: auto; }
   margin-bottom: 0.75rem;
 }
 
+.feature-card-tag-accent {
+  background: var(--color-accent-subtle);
+  border-color: rgba(167,139,250,0.15);
+  color: var(--color-accent);
+}
+
+.feature-card-action {
+  margin-top: 1rem;
+}
+
 /* ── Released tool proof ─────────────────────── */
 
 .tool-proof {
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
-}
-
-.tool-proof-note {
-  color: var(--color-muted);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  margin: 0.75rem auto 0;
-  max-width: 720px;
 }
 
 .tool-proof-grid {
@@ -1543,6 +1558,13 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 3rem;
+}
+
+.spec-section-copy {
+  color: var(--color-muted);
+  font-size: 1.02rem;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
 }
 
 .spec-text { flex: 1; }
