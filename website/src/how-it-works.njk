@@ -44,7 +44,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
         <p>We assess your DevEx, standardise your repos, wire up CI and quality gates, and design AI agent workflows that keep humans in control.</p>
       </div>
       <div class="consulting-cta-actions">
-        <a href="{{ site.consultingUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
+        <a href="{{ site.contactUrl }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Book a DevEx call →</a>
         <a href="{{ site.consultingUrl }}" class="btn btn-outline" target="_blank" rel="noopener noreferrer">See consulting services</a>
       </div>
     </div>
@@ -66,16 +66,16 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
         <div class="prose">
           <h3>Dashboard scans all repos</h3>
           <p>
-            An F# script runs every 3 minutes via <code>launchd</code> (macOS) or <code>cron</code> (Linux).
-            It scans every git repo under your code directory and collects CI status, open PRs, uncommitted changes,
-            push status, and latest releases — then generates a self-contained HTML report. No server needed.
+            The dashboard refreshes automatically every few minutes. It scans every git repo under your code
+            directory and collects CI status, open PRs, uncommitted changes, push status, and latest releases —
+            then generates a self-contained HTML report. No server needed.
           </p>
           <div class="terminal">
             <div class="terminal-header">
               <span class="terminal-dot terminal-dot-red"></span>
               <span class="terminal-dot terminal-dot-yellow"></span>
               <span class="terminal-dot terminal-dot-green"></span>
-              <span class="terminal-title">~ launchd · runs every 180 seconds</span>
+              <span class="terminal-title">~ dashboard · auto-refresh</span>
             </div>
             <div class="terminal-body">
 <pre><span class="terminal-prompt">$ </span><span class="terminal-cmd">dotnet fsi dashboard/repo-report.fsx</span>
@@ -189,7 +189,7 @@ description: "The Agent PMO cycle explained: Dashboard scanning, agent dispatch,
       <p>Use Agent PMO as the blueprint, or work with Nimblesite to adapt the process to your team, codebase, and delivery constraints.</p>
       <div class="cta-actions">
         <a href="/get-started/" class="btn btn-primary">Get Started →</a>
-        <a href="{{ site.consultingUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a>
+        <a href="{{ site.contactUrl }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Work with Nimblesite</a>
       </div>
     </div>
   </div>
