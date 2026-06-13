@@ -61,34 +61,19 @@ jobs:
           path: dashboard/playwright-report/
           retention-days: 7
 
-  # Security scanning ([GITHUB-CODE-SCANNING] / [GITHUB-DEP-REVIEW]). Combined
-  # into this one CI workflow so every PR runs a single gate. CodeQL covers the
-  # JS/TS here (11ty website + Playwright); F# (.fsx) is not CodeQL-supported.
-  # dependency-review guards the npm supply chain. No overlap with linting.
+  # Dependency review ([GITHUB-DEP-REVIEW]) — blocks PRs that pull in npm deps
+  # with known vulnerabilities. CodeQL source scanning is separate in codeql.yml.
   security:
     name: security
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
       contents: read
-      security-events: write  # CodeQL uploads results here
-      pull-requests: write    # dependency-review posts its PR summary
-      actions: read
+      pull-requests: write  # dependency-review posts its PR summary
     steps:
       - uses: actions/checkout@v4
-
       - name: Dependency review
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          queries: security-extended
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-      - name: CodeQL analysis
-        uses: github/codeql-action/analyze@v3

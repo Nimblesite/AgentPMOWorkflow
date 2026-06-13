@@ -176,7 +176,9 @@ AgentPMOWorkflow/
 │       │   ├── copilot-instructions.md
 │       │   ├── dependabot.yml      # Grouped Dependabot config (supply-chain)
 │       │   ├── pull_request_template.md
-│       │   └── workflows/         # CI/CD templates
+│       │   └── workflows/         # CI/CD templates (ci.yml, release.yml,
+│       │       │                  #   deploy-pages.yml, codeql.yml)
+│       │       └── codeql.yml     # CodeQL code scanning (tailored matrix)
 │       ├── linting/               # Linter configs per language
 │       ├── coverage/              # Coverage configs
 │       ├── devcontainer/          # Devcontainer configs per language

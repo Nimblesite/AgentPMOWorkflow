@@ -68,6 +68,21 @@ The three toggles and "auto-enable for new repos" live on the account/org
 **Settings → Code security** page (the "Enable all" / "Automatically enable for
 new repositories" controls) — set them there once.
 
+## Code Scanning & Secret Scanning (GitHub Advanced Security)
+
+Free for **public** repos; requires GHAS (Code Security / Secret Protection) on
+private repos. Every PR must undergo security scanning.
+
+| Feature | Where | Notes |
+|---|---|---|
+| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. |
+| Dependency review | `security` job in `ci.yml` | Fails PRs that add vulnerable *dependencies* (`fail-on-severity: high`). |
+| Secret scanning | repo setting (below) | Detects committed keys/tokens. |
+| Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
+
+No overlap: linting = style, CodeQL = vulnerable code, dependency review =
+vulnerable dependencies. Never add security-rule linter plugins that re-cover CodeQL.
+
 ## `gh` CLI Commands to Apply These Settings
 
 ```bash
@@ -91,4 +106,9 @@ gh api -X PATCH "repos/$REPO" \
 # updates + "auto-enable for new repos" are account/org toggles set in the UI.
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Secret scanning + push protection (GHAS; free for public repos).
+gh api -X PATCH "repos/$REPO" --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
+JSON
 ```

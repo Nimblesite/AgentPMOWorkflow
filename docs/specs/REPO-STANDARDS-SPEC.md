@@ -149,9 +149,16 @@ build     — compiles artifacts (depends on test)
 
 Optional jobs (exact names):
 ```
-security  — vulnerability scanning (cargo audit, npm audit, etc.)
+security  — dependency review + any audit (npm audit, cargo audit). REQUIRED if
+            the repo has dependency manifests ([GITHUB-DEP-REVIEW]). NOTE: CodeQL
+            is NOT a job here — it is its own codeql.yml workflow ([GITHUB-CODE-SCANNING]).
 deploy    — deploy preview/staging (depends on build)
 ```
+
+CodeQL is deliberately split out of `ci.yml` (it needs `security-events: write` + a
+schedule and feeds code-scanning alerts). See [GITHUB-CODE-SCANNING]. The three
+analysis layers — `lint` (style), CodeQL (vulnerable code), `security`/dependency-review
+(vulnerable deps) — MUST NOT overlap in coverage.
 
 ### [CI-TEMPLATE] ci.yml Template
 
@@ -892,6 +899,48 @@ Rules for the file:
 - **Schedule is `weekly`** unless the repo has a documented reason to differ.
 - `open-pull-requests-limit: 5` per ecosystem caps the blast radius.
 
+### [GITHUB-CODE-SCANNING] CodeQL code scanning — MANDATORY for every repo with a supported language
+
+**Every PR MUST undergo CodeQL security scanning.** CodeQL does taint/dataflow analysis to find *vulnerable code* (injection, path traversal, unsafe deserialization, …). Free for public repos; needs GitHub Advanced Security on private repos.
+
+**File:** [`templates/.github/workflows/codeql.yml`](templates/.github/workflows/codeql.yml) — placed at `.github/workflows/codeql.yml`.
+
+**It is a SEPARATE workflow from `ci.yml`, by design.** CodeQL feeds GitHub code-scanning alerts and needs `security-events: write` plus a weekly schedule (so newly-published queries re-scan unchanged code); `ci.yml` owns lint/test/build. Do NOT merge CodeQL into `ci.yml`.
+
+**No doubling up ([combine, don't overlap]).** Three layers, each with a distinct job and zero coverage overlap — never configure one to re-do another's work:
+- `make lint` (in `ci.yml`) — style/correctness. **MUST NOT** add security-rule linter plugins that re-cover CodeQL.
+- CodeQL (`codeql.yml`) — vulnerable *code*.
+- dependency-review ([GITHUB-DEP-REVIEW]) — vulnerable *dependencies*.
+
+**The matrix MUST be TAILORED per repo — at skill-run time, not from a frozen list.** CodeQL's supported-language set grows over time (Rust was added; more will follow). The skill MUST:
+1. Determine the languages actually present in the repo (the Step 1 language scan).
+2. Determine the languages CodeQL supports **right now**, when the skill runs — check live (CodeQL docs / `codeql resolve languages`), do not trust a hardcoded list in this spec.
+3. Write one matrix `include:` entry per language in the **intersection** of (1) and (2). Always keep `actions` (it scans the workflow files themselves).
+4. If the intersection is empty (e.g. a Dart/Flutter- or F#-only repo with no other supported language), **delete `codeql.yml`** and record in the Step 5 report that no CodeQL-supported language was found.
+
+As of this writing CodeQL supports: `c-cpp`, `csharp`, `go`, `java-kotlin`, `javascript-typescript`, `python`, `ruby`, `swift`, `rust`, `actions` — **and NOT Dart/Flutter or F#.** Treat this list as illustrative only; re-check at runtime per step 2.
+
+Other rules:
+- `build-mode: none` for interpreted languages + `rust`/`csharp`; `autobuild` (or a manual build) for compiled languages that need a real build (`go`, `java-kotlin`, `c-cpp`).
+- `queries: security-extended`.
+- Action versions are **SHA-pinned** (supply-chain hardening); the `github-actions` Dependabot group keeps them current.
+- The job is gated on `if: github.event.repository.visibility == 'public'` so private repos without GHAS skip cleanly and self-enable when made public.
+
+### [GITHUB-DEP-REVIEW] Dependency review on every PR
+
+The `security` job in [`templates/.github/workflows/ci.yml`](templates/.github/workflows/ci.yml) runs `actions/dependency-review-action`, which **fails the PR if it introduces a dependency with a known vulnerability** (`fail-on-severity: high`). Free for public repos. It lives in `ci.yml` (lightweight, PR-only, no special token scopes) rather than its own workflow. Delete the job only if the repo has no dependency manifests.
+
+### [GITHUB-SECRET-SCANNING] Secret scanning + push protection — MANDATORY
+
+Every repo MUST have secret scanning AND push protection on. Push protection **blocks a commit that contains a detected secret before it reaches the remote** — the cheapest possible defense against leaked credentials. Free for public repos; needs GitHub Secret Protection on private repos.
+
+| Setting | Value |
+|---|---|
+| Secret scanning | **on** |
+| Push protection | **on** |
+
+These are repo settings (not files) — apply via [GITHUB-CLI] below, and set the org-level "auto-enable for new repositories" once in **Settings → Code security**.
+
 ### [GITHUB-CLI] Applying Settings via `gh` CLI
 
 ```bash
@@ -914,6 +963,11 @@ gh api -X PATCH "repos/$REPO" \
 # updates is an account/org-level toggle (set it in the UI per common-repo-settings.md).
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Secret scanning + push protection ([GITHUB-SECRET-SCANNING]).
+gh api -X PATCH "repos/$REPO" --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
+JSON
 ```
 
 ---
@@ -994,6 +1048,9 @@ CI
 [ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`.
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
+[ ] ci.yml has a `security` job running dependency-review (repos with manifests) ([GITHUB-DEP-REVIEW])
+[ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, weekly schedule, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
+[ ] No coverage/overlap between `make lint`, CodeQL, and dependency-review (no security-rule linter plugins re-covering CodeQL)
 
 COVERAGE
 [ ] `coverage-thresholds.json` exists at the repo root (or per sub-project) with `default_threshold` set
@@ -1036,6 +1093,8 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Branch protection on main (require PR + CI pass)
 [ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
 [ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
+[ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
+[ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
 
 IDE
 [ ] VS Code title bar colorized with project brand colors (.vscode/settings.json workbench.colorCustomizations)
