@@ -45,6 +45,29 @@ Else add branch protection with the ci.yaml script. It should only fire on PRs t
 | Default branch | **main** |
 | Web commit signoff required | **false** |
 
+## Dependabot (Supply-Chain Defense)
+
+Outdated dependencies are the portfolio's biggest supply-chain attack surface.
+Every repo MUST have Dependabot on — but grouped, so it patches dependencies
+**without blanketing the repo in PRs**.
+
+| Setting | Value | Notes |
+|---|---|---|
+| Dependabot alerts | **on** | Surfaces known vulnerabilities |
+| Dependabot security updates | **on** | Auto-opens PRs that resolve alerts |
+| Grouped security updates | **on** | One PR per ecosystem, not one per advisory |
+| Automatically enable for new repositories | **on** | Set at the account/org level so future repos inherit this |
+
+Grouped *version* updates come from the committed `.github/dependabot.yml`
+(template: [`dependabot.yml`](dependabot.yml)). Its `groups:` rules also apply
+to security updates, so security fixes land grouped too. Keep only the
+`package-ecosystem` blocks the repo actually uses; keep `github-actions` for any
+repo with workflows.
+
+The three toggles and "auto-enable for new repos" live on the account/org
+**Settings → Code security** page (the "Enable all" / "Automatically enable for
+new repositories" controls) — set them there once.
+
 ## `gh` CLI Commands to Apply These Settings
 
 ```bash
@@ -62,4 +85,10 @@ gh api -X PATCH "repos/$REPO" \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Dependabot: enable alerts + automated security update PRs (per-repo).
+# Grouping is provided by the committed .github/dependabot.yml; grouped SECURITY
+# updates + "auto-enable for new repos" are account/org toggles set in the UI.
+gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
+gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
 ```

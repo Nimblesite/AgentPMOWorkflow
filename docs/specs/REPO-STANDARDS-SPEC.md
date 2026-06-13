@@ -867,6 +867,31 @@ This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR
 
 If protection already exists, leave it alone.
 
+### [GITHUB-DEPENDABOT] Dependabot — supply-chain defense without PR spam
+
+**Every repo MUST have Dependabot on.** Outdated dependencies are the most common supply-chain attack surface in the portfolio. The non-negotiable goal is two-sided: **patch dependencies automatically** AND **do not blanket the repo in pull requests.** Both halves matter — a repo drowning in ungrouped Dependabot PRs gets ignored, which is as bad as having it off.
+
+Three repo/account-level toggles MUST be enabled (the screen in [`templates/.github/common-repo-settings.md`](templates/.github/common-repo-settings.md)):
+
+| Setting | Value | Why |
+|---|---|---|
+| Dependabot alerts | **on** | Surfaces known vulnerabilities in dependencies |
+| Dependabot security updates | **on** | Opens PRs that resolve those alerts automatically |
+| Grouped security updates | **on** | Collapses security fixes into one PR per ecosystem instead of one per advisory |
+
+Set **"Automatically enable for new repositories"** at the account/org level so every future repo inherits this without per-repo work.
+
+**Grouping is mandatory, via a committed `dependabot.yml`.** The toggles above cover *security* updates; the [`templates/.github/dependabot.yml`](templates/.github/dependabot.yml) file adds grouped *version* updates and is the single source of truth for grouping. Its `groups:` rules also override GitHub's default per-advisory security PRs, so security fixes land grouped too ("This option may be overridden by group rules specified in dependabot.yml").
+
+**File:** [`templates/.github/dependabot.yml`](templates/.github/dependabot.yml) — placed at `.github/dependabot.yml`.
+
+Rules for the file:
+- **Keep `github-actions`** for every repo with workflows — pinned actions are a prime supply-chain target.
+- **Keep only the `package-ecosystem` blocks whose manifests exist** in the repo; delete the rest. Zero references to ecosystems the repo does not use.
+- **Every ecosystem MUST be grouped.** Standard split is two groups per ecosystem: `*-minor` (minor + patch, merge freely) and `*-major` (breaking, review individually). Never leave an ecosystem ungrouped — ungrouped = one PR per dependency = the PR spam this section exists to kill.
+- **Schedule is `weekly`** unless the repo has a documented reason to differ.
+- `open-pull-requests-limit: 5` per ecosystem caps the blast radius.
+
 ### [GITHUB-CLI] Applying Settings via `gh` CLI
 
 ```bash
@@ -883,6 +908,12 @@ gh api -X PATCH "repos/$REPO" \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Dependabot ([GITHUB-DEPENDABOT]) — alerts + automated security update PRs.
+# Grouping comes from the committed .github/dependabot.yml; grouped SECURITY
+# updates is an account/org-level toggle (set it in the UI per common-repo-settings.md).
+gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
+gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
 ```
 
 ---
@@ -1003,6 +1034,8 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Squash commit title = PR_TITLE, message = PR_BODY
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
 [ ] Branch protection on main (require PR + CI pass)
+[ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
+[ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
 
 IDE
 [ ] VS Code title bar colorized with project brand colors (.vscode/settings.json workbench.colorCustomizations)

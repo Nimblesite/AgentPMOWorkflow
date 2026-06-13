@@ -174,6 +174,7 @@ AgentPMOWorkflow/
 │       ├── .github/
 │       │   ├── common-repo-settings.md
 │       │   ├── copilot-instructions.md
+│       │   ├── dependabot.yml      # Grouped Dependabot config (supply-chain)
 │       │   ├── pull_request_template.md
 │       │   └── workflows/         # CI/CD templates
 │       ├── linting/               # Linter configs per language
