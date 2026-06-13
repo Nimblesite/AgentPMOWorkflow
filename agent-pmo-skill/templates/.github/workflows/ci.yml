@@ -111,3 +111,26 @@ jobs:
             out/
             target/release/
           retention-days: 7
+
+  # Dependency review ([GITHUB-DEP-REVIEW]) — blocks PRs that pull in dependencies
+  # with known vulnerabilities. Lives here in the CI gate (lightweight, PR-only,
+  # no special token scopes). CodeQL source scanning is SEPARATE in codeql.yml
+  # ([GITHUB-CODE-SCANNING]) — it needs security-events: write + a weekly schedule
+  # and feeds code-scanning alerts. The two do NOT overlap with each other or with
+  # `make lint`: dependency-review = vulnerable packages, CodeQL = vulnerable code,
+  # lint = style/correctness. Never add security-rule linter plugins that re-cover
+  # CodeQL — no doubling up. Delete this job only if the repo has no manifests.
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write  # dependency-review posts its PR summary
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
