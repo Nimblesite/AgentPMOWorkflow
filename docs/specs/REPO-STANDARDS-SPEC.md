@@ -905,12 +905,23 @@ Rules for the file:
 
 **File:** [`templates/.github/workflows/codeql.yml`](templates/.github/workflows/codeql.yml) — placed at `.github/workflows/codeql.yml`.
 
-**It is a SEPARATE workflow from `ci.yml`, by design.** CodeQL feeds GitHub code-scanning alerts and needs `security-events: write` plus a weekly schedule (so newly-published queries re-scan unchanged code); `ci.yml` owns lint/test/build. Do NOT merge CodeQL into `ci.yml`.
+**It is a SEPARATE workflow from `ci.yml`, by design.** CodeQL feeds GitHub code-scanning alerts and needs job-scoped `security-events: write` (top-level stays `contents: read`); `ci.yml` owns lint/test/build. Do NOT merge CodeQL into `ci.yml`.
 
-**No doubling up ([combine, don't overlap]).** Three layers, each with a distinct job and zero coverage overlap — never configure one to re-do another's work:
-- `make lint` (in `ci.yml`) — style/correctness. **MUST NOT** add security-rule linter plugins that re-cover CodeQL.
-- CodeQL (`codeql.yml`) — vulnerable *code*.
-- dependency-review ([GITHUB-DEP-REVIEW]) — vulnerable *dependencies*.
+**Triggers — exactly these three, no more:**
+1. **`pull_request` to `main`** — scans the diff. This is the gate.
+2. **`schedule` (weekly)** — re-scans *unchanged* code against newly-published CodeQL queries.
+3. **`push` on the release tag (`v*`)** — scans the **exact released SHA** with the current query set, because a release can ship code last scanned weeks ago. Release pipelines SHOULD gate on code scanning being green before publishing. **Never** add `push: branches: [main]` — that re-scans already-PR-scanned code and burns Actions minutes for nothing.
+
+**Anti-duplication mandate (DUPLICATION WASTES GITHUB ACTIONS MINUTES = MONEY).** Leverage GitHub's platform features; never run the same analysis twice. **Exactly one owner per concern** — if two tools cover the same thing, delete one:
+
+| Concern | The ONE owner | Forbidden duplication |
+|---|---|---|
+| Style / correctness | linters in `make lint` (clippy, eslint, ruff, …) | security-rule linter plugins (eslint-plugin-security, gosec, bandit) that re-cover CodeQL — **remove them** |
+| Vulnerable first-party **code** | CodeQL (`codeql.yml`) | a second SAST tool; **GitHub default-setup CodeQL running alongside the committed `codeql.yml`** — pick advanced setup (the file), disable default setup, never both |
+| Vulnerable **dependencies** | ONE of: dependency-review ([GITHUB-DEP-REVIEW]) **or** a native vuln-gate (osv-scanner/cargo-deny/npm audit) — **not both** | running dependency-review AND osv-scanner over the same manifests |
+| Committed **secrets** | GitHub secret scanning + push protection (platform, **0 Actions minutes**) | CI-based scanners (trufflehog/gitleaks jobs) when the platform feature already covers it |
+
+Cost rules baked into the file: `build-mode: none` wherever CodeQL allows it, so CodeQL does **not** re-compile what `ci.yml` already builds; `concurrency: cancel-in-progress`; triggers limited to the three above.
 
 **The matrix MUST be TAILORED per repo — at skill-run time, not from a frozen list.** CodeQL's supported-language set grows over time (Rust was added; more will follow). The skill MUST:
 1. Determine the languages actually present in the repo (the Step 1 language scan).
@@ -941,6 +952,19 @@ Every repo MUST have secret scanning AND push protection on. Push protection **b
 
 These are repo settings (not files) — apply via [GITHUB-CLI] below, and set the org-level "auto-enable for new repositories" once in **Settings → Code security**.
 
+### [GITHUB-SECURITY-POLICY] SECURITY.md + private vulnerability reporting — MANDATORY
+
+**Every repo MUST have a security policy** so a researcher who finds a vulnerability has a private, structured channel instead of a public issue. Two parts:
+
+1. **`SECURITY.md`** — committed file. GitHub looks for it in `.github/`, then the repo root, then `docs/` (first found wins); surfaces it on the **Security** tab and the new-issue page. **Standard location: repo root** (or `.github/SECURITY.md`). Template: [`templates/SECURITY.md`](templates/SECURITY.md). It MUST state: how to report (private vulnerability reporting first, email fallback), what to expect (ack within 3 business days, assessment within 10), and supported versions. Fill every `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}` placeholder.
+2. **Private vulnerability reporting (PVR)** — repo setting that gives researchers a **"Report a vulnerability"** button on the Security tab. Free for public repos; needs GHAS on private repos. Enable via [GITHUB-CLI] below (`gh api -X PUT repos/$REPO/private-vulnerability-reporting`), and set the org-level auto-enable in **Settings → Code security**.
+
+Authoritative GitHub docs (reference these directly in `SECURITY.md`):
+- Add a security policy: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy
+- Configure private vulnerability reporting: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository
+
+An org-wide default `SECURITY.md` can live in the org's `.github` repo; a repo-level `SECURITY.md` overrides it. Repo-level is still preferred so the supported-versions table is accurate.
+
 ### [GITHUB-CLI] Applying Settings via `gh` CLI
 
 ```bash
@@ -968,6 +992,9 @@ gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security up
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'
 {"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
 JSON
+
+# Private vulnerability reporting ([GITHUB-SECURITY-POLICY]; pairs with SECURITY.md).
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting"
 ```
 
 ---
@@ -1049,8 +1076,9 @@ CI
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
 [ ] ci.yml has a `security` job running dependency-review (repos with manifests) ([GITHUB-DEP-REVIEW])
-[ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, weekly schedule, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
-[ ] No coverage/overlap between `make lint`, CodeQL, and dependency-review (no security-rule linter plugins re-covering CodeQL)
+[ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
+[ ] codeql.yml triggers are exactly: PR to main + weekly schedule + release tag `v*` (no `push: branches:[main]`) ([GITHUB-CODE-SCANNING])
+[ ] Anti-duplication: one owner per concern (lint=style, CodeQL=code, ONE dep scanner, platform secret scanning); no GitHub default-setup CodeQL alongside codeql.yml; `build-mode: none` where allowed ([GITHUB-CODE-SCANNING])
 
 COVERAGE
 [ ] `coverage-thresholds.json` exists at the repo root (or per sub-project) with `default_threshold` set
@@ -1095,6 +1123,8 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
 [ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
+[ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])
+[ ] Private vulnerability reporting enabled ([GITHUB-SECURITY-POLICY])
 
 IDE
 [ ] VS Code title bar colorized with project brand colors (.vscode/settings.json workbench.colorCustomizations)

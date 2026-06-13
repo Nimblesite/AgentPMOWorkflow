@@ -79,9 +79,18 @@ private repos. Every PR must undergo security scanning.
 | Dependency review | `security` job in `ci.yml` | Fails PRs that add vulnerable *dependencies* (`fail-on-severity: high`). |
 | Secret scanning | repo setting (below) | Detects committed keys/tokens. |
 | Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
+| Private vulnerability reporting | repo setting (below) | "Report a vulnerability" button on the Security tab. Pairs with `SECURITY.md`. |
+| Security policy | `SECURITY.md` (root or `.github/`) | How to report + supported versions. Template: [`../SECURITY.md`](../SECURITY.md). |
 
-No overlap: linting = style, CodeQL = vulnerable code, dependency review =
-vulnerable dependencies. Never add security-rule linter plugins that re-cover CodeQL.
+**Anti-duplication (saves Actions minutes = money): exactly one owner per concern.**
+linting = style · CodeQL = vulnerable code · ONE dependency scanner (dependency-review
+*or* a native vuln-gate, never both) · platform secret scanning = secrets. Never add
+security-rule linter plugins that re-cover CodeQL, and never run GitHub default-setup
+CodeQL alongside a committed `codeql.yml`. CodeQL triggers are exactly: PR to main +
+weekly + release tag `v*` (scan the released SHA), with `build-mode: none` where allowed
+so it doesn't re-compile what `ci.yml` already builds.
+
+CodeQL docs: see [`SECURITY.md`](../SECURITY.md) for the GitHub policy/PVR doc links.
 
 ## `gh` CLI Commands to Apply These Settings
 

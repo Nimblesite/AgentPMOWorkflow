@@ -10,6 +10,10 @@ name: CodeQL
 on:
   pull_request:
     branches: [main]
+  push:
+    # Scan the exact released SHA before every release (PR scan = diff, weekly =
+    # drift, this = the release itself, with the current query set).
+    tags: ["v*"]
   schedule:
     - cron: "27 4 * * 1"
 
