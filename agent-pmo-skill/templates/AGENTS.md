@@ -45,7 +45,7 @@ If the TMC server is available: register on start (name, intent, files), lock fi
   - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.
   - **If multiple feature branches exist, merge them into one IMMEDIATELY before doing any other work.**
   - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
-- **Auto-memory is OFF.** Persistent rules go through a reviewed PR to this file — never auto-captured memory. (Claude Code: `"autoMemoryEnabled": false` in `.claude/settings.json`.)
+- **Auto-memory is OFF.** Persistent rules go through a reviewed PR to this file — never auto-captured memory. (Claude Code: `"autoMemoryEnabled": false` in committed `.claude/settings.local.json`.)
 - **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
