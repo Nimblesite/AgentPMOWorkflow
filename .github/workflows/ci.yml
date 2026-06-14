@@ -21,7 +21,7 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # The Playwright image is minimal: ensure make (build entrypoint) and git
       # (the F# fixture tests init/inspect temp repos) are present.
@@ -39,7 +39,7 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -54,7 +54,7 @@ jobs:
         run: make test
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -71,9 +71,9 @@ jobs:
       contents: read
       pull-requests: write  # dependency-review posts its PR summary
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Dependency review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
