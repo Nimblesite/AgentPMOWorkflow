@@ -120,4 +120,7 @@ gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security up
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'
 {"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
 JSON
+
+# Private vulnerability reporting (pairs with SECURITY.md; free for public repos).
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting"
 ```

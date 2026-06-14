@@ -149,16 +149,12 @@ build     — compiles artifacts (depends on test)
 
 Optional jobs (exact names):
 ```
-security  — dependency review + any audit (npm audit, cargo audit). REQUIRED if
-            the repo has dependency manifests ([GITHUB-DEP-REVIEW]). NOTE: CodeQL
-            is NOT a job here — it is its own codeql.yml workflow ([GITHUB-CODE-SCANNING]).
+security  — dependency review / audit. Required if the repo has manifests ([GITHUB-DEP-REVIEW]).
+            CodeQL is NOT here — it is its own codeql.yml ([GITHUB-CODE-SCANNING]).
 deploy    — deploy preview/staging (depends on build)
 ```
 
-CodeQL is deliberately split out of `ci.yml` (it needs `security-events: write` + a
-schedule and feeds code-scanning alerts). See [GITHUB-CODE-SCANNING]. The three
-analysis layers — `lint` (style), CodeQL (vulnerable code), `security`/dependency-review
-(vulnerable deps) — MUST NOT overlap in coverage.
+Non-overlapping layers ([GITHUB-CODE-SCANNING] anti-duplication): `lint`=style, CodeQL=vulnerable code, `security`/dependency-review=vulnerable deps.
 
 ### [CI-TEMPLATE] ci.yml Template
 
@@ -874,96 +870,48 @@ This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR
 
 If protection already exists, leave it alone.
 
-### [GITHUB-DEPENDABOT] Dependabot — supply-chain defense without PR spam
+### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam
 
-**Every repo MUST have Dependabot on.** Outdated dependencies are the most common supply-chain attack surface in the portfolio. The non-negotiable goal is two-sided: **patch dependencies automatically** AND **do not blanket the repo in pull requests.** Both halves matter — a repo drowning in ungrouped Dependabot PRs gets ignored, which is as bad as having it off.
+Dependabot on for every repo. Enable at account/org (+ "auto-enable new repos"): **alerts**, **security updates**, **grouped security updates**.
 
-Three repo/account-level toggles MUST be enabled (the screen in [`templates/.github/common-repo-settings.md`](templates/.github/common-repo-settings.md)):
+Grouping comes from committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
+- Keep `github-actions` (any repo with workflows). Keep only `package-ecosystem` blocks whose manifests exist; delete the rest.
+- Every ecosystem grouped: `*-minor` (minor+patch) + `*-major`. Ungrouped (one PR/dep) is banned.
+- `schedule: weekly`; `open-pull-requests-limit: 5`.
 
-| Setting | Value | Why |
+### [GITHUB-CODE-SCANNING] CodeQL — mandatory where a supported language exists
+
+Finds vulnerable *code* (taint/dataflow). Free for public; GHAS for private. [template](templates/.github/workflows/codeql.yml) → `.github/workflows/codeql.yml`. SEPARATE from `ci.yml` (needs job-scoped `security-events: write`; top-level `contents: read`) — never merge in.
+
+Triggers, exactly three: `pull_request`→main (gate); `schedule` weekly (re-scan unchanged code vs new queries); `push` tag `v*` (scan released SHA before every release). Never `push: branches:[main]`.
+
+Tailor matrix at skill-run time: intersect repo languages with languages CodeQL supports **now** (check live: `codeql resolve languages` / CodeQL docs — the set grows). One `include:` per language + always `actions`. Empty intersection (e.g. Dart/F#-only) → no codeql.yml; record it. Illustrative supported set: c-cpp, csharp, go, java-kotlin, javascript-typescript, python, ruby, swift, rust, actions — NOT Dart/Flutter, F#.
+
+File rules: `build-mode: none` (interpreted + rust/csharp; avoids re-compiling what ci builds), `autobuild`/manual for go/java-kotlin/c-cpp; `queries: security-extended`; SHA-pinned actions (Dependabot refreshes); `if: github.event.repository.visibility == 'public'` (private skips cleanly, self-enables when public).
+
+**Anti-duplication — one owner per concern (duplicate analysis = wasted Actions minutes). Delete duplicates:**
+
+| Concern | One owner | Never |
 |---|---|---|
-| Dependabot alerts | **on** | Surfaces known vulnerabilities in dependencies |
-| Dependabot security updates | **on** | Opens PRs that resolve those alerts automatically |
-| Grouped security updates | **on** | Collapses security fixes into one PR per ecosystem instead of one per advisory |
+| style/correctness | linters in `make lint` | security linter plugins (eslint-plugin-security/gosec/bandit) re-covering CodeQL |
+| vulnerable code | CodeQL (`codeql.yml`) | a 2nd SAST; GitHub default-setup CodeQL alongside the file — use advanced setup, disable default |
+| vulnerable deps | ONE of dependency-review OR native vuln-gate (osv/cargo-deny/npm audit) | both over the same manifests |
+| secrets | GitHub secret scanning + push protection (0 CI minutes) | trufflehog/gitleaks CI jobs |
 
-Set **"Automatically enable for new repositories"** at the account/org level so every future repo inherits this without per-repo work.
+### [GITHUB-DEP-REVIEW] Dependency review
 
-**Grouping is mandatory, via a committed `dependabot.yml`.** The toggles above cover *security* updates; the [`templates/.github/dependabot.yml`](templates/.github/dependabot.yml) file adds grouped *version* updates and is the single source of truth for grouping. Its `groups:` rules also override GitHub's default per-advisory security PRs, so security fixes land grouped too ("This option may be overridden by group rules specified in dependabot.yml").
+`ci.yml` `security` job runs `actions/dependency-review-action` (`fail-on-severity: high`) — fails a PR that adds a vulnerable dep. Omit if the repo has no manifests OR already has a native vuln-gate (no doubling).
 
-**File:** [`templates/.github/dependabot.yml`](templates/.github/dependabot.yml) — placed at `.github/dependabot.yml`.
+### [GITHUB-SECRET-SCANNING] Secret scanning + push protection — mandatory
 
-Rules for the file:
-- **Keep `github-actions`** for every repo with workflows — pinned actions are a prime supply-chain target.
-- **Keep only the `package-ecosystem` blocks whose manifests exist** in the repo; delete the rest. Zero references to ecosystems the repo does not use.
-- **Every ecosystem MUST be grouped.** Standard split is two groups per ecosystem: `*-minor` (minor + patch, merge freely) and `*-major` (breaking, review individually). Never leave an ecosystem ungrouped — ungrouped = one PR per dependency = the PR spam this section exists to kill.
-- **Schedule is `weekly`** unless the repo has a documented reason to differ.
-- `open-pull-requests-limit: 5` per ecosystem caps the blast radius.
+Both on; push protection blocks a secret before it leaves the machine. Free for public; GHAS for private. Repo settings via [GITHUB-CLI]; org "auto-enable new repos" in Settings → Code security.
 
-### [GITHUB-CODE-SCANNING] CodeQL code scanning — MANDATORY for every repo with a supported language
+### [GITHUB-SECURITY-POLICY] SECURITY.md + private vulnerability reporting — mandatory
 
-**Every PR MUST undergo CodeQL security scanning.** CodeQL does taint/dataflow analysis to find *vulnerable code* (injection, path traversal, unsafe deserialization, …). Free for public repos; needs GitHub Advanced Security on private repos.
+1. `SECURITY.md` at repo root (or `.github/`; GitHub also reads `docs/`). [template](templates/SECURITY.md). State: how to report (PVR first, email fallback), expectations (ack 3 business days, assessment 10), supported versions. Fill `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}`.
+2. Private vulnerability reporting on ("Report a vulnerability" button, Security tab). Free for public; GHAS for private. Enable via [GITHUB-CLI].
 
-**File:** [`templates/.github/workflows/codeql.yml`](templates/.github/workflows/codeql.yml) — placed at `.github/workflows/codeql.yml`.
-
-**It is a SEPARATE workflow from `ci.yml`, by design.** CodeQL feeds GitHub code-scanning alerts and needs job-scoped `security-events: write` (top-level stays `contents: read`); `ci.yml` owns lint/test/build. Do NOT merge CodeQL into `ci.yml`.
-
-**Triggers — exactly these three, no more:**
-1. **`pull_request` to `main`** — scans the diff. This is the gate.
-2. **`schedule` (weekly)** — re-scans *unchanged* code against newly-published CodeQL queries.
-3. **`push` on the release tag (`v*`)** — scans the **exact released SHA** with the current query set, because a release can ship code last scanned weeks ago. Release pipelines SHOULD gate on code scanning being green before publishing. **Never** add `push: branches: [main]` — that re-scans already-PR-scanned code and burns Actions minutes for nothing.
-
-**Anti-duplication mandate (DUPLICATION WASTES GITHUB ACTIONS MINUTES = MONEY).** Leverage GitHub's platform features; never run the same analysis twice. **Exactly one owner per concern** — if two tools cover the same thing, delete one:
-
-| Concern | The ONE owner | Forbidden duplication |
-|---|---|---|
-| Style / correctness | linters in `make lint` (clippy, eslint, ruff, …) | security-rule linter plugins (eslint-plugin-security, gosec, bandit) that re-cover CodeQL — **remove them** |
-| Vulnerable first-party **code** | CodeQL (`codeql.yml`) | a second SAST tool; **GitHub default-setup CodeQL running alongside the committed `codeql.yml`** — pick advanced setup (the file), disable default setup, never both |
-| Vulnerable **dependencies** | ONE of: dependency-review ([GITHUB-DEP-REVIEW]) **or** a native vuln-gate (osv-scanner/cargo-deny/npm audit) — **not both** | running dependency-review AND osv-scanner over the same manifests |
-| Committed **secrets** | GitHub secret scanning + push protection (platform, **0 Actions minutes**) | CI-based scanners (trufflehog/gitleaks jobs) when the platform feature already covers it |
-
-Cost rules baked into the file: `build-mode: none` wherever CodeQL allows it, so CodeQL does **not** re-compile what `ci.yml` already builds; `concurrency: cancel-in-progress`; triggers limited to the three above.
-
-**The matrix MUST be TAILORED per repo — at skill-run time, not from a frozen list.** CodeQL's supported-language set grows over time (Rust was added; more will follow). The skill MUST:
-1. Determine the languages actually present in the repo (the Step 1 language scan).
-2. Determine the languages CodeQL supports **right now**, when the skill runs — check live (CodeQL docs / `codeql resolve languages`), do not trust a hardcoded list in this spec.
-3. Write one matrix `include:` entry per language in the **intersection** of (1) and (2). Always keep `actions` (it scans the workflow files themselves).
-4. If the intersection is empty (e.g. a Dart/Flutter- or F#-only repo with no other supported language), **delete `codeql.yml`** and record in the Step 5 report that no CodeQL-supported language was found.
-
-As of this writing CodeQL supports: `c-cpp`, `csharp`, `go`, `java-kotlin`, `javascript-typescript`, `python`, `ruby`, `swift`, `rust`, `actions` — **and NOT Dart/Flutter or F#.** Treat this list as illustrative only; re-check at runtime per step 2.
-
-Other rules:
-- `build-mode: none` for interpreted languages + `rust`/`csharp`; `autobuild` (or a manual build) for compiled languages that need a real build (`go`, `java-kotlin`, `c-cpp`).
-- `queries: security-extended`.
-- Action versions are **SHA-pinned** (supply-chain hardening); the `github-actions` Dependabot group keeps them current.
-- The job is gated on `if: github.event.repository.visibility == 'public'` so private repos without GHAS skip cleanly and self-enable when made public.
-
-### [GITHUB-DEP-REVIEW] Dependency review on every PR
-
-The `security` job in [`templates/.github/workflows/ci.yml`](templates/.github/workflows/ci.yml) runs `actions/dependency-review-action`, which **fails the PR if it introduces a dependency with a known vulnerability** (`fail-on-severity: high`). Free for public repos. It lives in `ci.yml` (lightweight, PR-only, no special token scopes) rather than its own workflow. Delete the job only if the repo has no dependency manifests.
-
-### [GITHUB-SECRET-SCANNING] Secret scanning + push protection — MANDATORY
-
-Every repo MUST have secret scanning AND push protection on. Push protection **blocks a commit that contains a detected secret before it reaches the remote** — the cheapest possible defense against leaked credentials. Free for public repos; needs GitHub Secret Protection on private repos.
-
-| Setting | Value |
-|---|---|
-| Secret scanning | **on** |
-| Push protection | **on** |
-
-These are repo settings (not files) — apply via [GITHUB-CLI] below, and set the org-level "auto-enable for new repositories" once in **Settings → Code security**.
-
-### [GITHUB-SECURITY-POLICY] SECURITY.md + private vulnerability reporting — MANDATORY
-
-**Every repo MUST have a security policy** so a researcher who finds a vulnerability has a private, structured channel instead of a public issue. Two parts:
-
-1. **`SECURITY.md`** — committed file. GitHub looks for it in `.github/`, then the repo root, then `docs/` (first found wins); surfaces it on the **Security** tab and the new-issue page. **Standard location: repo root** (or `.github/SECURITY.md`). Template: [`templates/SECURITY.md`](templates/SECURITY.md). It MUST state: how to report (private vulnerability reporting first, email fallback), what to expect (ack within 3 business days, assessment within 10), and supported versions. Fill every `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}` placeholder.
-2. **Private vulnerability reporting (PVR)** — repo setting that gives researchers a **"Report a vulnerability"** button on the Security tab. Free for public repos; needs GHAS on private repos. Enable via [GITHUB-CLI] below (`gh api -X PUT repos/$REPO/private-vulnerability-reporting`), and set the org-level auto-enable in **Settings → Code security**.
-
-Authoritative GitHub docs (reference these directly in `SECURITY.md`):
-- Add a security policy: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy
-- Configure private vulnerability reporting: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository
-
-An org-wide default `SECURITY.md` can live in the org's `.github` repo; a repo-level `SECURITY.md` overrides it. Repo-level is still preferred so the supported-versions table is accurate.
+Docs to cite in SECURITY.md: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy · https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository
 
 ### [GITHUB-CLI] Applying Settings via `gh` CLI
 

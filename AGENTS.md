@@ -170,6 +170,7 @@ AgentPMOWorkflow/
 │   └── templates/                 # Portfolio-wide templates (agent-agnostic)
 │       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)
 │       ├── CLAUDE.md              # Pointer to AGENTS.md (with Claude-specific skill links)
+│       ├── SECURITY.md            # Security policy template (GITHUB-SECURITY-POLICY)
 │       ├── Makefile
 │       ├── .github/
 │       │   ├── common-repo-settings.md
