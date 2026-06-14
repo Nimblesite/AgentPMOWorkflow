@@ -4,9 +4,10 @@
 > Defines the exact configuration files, targets, job names, and templates every repo in this
 > portfolio must conform to. The skill reads this to MINT a new repo or REMEDIATE an existing one.
 >
-> This spec is the machine-readable encoding of Nimblesite's strategy guide,
-> [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/): the guide states
-> the practice; every section below turns it into a concrete, enforceable artifact an agent must produce.
+> These standards are evidence-based; the research behind them, and the wider AI-deployment strategy,
+> are collected in Nimblesite's guide,
+> [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/). This spec is one
+> example of how a company turns those practices into concrete, enforceable repo standards.
 
 ---
 
@@ -42,7 +43,7 @@ These standards are evidence-based, not preference. AI raises *volume* faster th
 | High-false-positive analysis gets ignored, then switched off — integrate into review, keep signal high | [Sadowski et al., CACM 2018](https://cacm.acm.org/research/lessons-from-building-static-analysis-tools-at-google/) | one-owner-per-concern anti-duplication ([GITHUB-CODE-SCANNING]), zero-warning lint |
 | Experienced devs were **19% slower** with AI while believing they were 20% faster | [METR, 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) | measure via dashboard + CI gates, not self-report |
 
-**This spec operationalizes a strategy.** The findings above are the research layer beneath Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/). The guide makes the recommendation — *gate on verification*, *drive from specs*, *put AI on defence*, *invest in quality, never volume* — and this spec encodes each one as the exact Makefile target, CI job, config file, and template an agent must produce to comply.
+**The research, in one place.** The findings above — and the wider strategy for deploying AI across a team — are collected in Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/): *gate on verification*, *drive from specs*, *put AI on defence*, *invest in quality, never volume*. This spec is one example of how a company turns those evidence-based practices into concrete repo standards — exact Makefile targets, CI jobs, config files, and templates.
 
 ---
 

@@ -5,11 +5,13 @@ deployed to GitHub Pages.
 
 **Live:** https://nimblesite.github.io/AgentPMOWorkflow/
 
-The site frames Agent PMO as the executable implementation of Nimblesite's strategy guide,
-[How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/). The guide URL
-lives in [`src/_data/site.js`](src/_data/site.js) as `strategyUrl`; it is linked from the global
-footer ([`_includes/base.njk`](src/_includes/base.njk)) and tied back to specific practices on every
-page. Reuse `{{ site.strategyUrl }}` / `{{ site.strategyTitle }}` rather than hard-coding the link.
+The site links Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/),
+as the research and strategy context behind these standards. Agent PMO is presented as **one example**
+of how a company can structure its repo templates for efficient AI development — **not** as an
+implementation of the guide. The guide URL lives in [`src/_data/site.js`](src/_data/site.js) as
+`strategyUrl`; it is linked from the global footer ([`_includes/base.njk`](src/_includes/base.njk))
+and referenced on each page. Reuse `{{ site.strategyUrl }}` / `{{ site.strategyTitle }}` rather than
+hard-coding the link.
 
 ## Develop
 
