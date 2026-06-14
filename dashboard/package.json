@@ -9,6 +9,6 @@
   "author": "Nimblesite",
   "license": "MIT",
   "dependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.60.0"
   }
 }
