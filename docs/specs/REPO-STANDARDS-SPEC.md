@@ -25,6 +25,23 @@
 
 ---
 
+## [EVIDENCE] Why These Standards Exist (the research)
+
+These standards are evidence-based, not preference. AI raises *volume* faster than *quality* and writes less secure code with false confidence — so every gate here exists to make verification and security non-optional. Cite this when a human or agent wants to weaken a gate; don't weaken one without reading it.
+
+| Finding | Source | Standard it mandates |
+|---|---|---|
+| Devs with an AI assistant wrote **less secure** code (SQLi, weak crypto) yet believed it was *more* secure | [Perry et al., ACM CCS 2023](https://arxiv.org/abs/2211.03622) | [GITHUB-CODE-SCANNING], [GITHUB-DEP-REVIEW], [GITHUB-SECRET-SCANNING], [GITHUB-SECURITY-POLICY] |
+| 25% rise in AI adoption → **7.2% drop in delivery stability** (individual speed ≠ delivery gains) | [DORA, 2024](https://dora.dev/research/2024/dora-report/) | fail-fast CI + coverage ratchet ([TEST-RULES], [COVERAGE-THRESHOLDS]), small diffs |
+| Duplicated code blocks rose **~8×** with AI adoption | [GitClear, 2025](https://www.gitclear.com/ai_assistant_code_quality_2025_research) | duplication gate ([CI-DESLOP]) |
+| Coverage measures lines run, not behavior verified; Google runs mutation testing across 1,000+ projects | [Petrović & Ivanković, IEEE TSE 2021](https://research.google/pubs/practical-mutation-testing-at-scale-a-view-from-google/) | coverage is a floor, not proof ([TEST-RULES]) |
+| High-false-positive analysis gets ignored, then switched off — integrate into review, keep signal high | [Sadowski et al., CACM 2018](https://cacm.acm.org/research/lessons-from-building-static-analysis-tools-at-google/) | one-owner-per-concern anti-duplication ([GITHUB-CODE-SCANNING]), zero-warning lint |
+| Experienced devs were **19% slower** with AI while believing they were 20% faster | [METR, 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) | measure via dashboard + CI gates, not self-report |
+
+Full strategy: [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
+
+---
+
 ## [MAKE] Universal Makefile Standard
 
 Every repo MUST have a root `Makefile`. The target *names* below are canonical: a
@@ -32,6 +49,16 @@ repo uses these names for the concepts that apply to it. It does NOT have to dep
 all of them — only the ones that mean something for this repo. Language-specific work
 is delegated internally; when a standard target is present, its name and behaviour
 never change.
+
+### [MAKE-TIGHT] Keep Makefiles tight — no bloat (CRITICAL)
+
+Makefiles rot into bloat. They MUST stay tight. The Makefile is an *interface*, not a
+script dump: its public surface is the short list a human or agent types.
+
+- **The standard 7 are a vocabulary, not a quota.** You do NOT need all of them. Deploy only the targets whose concept exists in this repo (a docs repo has no `build`; a no-formatter repo has no `fmt`). A hollow/no-op target added "to have all 7" is a defect.
+- **Private by default — public is the exception.** Every target that isn't a standard public target ([MAKE-TARGETS]) or an intentional repo-specific entrypoint MUST be underscore-prefixed (`_test_unit`, `_coverage_check`) and kept OUT of `.PHONY` and out of `make help`. Helpers, sub-steps, and internal chains are private. If in doubt, make it `_`.
+- **Public targets are few.** A typical repo exposes a handful (often `test`/`lint`/`ci` plus 0–2 repo-specific). Long public lists are a smell — collapse synonyms (`test-all`, `check`, `tidy`, `lint-fix` → the canonical target), fold one-off commands into the recipe that needs them or a private helper.
+- **No dead targets.** Delete agent-pmo-stamped targets that no longer apply ([MARKER-CLEANUP]). Don't accumulate.
 
 ### [MAKE-CROSS-PLATFORM] Cross-Platform Requirements (Linux, macOS, Windows)
 
@@ -149,9 +176,12 @@ build     — compiles artifacts (depends on test)
 
 Optional jobs (exact names):
 ```
-security  — vulnerability scanning (cargo audit, npm audit, etc.)
+security  — dependency review / audit. Required if the repo has manifests ([GITHUB-DEP-REVIEW]).
+            CodeQL is NOT here — it is its own codeql.yml ([GITHUB-CODE-SCANNING]).
 deploy    — deploy preview/staging (depends on build)
 ```
+
+Non-overlapping layers ([GITHUB-CODE-SCANNING] anti-duplication): `lint`=style, CodeQL=vulnerable code, `security`/dependency-review=vulnerable deps.
 
 ### [CI-TEMPLATE] ci.yml Template
 
@@ -867,6 +897,49 @@ This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR
 
 If protection already exists, leave it alone.
 
+### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam
+
+Dependabot on for every repo. Enable at account/org (+ "auto-enable new repos"): **alerts**, **security updates**, **grouped security updates**.
+
+Grouping comes from committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
+- Keep `github-actions` (any repo with workflows). Keep only `package-ecosystem` blocks whose manifests exist; delete the rest.
+- Every ecosystem grouped: `*-minor` (minor+patch) + `*-major`. Ungrouped (one PR/dep) is banned.
+- `schedule: weekly`; `open-pull-requests-limit: 5`.
+
+### [GITHUB-CODE-SCANNING] CodeQL — mandatory where a supported language exists
+
+Finds vulnerable *code* (taint/dataflow). Free for public; GHAS for private. [template](templates/.github/workflows/codeql.yml) → `.github/workflows/codeql.yml`. SEPARATE from `ci.yml` (needs job-scoped `security-events: write`; top-level `contents: read`) — never merge in.
+
+Triggers, exactly three: `pull_request`→main (gate); `schedule` weekly (re-scan unchanged code vs new queries); `push` tag `v*` (scan released SHA before every release). Never `push: branches:[main]`.
+
+Tailor matrix at skill-run time: intersect repo languages with languages CodeQL supports **now** (check live: `codeql resolve languages` / CodeQL docs — the set grows). One `include:` per language + always `actions`. Empty intersection (e.g. Dart/F#-only) → no codeql.yml; record it. Illustrative supported set: c-cpp, csharp, go, java-kotlin, javascript-typescript, python, ruby, swift, rust, actions — NOT Dart/Flutter, F#.
+
+File rules: `build-mode: none` (interpreted + rust/csharp; avoids re-compiling what ci builds), `autobuild`/manual for go/java-kotlin/c-cpp; `queries: security-extended`; SHA-pinned actions (Dependabot refreshes); `if: github.event.repository.visibility == 'public'` (private skips cleanly, self-enables when public).
+
+**Anti-duplication — one owner per concern (duplicate analysis = wasted Actions minutes). Delete duplicates:**
+
+| Concern | One owner | Never |
+|---|---|---|
+| style/correctness | linters in `make lint` | security linter plugins (eslint-plugin-security/gosec/bandit) re-covering CodeQL |
+| vulnerable code | CodeQL (`codeql.yml`) | a 2nd SAST; GitHub default-setup CodeQL alongside the file — use advanced setup, disable default |
+| vulnerable deps | ONE of dependency-review OR native vuln-gate (osv/cargo-deny/npm audit) | both over the same manifests |
+| secrets | GitHub secret scanning + push protection (0 CI minutes) | trufflehog/gitleaks CI jobs |
+
+### [GITHUB-DEP-REVIEW] Dependency review
+
+`ci.yml` `security` job runs `actions/dependency-review-action` (`fail-on-severity: high`) — fails a PR that adds a vulnerable dep. Omit if the repo has no manifests OR already has a native vuln-gate (no doubling).
+
+### [GITHUB-SECRET-SCANNING] Secret scanning + push protection — mandatory
+
+Both on; push protection blocks a secret before it leaves the machine. Free for public; GHAS for private. Repo settings via [GITHUB-CLI]; org "auto-enable new repos" in Settings → Code security.
+
+### [GITHUB-SECURITY-POLICY] SECURITY.md + private vulnerability reporting — mandatory
+
+1. `SECURITY.md` at repo root (or `.github/`; GitHub also reads `docs/`). [template](templates/SECURITY.md). State: how to report (PVR first, email fallback), expectations (ack 3 business days, assessment 10), supported versions. Fill `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}`.
+2. Private vulnerability reporting on ("Report a vulnerability" button, Security tab). Free for public; GHAS for private. Enable via [GITHUB-CLI].
+
+Docs to cite in SECURITY.md: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy · https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository
+
 ### [GITHUB-CLI] Applying Settings via `gh` CLI
 
 ```bash
@@ -883,6 +956,20 @@ gh api -X PATCH "repos/$REPO" \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Dependabot ([GITHUB-DEPENDABOT]) — alerts + automated security update PRs.
+# Grouping comes from the committed .github/dependabot.yml; grouped SECURITY
+# updates is an account/org-level toggle (set it in the UI per common-repo-settings.md).
+gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
+gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Secret scanning + push protection ([GITHUB-SECRET-SCANNING]).
+gh api -X PATCH "repos/$REPO" --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
+JSON
+
+# Private vulnerability reporting ([GITHUB-SECURITY-POLICY]; pairs with SECURITY.md).
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting"
 ```
 
 ---
@@ -963,6 +1050,10 @@ CI
 [ ] ci.yml: `make test` is the ONLY test invocation. It MUST collect coverage AND enforce thresholds from `coverage-thresholds.json`.
 [ ] ci.yml: NO `COVERAGE_THRESHOLD` env vars and NO references to GitHub repo variables for thresholds
 [ ] ci.yml: artifacts uploaded
+[ ] ci.yml has a `security` job running dependency-review (repos with manifests) ([GITHUB-DEP-REVIEW])
+[ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
+[ ] codeql.yml triggers are exactly: PR to main + weekly schedule + release tag `v*` (no `push: branches:[main]`) ([GITHUB-CODE-SCANNING])
+[ ] Anti-duplication: one owner per concern (lint=style, CodeQL=code, ONE dep scanner, platform secret scanning); no GitHub default-setup CodeQL alongside codeql.yml; `build-mode: none` where allowed ([GITHUB-CODE-SCANNING])
 
 COVERAGE
 [ ] `coverage-thresholds.json` exists at the repo root (or per sub-project) with `default_threshold` set
@@ -1003,6 +1094,12 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Squash commit title = PR_TITLE, message = PR_BODY
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
 [ ] Branch protection on main (require PR + CI pass)
+[ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
+[ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
+[ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
+[ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
+[ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])
+[ ] Private vulnerability reporting enabled ([GITHUB-SECURITY-POLICY])
 
 IDE
 [ ] VS Code title bar colorized with project brand colors (.vscode/settings.json workbench.colorCustomizations)

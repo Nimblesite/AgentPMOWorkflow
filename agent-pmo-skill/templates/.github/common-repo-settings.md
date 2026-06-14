@@ -45,6 +45,53 @@ Else add branch protection with the ci.yaml script. It should only fire on PRs t
 | Default branch | **main** |
 | Web commit signoff required | **false** |
 
+## Dependabot (Supply-Chain Defense)
+
+Outdated dependencies are the portfolio's biggest supply-chain attack surface.
+Every repo MUST have Dependabot on — but grouped, so it patches dependencies
+**without blanketing the repo in PRs**.
+
+| Setting | Value | Notes |
+|---|---|---|
+| Dependabot alerts | **on** | Surfaces known vulnerabilities |
+| Dependabot security updates | **on** | Auto-opens PRs that resolve alerts |
+| Grouped security updates | **on** | One PR per ecosystem, not one per advisory |
+| Automatically enable for new repositories | **on** | Set at the account/org level so future repos inherit this |
+
+Grouped *version* updates come from the committed `.github/dependabot.yml`
+(template: [`dependabot.yml`](dependabot.yml)). Its `groups:` rules also apply
+to security updates, so security fixes land grouped too. Keep only the
+`package-ecosystem` blocks the repo actually uses; keep `github-actions` for any
+repo with workflows.
+
+The three toggles and "auto-enable for new repos" live on the account/org
+**Settings → Code security** page (the "Enable all" / "Automatically enable for
+new repositories" controls) — set them there once.
+
+## Code Scanning & Secret Scanning (GitHub Advanced Security)
+
+Free for **public** repos; requires GHAS (Code Security / Secret Protection) on
+private repos. Every PR must undergo security scanning.
+
+| Feature | Where | Notes |
+|---|---|---|
+| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. |
+| Dependency review | `security` job in `ci.yml` | Fails PRs that add vulnerable *dependencies* (`fail-on-severity: high`). |
+| Secret scanning | repo setting (below) | Detects committed keys/tokens. |
+| Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
+| Private vulnerability reporting | repo setting (below) | "Report a vulnerability" button on the Security tab. Pairs with `SECURITY.md`. |
+| Security policy | `SECURITY.md` (root or `.github/`) | How to report + supported versions. Template: [`../SECURITY.md`](../SECURITY.md). |
+
+**Anti-duplication (saves Actions minutes = money): exactly one owner per concern.**
+linting = style · CodeQL = vulnerable code · ONE dependency scanner (dependency-review
+*or* a native vuln-gate, never both) · platform secret scanning = secrets. Never add
+security-rule linter plugins that re-cover CodeQL, and never run GitHub default-setup
+CodeQL alongside a committed `codeql.yml`. CodeQL triggers are exactly: PR to main +
+weekly + release tag `v*` (scan the released SHA), with `build-mode: none` where allowed
+so it doesn't re-compile what `ci.yml` already builds.
+
+CodeQL docs: see [`SECURITY.md`](../SECURITY.md) for the GitHub policy/PVR doc links.
+
 ## `gh` CLI Commands to Apply These Settings
 
 ```bash
@@ -62,4 +109,18 @@ gh api -X PATCH "repos/$REPO" \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Dependabot: enable alerts + automated security update PRs (per-repo).
+# Grouping is provided by the committed .github/dependabot.yml; grouped SECURITY
+# updates + "auto-enable for new repos" are account/org toggles set in the UI.
+gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
+gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Secret scanning + push protection (GHAS; free for public repos).
+gh api -X PATCH "repos/$REPO" --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
+JSON
+
+# Private vulnerability reporting (pairs with SECURITY.md; free for public repos).
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting"
 ```

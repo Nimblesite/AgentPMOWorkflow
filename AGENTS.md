@@ -44,6 +44,8 @@ Hard rules, testing rules, and language-specific rules for target repos live in 
 - **Template AGENTS.md for target repos:** `agent-pmo-skill/templates/AGENTS.md`
 - **Authoritative spec:** `docs/specs/REPO-STANDARDS-SPEC.md`
 
+**These standards are evidence-based, not preference.** The research shows AI raises *volume* faster than *quality* and writes less secure code with false confidence ([Stanford CCS 2023](https://arxiv.org/abs/2211.03622) · [DORA 2024](https://dora.dev/research/2024/dora-report/) · [GitClear 2025](https://www.gitclear.com/ai_assistant_code_quality_2025_research)). Verification is the bottleneck — every gate enforces it. Research→standard mapping: `REPO-STANDARDS-SPEC.md` [EVIDENCE]. Don't weaken a gate without reading it. Full playbook: <https://www.nimblesite.co/ai-strategy/>.
+
 ### Website
 
 - Keep CSS minimal
@@ -170,12 +172,16 @@ AgentPMOWorkflow/
 │   └── templates/                 # Portfolio-wide templates (agent-agnostic)
 │       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)
 │       ├── CLAUDE.md              # Pointer to AGENTS.md (with Claude-specific skill links)
+│       ├── SECURITY.md            # Security policy template (GITHUB-SECURITY-POLICY)
 │       ├── Makefile
 │       ├── .github/
 │       │   ├── common-repo-settings.md
 │       │   ├── copilot-instructions.md
+│       │   ├── dependabot.yml      # Grouped Dependabot config (supply-chain)
 │       │   ├── pull_request_template.md
-│       │   └── workflows/         # CI/CD templates
+│       │   └── workflows/         # CI/CD templates (ci.yml, release.yml,
+│       │       │                  #   deploy-pages.yml, codeql.yml)
+│       │       └── codeql.yml     # CodeQL code scanning (tailored matrix)
 │       ├── linting/               # Linter configs per language
 │       ├── coverage/              # Coverage configs
 │       ├── devcontainer/          # Devcontainer configs per language

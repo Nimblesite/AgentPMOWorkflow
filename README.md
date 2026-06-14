@@ -11,6 +11,8 @@
 
 **🌐 Website:** [nimblesite.github.io/AgentPMOWorkflow](https://nimblesite.github.io/AgentPMOWorkflow/)
 
+<img src="website/src/assets/images/agent-pmo-workspace.png" alt="Scattered repositories converging into a standardized Agent PMO workspace with aligned quality checks" width="900">
+
 ```mermaid
 flowchart TD
     D["PMO Dashboard · scans every repo every 3 min"]
@@ -60,6 +62,22 @@ A skill that applies portfolio-wide templates to any repo: same Makefile targets
 ## Quality Gates
 
 Agents don't hand you rough drafts. Lint, type check, format, unit tests, integration tests, and coverage thresholds are all enforced by CI with no soft-fail mode. Coverage thresholds are monotonically increasing — they never regress. By the time code reaches you, every automated check has passed. You're the final gate: reviewing intent and architecture, not whether it compiles.
+
+---
+
+## Why — Run the Data, Not the Hype
+
+AI writes code faster than any team can review it. **Typing was never the bottleneck — verification is.** The research is blunt:
+
+- **84%** of developers now use or plan to use AI coding tools ([Stack Overflow, 2025](https://survey.stackoverflow.co/2025/ai)) — yet trust in their output has *fallen* to **33%**, and the top frustration (45%) is "almost right, but not quite."
+- Experienced developers were **19% slower** with AI on code they knew well — while *believing* they were 20% faster ([METR, 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/)). You cannot manage AI by self-report.
+- A **25% rise in AI adoption** tracked with a **7.2% drop in delivery stability** ([DORA, 2024](https://dora.dev/research/2024/dora-report/)). Big batches with weak verification are the oldest reliability risk in software.
+- Duplicated code blocks rose **~8×** as AI adoption climbed ([GitClear, 2025](https://www.gitclear.com/ai_assistant_code_quality_2025_research)). More code you can't trust is a liability, not a return.
+- Developers with an AI assistant wrote **less secure** code — and were *more* confident it was secure ([Stanford, ACM CCS 2023](https://arxiv.org/abs/2211.03622)). That is why every repo here gets CodeQL, secret scanning, dependency review, and a security policy **by default**.
+
+**The fix is governance, not vibes.** Agent PMO is the verification-and-control layer the data demands: one dashboard over every agent, standardized quality gates, and security scanning on every PR. Spend to raise *quality* — never output volume.
+
+Full playbook: [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
 
 ---
 

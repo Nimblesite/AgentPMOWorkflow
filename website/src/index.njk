@@ -111,6 +111,14 @@ description: "Agent PMO is a set of templates — quality gates, skills, release
   </div>
 </section>
 
+<section class="section" aria-label="Agent PMO workspace illustration">
+  <div class="section-inner">
+    <div class="diagram diagram-img fade-in">
+      <img src="/assets/images/agent-pmo-workspace.png" alt="Scattered repository panels converging into a standardized Agent PMO workspace with aligned quality checks" width="1672" height="941" loading="lazy" />
+    </div>
+  </div>
+</section>
+
 <section class="section consulting-cta" aria-label="Work with Nimblesite on AI-ready DevEx">
   <div class="section-inner">
     <div class="consulting-cta-inner">
@@ -356,7 +364,10 @@ description: "Agent PMO is a set of templates — quality gates, skills, release
         No soft-fail mode. By the time code reaches you, every automated check has passed.
         You're the final gate: reviewing intent and architecture, not whether it compiles.
       </p>
-      <a href="/features/#quality-gates" class="btn btn-accent">See all quality gates →</a>
+      <div class="diagram diagram-img">
+        <img src="/assets/images/quality-gates.png" alt="Code changes moving through a sequence of enforced quality gates before reaching human review" width="1672" height="941" loading="lazy" />
+      </div>
+      <a href="/features/#quality-gates" class="btn btn-accent feature-card-action">See all quality gates →</a>
     </div>
   </div>
 </section>
@@ -406,21 +417,8 @@ description: "Agent PMO is a set of templates — quality gates, skills, release
       </div>
 
       <div class="spec-visual fade-in delay-2">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ spec traceability</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-accent">AUTH-LOGIN</span> <span class="terminal-dim">User Authentication</span>
-  <span class="terminal-dim">→</span> <span class="terminal-ok">code/auth.ts</span>        <span class="terminal-dim">implements</span>
-  <span class="terminal-dim">→</span> <span class="terminal-ok">tests/auth.spec.ts</span>  <span class="terminal-dim">verifies</span>
-  <span class="terminal-dim">→</span> <span class="terminal-ok">PR #42</span>             <span class="terminal-dim">delivers</span>
-
-<span class="terminal-ok">✓ Full traceability — clean</span><span class="cursor">▋</span></pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/traceability-map.png" alt="A central requirement node connected to code, tests, plans, and review evidence" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>

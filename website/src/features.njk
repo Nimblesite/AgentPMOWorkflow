@@ -47,26 +47,8 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         </p>
       </div>
       <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ make (any repo)</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-dim"># Same 7 targets, every repo:</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make build</span>   <span class="terminal-dim"># compile</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make test</span>    <span class="terminal-dim"># fail-fast tests + coverage + threshold</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make lint</span>    <span class="terminal-dim"># lint + format check + typecheck</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make fmt</span>     <span class="terminal-dim"># format code in place</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make clean</span>   <span class="terminal-dim"># remove artifacts</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make ci</span>      <span class="terminal-dim"># lint + test + build</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">make setup</span>   <span class="terminal-dim"># bootstrap dev env</span>
-
-<span class="terminal-ok">✓ Agent knows how to work in any repo</span>
-<span class="terminal-ok">✓ Zero project-specific setup</span></pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/agent-pmo-workspace.png" alt="Repository panels being standardized into one shared Agent PMO workspace" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>
@@ -97,23 +79,8 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         </p>
       </div>
       <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ CI pipeline output</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-ok">✓</span> lint          <span class="terminal-dim">0 violations</span>
-<span class="terminal-ok">✓</span> typecheck     <span class="terminal-dim">0 errors</span>
-<span class="terminal-ok">✓</span> format        <span class="terminal-dim">clean</span>
-<span class="terminal-ok">✓</span> unit tests    <span class="terminal-dim">142 passed</span>
-<span class="terminal-ok">✓</span> integration   <span class="terminal-dim">28 passed</span>
-<span class="terminal-ok">✓</span> coverage      <span class="terminal-dim">87% ≥ 85%</span>
-
-<span class="terminal-ok">✓ All gates passed — ready for review</span></pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/quality-gates.png" alt="Code changes passing through sequential automated quality gates before review" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>
@@ -148,34 +115,8 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         </div>
       </div>
       <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ repo-report.html</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-ok">✓</span> app-backend
-  branch: main
-  PR #47 · CI <span class="terminal-ok">green</span>
-  last: 2h ago
-
-<span class="terminal-warn">⚠</span> data-pipeline
-  branch: feat/ingest
-  PR #12 · CI <span class="terminal-warn">running</span>
-  3 uncommitted
-
-<span class="terminal-ok">✓</span> mobile-client
-  branch: feat/auth
-  PR #8 · CI <span class="terminal-ok">green</span>
-  awaiting review
-
-<span class="terminal-dim">↻</span> api-gateway
-  branch: main
-  no PR · CI <span class="terminal-dim">pending</span>
-  agent: linting</pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/dashboard-control-room.png" alt="A dashboard control room showing many repository health signals in one place" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>
@@ -216,22 +157,8 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         </p>
       </div>
       <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ TMC orchestration log</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-ok">[TMC]</span> agent-A registered: feat/auth
-<span class="terminal-ok">[TMC]</span> agent-B registered: fix/ci-timeout
-<span class="terminal-ok">[TMC]</span> agent-A locked: src/auth/login.ts
-<span class="terminal-warn">[TMC]</span> agent-B requested: src/auth/login.ts
-<span class="terminal-warn">[TMC]</span> agent-B: file locked — waiting
-<span class="terminal-ok">[TMC]</span> agent-A released: src/auth/login.ts
-<span class="terminal-ok">[TMC]</span> agent-B acquired: src/auth/login.ts</pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/parallel-coordination.png" alt="Multiple agent workstreams sharing one repository through file locks and coordination lanes" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>
@@ -270,38 +197,8 @@ description: "Agent PMO features: real-time PMO dashboard, repo standards enforc
         </div>
       </div>
       <div class="feature-detail-visual">
-        <div class="terminal">
-          <div class="terminal-header">
-            <span class="terminal-dot terminal-dot-red"></span>
-            <span class="terminal-dot terminal-dot-yellow"></span>
-            <span class="terminal-dot terminal-dot-green"></span>
-            <span class="terminal-title">~ AUTH-LOGIN traceability matrix</span>
-          </div>
-          <div class="terminal-body">
-<pre><span class="terminal-accent">AUTH-LOGIN</span> <span class="terminal-ok">User Authentication</span>
-
-<span class="terminal-dim">implements:</span>
-  <span class="terminal-ok">src/auth/login.ts</span>
-  <span class="terminal-ok">src/auth/session.ts</span>
-  <span class="terminal-ok">src/middleware/auth.ts</span>
-
-<span class="terminal-dim">verifies:</span>
-  <span class="terminal-ok">tests/auth/login.spec.ts</span>
-  <span class="terminal-ok">tests/e2e/auth-flow.spec.ts</span>
-
-<span class="terminal-dim">delivers:</span>
-  <span class="terminal-ok">PR #42  · merged · CI green</span>
-
-<span class="terminal-dim">scheduled:</span>
-  <span class="terminal-ok">PLAN.md § Phase 2</span>
-
-<span class="terminal-dim">───────────────────────────────</span>
-<span class="terminal-dim"># grep verifies coverage:</span>
-<span class="terminal-prompt">$ </span><span class="terminal-cmd">grep -r "AUTH-LOGIN" src/ tests/</span>
-<span class="terminal-ok">✓</span> 3 source files implement
-<span class="terminal-ok">✓</span> 2 test files verify
-<span class="terminal-ok">✓</span> Full traceability</pre>
-          </div>
+        <div class="diagram diagram-img">
+          <img src="/assets/images/traceability-map.png" alt="Requirement evidence connected to implementation, tests, plans, and pull request review" width="1672" height="941" loading="lazy" />
         </div>
       </div>
     </div>

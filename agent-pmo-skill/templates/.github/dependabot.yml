@@ -1,0 +1,119 @@
+# Dependabot — portfolio standard.
+#
+# Goal: keep dependencies patched (supply-chain defense) WITHOUT blanketing the
+# repo in pull requests. Every ecosystem here is GROUPED, so a run opens at most
+# two PRs per ecosystem (one for minor/patch, one for majors) instead of one PR
+# per dependency. These group rules ALSO apply to Dependabot security updates,
+# so security fixes land grouped too.
+#
+# CUSTOMIZE: keep the `package-ecosystem` blocks whose manifests exist in THIS
+# repo; delete the rest. The `github-actions` block applies to EVERY repo that
+# has workflows under .github/ — keep it.
+version: 2
+
+updates:
+  # GitHub Actions — applies to every repo with workflows. Pinned actions are a
+  # prime supply-chain target, so keep them current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # ── Language ecosystems: keep the ones this repo uses, delete the rest. ──
+  # Each ecosystem splits into two grouped PRs:
+  #   <eco>-minor — minor + patch bumps (low risk, merge freely)
+  #   <eco>-major — major bumps (breaking, review individually)
+
+  # npm / Node — package.json
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      npm-minor:
+        update-types: ["minor", "patch"]
+      npm-major:
+        update-types: ["major"]
+
+  # Cargo / Rust — Cargo.toml
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      cargo-minor:
+        update-types: ["minor", "patch"]
+      cargo-major:
+        update-types: ["major"]
+
+  # NuGet / .NET — *.csproj, *.fsproj, packages.config
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      nuget-minor:
+        update-types: ["minor", "patch"]
+      nuget-major:
+        update-types: ["major"]
+
+  # pip / Python — pyproject.toml, requirements.txt
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      pip-minor:
+        update-types: ["minor", "patch"]
+      pip-major:
+        update-types: ["major"]
+
+  # pub / Dart + Flutter — pubspec.yaml
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      pub-minor:
+        update-types: ["minor", "patch"]
+      pub-major:
+        update-types: ["major"]
+
+  # Go modules — go.mod
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      gomod-minor:
+        update-types: ["minor", "patch"]
+      gomod-major:
+        update-types: ["major"]
+
+  # Docker — Dockerfile, compose.yaml (uncomment if the repo ships images)
+  # - package-ecosystem: docker
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 5
+  #   labels: ["dependencies"]
+  #   groups:
+  #     docker:
+  #       patterns: ["*"]

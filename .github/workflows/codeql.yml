@@ -1,0 +1,56 @@
+name: CodeQL
+
+# CodeQL static security analysis ([GITHUB-CODE-SCANNING]). Separate from ci.yml:
+# it feeds code-scanning alerts and needs security-events: write + a schedule.
+# Matrix is the intersection of this repo's languages with CodeQL-supported ones:
+#   javascript-typescript — the 11ty website + Playwright tests
+#   actions               — the workflow files themselves
+# F# (.fsx) is NOT CodeQL-supported, so it is excluded. Action SHAs are kept
+# current by the github-actions Dependabot group.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    # Scan the exact released SHA before every release (PR scan = diff, weekly =
+    # drift, this = the release itself, with the current query set).
+    tags: ["v*"]
+  schedule:
+    - cron: "27 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.repository.visibility == 'public'
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          category: "/language:${{ matrix.language }}"
