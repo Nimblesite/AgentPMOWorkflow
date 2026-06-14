@@ -9,5 +9,7 @@ export default {
   nimblesite: "https://nimblesite.co",
   consultingUrl: "https://www.nimblesite.co/consulting",
   contactUrl: "https://www.nimblesite.co/#contact",
+  strategyUrl: "https://www.nimblesite.co/ai-strategy/",
+  strategyTitle: "How to Deploy AI in Your Engineering Team",
   year: new Date().getFullYear(),
 };

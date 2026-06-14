@@ -2,6 +2,11 @@
 
 F# script that scans git repos and generates an HTML status report.
 
+> **Why a dashboard?** You manage AI by measured signal across every repo, not by self-report:
+> experienced devs were 19% slower with AI while believing they were 20% faster — so you need a
+> screen, not a feeling. The research behind this, and the wider AI-deployment strategy, are in
+> Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
+
 ## Prerequisites
 
 You need all of the following installed and working before the script will do anything useful:

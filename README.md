@@ -77,7 +77,7 @@ AI writes code faster than any team can review it. **Typing was never the bottle
 
 **The fix is governance, not vibes.** Agent PMO is the verification-and-control layer the data demands: one dashboard over every agent, standardized quality gates, and security scanning on every PR. Spend to raise *quality* — never output volume.
 
-Full playbook: [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
+The research above — and the wider strategy for deploying AI across an engineering team — is collected in Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/). Agent PMO is one example of how a company can structure its repo templates to make AI development efficient and verifiable: drive from specs, gate on verification, run agents in parallel, put AI on defence.
 
 ---
 

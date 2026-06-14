@@ -3,6 +3,11 @@
 > **Machine-readable standard for the `agent-pmo` skill.**
 > Defines the exact configuration files, targets, job names, and templates every repo in this
 > portfolio must conform to. The skill reads this to MINT a new repo or REMEDIATE an existing one.
+>
+> These standards are evidence-based; the research behind them, and the wider AI-deployment strategy,
+> are collected in Nimblesite's guide,
+> [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/). This spec is one
+> example of how a company turns those practices into concrete, enforceable repo standards.
 
 ---
 
@@ -38,7 +43,7 @@ These standards are evidence-based, not preference. AI raises *volume* faster th
 | High-false-positive analysis gets ignored, then switched off — integrate into review, keep signal high | [Sadowski et al., CACM 2018](https://cacm.acm.org/research/lessons-from-building-static-analysis-tools-at-google/) | one-owner-per-concern anti-duplication ([GITHUB-CODE-SCANNING]), zero-warning lint |
 | Experienced devs were **19% slower** with AI while believing they were 20% faster | [METR, 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) | measure via dashboard + CI gates, not self-report |
 
-Full strategy: [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
+**The research, in one place.** The findings above — and the wider strategy for deploying AI across a team — are collected in Nimblesite's guide, [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/): *gate on verification*, *drive from specs*, *put AI on defence*, *invest in quality, never volume*. This spec is one example of how a company turns those evidence-based practices into concrete repo standards — exact Makefile targets, CI jobs, config files, and templates.
 
 ---
 
@@ -524,6 +529,20 @@ Any repo that ships a **developer tool** (or any technical docs/product site) an
   ```
 - A dev-tool repo with a website on any other theme/SSG is **non-compliant** — migrate it to the techdoc theme.
 
+### [WEB-RELEASES] Releases page (MANDATORY for any repo with a website)
+
+**If the repo has a website AND publishes GitHub Releases, the website MUST have a `/releases/` page that lists the GitHub releases — title, tag, date, prerelease flag, and the rendered release notes — built at build time from the GitHub Releases for that repo.** A website that ships a tool/library but sends users to `github.com/.../releases` instead of hosting its own releases page is **non-compliant**.
+
+Rules:
+
+- **Build-time data, not client-side.** The release list is fetched during the static build (`gh release list` / `GET /repos/{owner}/{repo}/releases`) and baked into the HTML — never fetched in the browser. In Eleventy this is an Eleventy data file (`src/_data/release.js`) that runs at build; other SSGs use their equivalent build-time data hook. The page MUST render with zero client-side network calls.
+- **Notes are rendered, not linked away.** Each release shows its notes (the GitHub release `body`, Markdown) rendered to HTML on the page. **Render Markdown with raw HTML DISABLED** (`markdown-it({ html: false })` or equivalent) — auto-generated notes contain PR titles and contributor handles that are untrusted input; raw HTML there is an injection vector.
+- **Graceful fallback.** The API call MUST have a timeout and a fallback (rate-limited, offline, no releases yet) that degrades to a page linking to the GitHub releases list — the build MUST NOT fail because the GitHub API was unreachable. Honour `GITHUB_TOKEN`/`GH_TOKEN` when present to lift the rate limit in CI.
+- **Linked from primary navigation.** The releases page is reachable from the site's main nav, and the homepage's "latest release" surface links to it (not to GitHub).
+- **Deployed on release.** The releases page is regenerated every time `release.yml` deploys the site ([CI-WORKFLOWS]), so a new GitHub release appears on the site as part of the same release that created it.
+
+**Template:** [`templates/website/release.js`](../../agent-pmo-skill/templates/website/release.js) (build-time data file) and [`templates/website/releases.njk`](../../agent-pmo-skill/templates/website/releases.njk) (page).
+
 ### [WEB-UPGRADE] Always upgrade techdoc, then re-audit
 
 Every time the agent-pmo skill runs against a repo with a techdoc website it MUST:
@@ -549,7 +568,7 @@ When writing web content, optimise for SEO and AI search:
 |----------|-------|--------|
 | VS Code | `.vscode/` | Settings, extensions, launch configs, title-bar colors — shared dev tooling |
 | JetBrains | `.idea/` | Shared run configs and code style settings |
-| Claude Code | `.claude/` | Skills and instructions |
+| Claude Code | `.claude/` — including `.claude/settings.local.json` | Skills, instructions, and the committed `"autoMemoryEnabled": false` setting ([AGENT-AUTOMEMORY]). Force-commit the local settings file (`!.claude/settings.local.json`) — Claude Code auto-ignores it by default. |
 | OpenAI Codex | `.codex/`, `.agents/` | Skills and instructions |
 | Cline / Roo | `.cline/`, `.clinerules/` | Rules and skills |
 | OpenCode | `.opencode/` | Skills and instructions |
@@ -855,8 +874,13 @@ All durable rules live in the canonical instruction file ([AGENT-TEMPLATE]) and 
 else.
 
 - The agent-pmo skill MUST turn auto-memory off via the agent's own settings file (consult
-  [AGENT-DOCS] for the exact key). For **Claude Code**, set `"autoMemoryEnabled": false` in
-  `.claude/settings.json` (committed). For other agents, disable the equivalent feature per their docs.
+  [AGENT-DOCS] for the exact key). For **Claude Code**, EVERY repo MUST have a committed
+  `.claude/settings.local.json` containing `"autoMemoryEnabled": false`. The local settings file has
+  the highest precedence in Claude Code, so it pins the value regardless of any other settings file.
+  Create it if absent or merge the key in if present — never overwrite existing keys. It is
+  force-committed per [GITIGNORE-RULES] (Claude Code auto-ignores `settings.local.json` otherwise).
+  The canonical artifact is [`templates/.claude/settings.local.json`](templates/.claude/settings.local.json).
+  For other agents, disable the equivalent feature per their docs.
 - The canonical instruction file SHOULD state that auto-memory is off and that all persistent rules
   go through a reviewed PR to the instruction file, not auto-captured memory.
 
@@ -1024,7 +1048,7 @@ STRUCTURE
 [ ] Makefile internal `_coverage_check` recipe is called from `_test` (not exposed as a public target)
 [ ] Canonical instruction file has all required sections (AGENTS.md by default, or CLAUDE.md if pre-existing per [AGENT-PLACEMENT])
 [ ] Non-canonical instruction file is a pointer to canonical file ([AGENT-POINTERS])
-[ ] Auto-memory disabled ([AGENT-AUTOMEMORY]) — Claude: `"autoMemoryEnabled": false` in `.claude/settings.json`
+[ ] Auto-memory disabled ([AGENT-AUTOMEMORY]) — Claude: committed `.claude/settings.local.json` with `"autoMemoryEnabled": false`
 [ ] .clinerules/00-read-instructions.md (pointer → canonical file)
 [ ] .cursorrules (pointer → canonical file)
 [ ] .windsurfrules (pointer → canonical file)
@@ -1044,6 +1068,7 @@ CI
 [ ] release.yml triggers on `v*` tag push ONLY — no release on merge/schedule ([CI-WORKFLOWS], [CI-RELEASE])
 [ ] release.yml deploys the website if the repo has one ([CI-WORKFLOWS])
 [ ] Website (if any) uses eleventy-plugin-techdoc on Eleventy 3.x, upgraded to latest, then website-audit run ([WEB-TECHDOC], [WEB-UPGRADE])
+[ ] Website (if any, and repo publishes GitHub Releases) has a `/releases/` page built at build time from the GitHub Releases, rendering notes (html:false), linked from nav ([WEB-RELEASES])
 [ ] ci.yml has a single `ci` job with sequential steps: `make lint` → `make test` → `make build`
 [ ] ci.yml has concurrency cancel-in-progress
 [ ] ci.yml: `make lint` runs linters/analyzers only
@@ -1217,6 +1242,7 @@ The hash enables traceability: `git log --oneline <hash>..HEAD` in the standards
 | Variable | Value |
 |----------|-------|
 | `{{REPO_NAME}}` | Repository directory name |
+| `{{REPO_OWNER}}` | GitHub owner/org of the repo (e.g. `Nimblesite`) |
 | `{{PRIMARY_LANGUAGE}}` | `rust` / `typescript` / `python` / `dart` / `csharp` / `fsharp` / `go` |
 | `{{REPO_TYPE}}` | `library` / `cli` / `application` / `vscode-extension` / `static-site` |
 | `{{DESCRIPTION}}` | One-line repo description |
@@ -1279,6 +1305,9 @@ templates/
 │   ├── pyproject.toml
 │   ├── rustfmt.toml
 │   └── tsconfig.json
+├── website/
+│   ├── release.js                 # Build-time GitHub Releases data file ([WEB-RELEASES])
+│   └── releases.njk               # /releases/ page rendering notes ([WEB-RELEASES])
 └── skills/
     ├── build/
     │   └── SKILL.md
