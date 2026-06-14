@@ -9,8 +9,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test
+  # Detect whether the PR touches anything outside website/**. The dashboard
+  # test suite is irrelevant to website-only changes, so we skip it then.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect non-website changes
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # "code=true" when any changed file lives outside website/**.
+          # A website-only PR yields "code=false" and skips the dashboard tests.
+          if git diff --name-only "$BASE" "$HEAD" | grep -qvE '^website/'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Changed files:"
+          git diff --name-only "$BASE" "$HEAD"
+
+  dashboard-tests:
+    name: Dashboard tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Run inside Microsoft's official Playwright image: browsers + OS deps are
@@ -60,6 +90,30 @@ jobs:
           name: playwright-report
           path: dashboard/playwright-report/
           retention-days: 7
+
+  # Required status check. Always runs so it reports a real conclusion: a
+  # website-only PR (dashboard tests skipped) stays mergeable, while a PR that
+  # touches code fails here when the dashboard tests fail. Keep the name "Test"
+  # — it is the required check configured in branch protection.
+  Test:
+    name: Test
+    needs: [changes, dashboard-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Gate on dashboard tests
+        run: |
+          changes_result="${{ needs.changes.result }}"
+          tests_result="${{ needs.dashboard-tests.result }}"
+          echo "change detection: $changes_result | dashboard tests: $tests_result"
+          if [ "$changes_result" != "success" ]; then
+            echo "::error::change detection did not succeed"; exit 1
+          fi
+          if [ "$tests_result" = "success" ] || [ "$tests_result" = "skipped" ]; then
+            echo "Passing (tests $tests_result)"; exit 0
+          fi
+          echo "::error::dashboard tests did not pass ($tests_result)"; exit 1
 
   # Dependency review ([GITHUB-DEP-REVIEW]) — blocks PRs that pull in npm deps
   # with known vulnerabilities. CodeQL source scanning is separate in codeql.yml.
