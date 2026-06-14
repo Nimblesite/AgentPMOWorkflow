@@ -11,6 +11,8 @@
 
 **🌐 Website:** [nimblesite.github.io/AgentPMOWorkflow](https://nimblesite.github.io/AgentPMOWorkflow/)
 
+<img src="website/src/assets/images/agent-pmo-workspace.png" alt="Scattered repositories converging into a standardized Agent PMO workspace with aligned quality checks" width="900">
+
 ```mermaid
 flowchart TD
     D["PMO Dashboard · scans every repo every 3 min"]

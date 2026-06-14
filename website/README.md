@@ -33,6 +33,22 @@ website/
 └── _site/                # build output (gitignored)
 ```
 
+## Visual assets
+
+The website uses reusable PNG concept images from `src/assets/images/`.
+The visual system and placement rules live in
+[`../docs/design/website-visual-system.md`](../docs/design/website-visual-system.md).
+
+![Agent PMO dashboard control room](src/assets/images/dashboard-control-room.png)
+
+| File | Concept |
+|---|---|
+| `agent-pmo-workspace.png` | Repositories becoming a standardized Agent PMO workspace |
+| `quality-gates.png` | Code changes moving through enforced quality gates |
+| `dashboard-control-room.png` | Portfolio visibility through one dashboard |
+| `traceability-map.png` | Spec IDs connecting requirements, code, tests, plans, and PRs |
+| `parallel-coordination.png` | Multiple agents sharing one working tree through locks |
+
 ## Deployment
 
 `.github/workflows/deploy-pages.yml` builds and publishes to GitHub Pages on every push
