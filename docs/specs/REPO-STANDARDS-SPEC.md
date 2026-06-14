@@ -25,6 +25,23 @@
 
 ---
 
+## [EVIDENCE] Why These Standards Exist (the research)
+
+These standards are evidence-based, not preference. AI raises *volume* faster than *quality* and writes less secure code with false confidence — so every gate here exists to make verification and security non-optional. Cite this when a human or agent wants to weaken a gate; don't weaken one without reading it.
+
+| Finding | Source | Standard it mandates |
+|---|---|---|
+| Devs with an AI assistant wrote **less secure** code (SQLi, weak crypto) yet believed it was *more* secure | [Perry et al., ACM CCS 2023](https://arxiv.org/abs/2211.03622) | [GITHUB-CODE-SCANNING], [GITHUB-DEP-REVIEW], [GITHUB-SECRET-SCANNING], [GITHUB-SECURITY-POLICY] |
+| 25% rise in AI adoption → **7.2% drop in delivery stability** (individual speed ≠ delivery gains) | [DORA, 2024](https://dora.dev/research/2024/dora-report/) | fail-fast CI + coverage ratchet ([TEST-RULES], [COVERAGE-THRESHOLDS]), small diffs |
+| Duplicated code blocks rose **~8×** with AI adoption | [GitClear, 2025](https://www.gitclear.com/ai_assistant_code_quality_2025_research) | duplication gate ([CI-DESLOP]) |
+| Coverage measures lines run, not behavior verified; Google runs mutation testing across 1,000+ projects | [Petrović & Ivanković, IEEE TSE 2021](https://research.google/pubs/practical-mutation-testing-at-scale-a-view-from-google/) | coverage is a floor, not proof ([TEST-RULES]) |
+| High-false-positive analysis gets ignored, then switched off — integrate into review, keep signal high | [Sadowski et al., CACM 2018](https://cacm.acm.org/research/lessons-from-building-static-analysis-tools-at-google/) | one-owner-per-concern anti-duplication ([GITHUB-CODE-SCANNING]), zero-warning lint |
+| Experienced devs were **19% slower** with AI while believing they were 20% faster | [METR, 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) | measure via dashboard + CI gates, not self-report |
+
+Full strategy: [How to Deploy AI in Your Engineering Team](https://www.nimblesite.co/ai-strategy/).
+
+---
+
 ## [MAKE] Universal Makefile Standard
 
 Every repo MUST have a root `Makefile`. The target *names* below are canonical: a
@@ -32,6 +49,16 @@ repo uses these names for the concepts that apply to it. It does NOT have to dep
 all of them — only the ones that mean something for this repo. Language-specific work
 is delegated internally; when a standard target is present, its name and behaviour
 never change.
+
+### [MAKE-TIGHT] Keep Makefiles tight — no bloat (CRITICAL)
+
+Makefiles rot into bloat. They MUST stay tight. The Makefile is an *interface*, not a
+script dump: its public surface is the short list a human or agent types.
+
+- **The standard 7 are a vocabulary, not a quota.** You do NOT need all of them. Deploy only the targets whose concept exists in this repo (a docs repo has no `build`; a no-formatter repo has no `fmt`). A hollow/no-op target added "to have all 7" is a defect.
+- **Private by default — public is the exception.** Every target that isn't a standard public target ([MAKE-TARGETS]) or an intentional repo-specific entrypoint MUST be underscore-prefixed (`_test_unit`, `_coverage_check`) and kept OUT of `.PHONY` and out of `make help`. Helpers, sub-steps, and internal chains are private. If in doubt, make it `_`.
+- **Public targets are few.** A typical repo exposes a handful (often `test`/`lint`/`ci` plus 0–2 repo-specific). Long public lists are a smell — collapse synonyms (`test-all`, `check`, `tidy`, `lint-fix` → the canonical target), fold one-off commands into the recipe that needs them or a private helper.
+- **No dead targets.** Delete agent-pmo-stamped targets that no longer apply ([MARKER-CLEANUP]). Don't accumulate.
 
 ### [MAKE-CROSS-PLATFORM] Cross-Platform Requirements (Linux, macOS, Windows)
 
