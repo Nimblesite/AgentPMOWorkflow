@@ -19,7 +19,7 @@ jobs:
     # avoids that download. Tag MUST match the @playwright/test version in
     # dashboard/package-lock.json (currently 1.58.2).
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
     steps:
       - uses: actions/checkout@v6
 
