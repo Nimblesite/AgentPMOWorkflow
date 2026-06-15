@@ -1,15 +1,8 @@
 # Agent PMO Workflow — Agent Instructions
 
-> ⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`.
-> Smallest diff that solves the problem. Delete dead code, unused imports, stale comments.
-> Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
+⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`. Smallest diff that solves the problem. Delete dead code, unused imports, stale comments Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
 
-> Read this entire file before making changes.
-
-> ⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is
-> ambiguous, choose the most reasonable default, note the assumption, and keep working to
-> completion. No mid-task pauses for confirmation or approval. Deliver finished work plus a
-> short summary of any assumptions made. ⚠️
+⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is ambiguous, choose the most reasonable default, note the assumption, and keep working to completion. No mid-task pauses for confirmation or approval. Deliver finished work plus a short summary of any assumptions made. ⚠️
 
 ## Project Overview
 
@@ -31,7 +24,7 @@ This is NOT an application codebase. Most work here is editing docs, specs, temp
 
 ## Rules For This Workspace
 
-- **DO NOT use git commands.** CI and GitHub Actions handle git.
+- **DO NOT use git commands by default.** CI and GitHub Actions handle git. Touch git only when the user explicitly green-lights it for the task. When green-lit: **never** list yourself as co-author (no `Co-Authored-By`, no agent attribution — this one is never overridable); work on the single existing branch and never cut a second; no `git worktree` unless the user directs it; with multiple agents, coordinate via TMC. Full standard: [BRANCH-AGENT] in `docs/specs/REPO-STANDARDS-SPEC.md`.
 - **Do not modify tests.** Fix the code until tests pass.
 - **Run tests after changes.** `make test` — keep fixing until green.
 - **Docs are the source of truth.** Specs define behavior. Plans define how to achieve goals. All plan docs must have a TODO checklist.

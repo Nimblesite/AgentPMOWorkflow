@@ -838,21 +838,29 @@ All repos: `main` (never `master`)
 
 ### [BRANCH-AGENT] Agent git discipline (canonical instruction file MUST state these)
 
-These rules exist because agents reliably get git wrong. The canonical instruction file
-([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
+These rules exist because agents reliably get git wrong — most often by cutting branch after
+branch until the repo is a tangle, especially when several agents share it. The canonical
+instruction file ([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
 
+- **Default to NOT touching git at all.** Use git only when the user has explicitly green-lit it for the task (open a PR, merge, cut a branch). Absent that, leave commits, branches, pushes, and merges to the user and CI. The rules below govern the cases where you *have* been green-lit.
 - **NEVER push to the default branch (`main`) directly.** Every change ships through CI on a PR, then merges. The flow is always PR → CI green → merge. No exceptions.
 - **NEVER list yourself (the agent) as a commit co-author.** No `Co-Authored-By` trailer, no
   agent attribution in the commit message.
 - **Work on exactly ONE branch at a time. Always.** Even when multiple agents work the repo
-  concurrently. Reuse the existing feature branch; never open a second.
+  concurrently — they share the single branch and coordinate through the Too Many Cooks (TMC)
+  server, never cut their own. Reuse the existing feature branch; never open a second.
 - **NEVER start a new branch when a feature branch already exists.** Check first; if one is open,
   work on it.
 - **If multiple feature branches already exist, merge them into one IMMEDIATELY, before doing any
   other work.** Converge to a single branch first — do not start the task on top of a fragmented
   set of branches.
-- **Worktrees are forbidden.** Never run `git worktree`. (Not a judgement on the feature — agents
-  consistently corrupt their state with it.)
+- **Worktrees are forbidden by default.** Never run `git worktree` unless the user explicitly
+  demands it and directs you to use one. (Not a judgement on the feature — agents consistently
+  corrupt their state with it, and parallel checkouts fragment the repo.)
+
+These are the defaults for autonomous work. An explicit user instruction overrides the git
+*mechanics* above (e.g. "use a worktree", "cut a release branch") — but **never** the co-author
+rule: agent attribution stays off regardless.
 
 ### [AGENT-AUTONOMY] Autonomous operation (canonical instruction file MUST state this)
 
@@ -1112,7 +1120,7 @@ FORMATTING
 BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
-[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): no direct push to default branch, no agent co-author, exactly one branch at a time, never branch when one exists, merge multiple branches immediately, no worktrees
+[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): git only when the user green-lights it, no direct push to default branch, no agent co-author (never overridable), exactly one branch at a time (multi-agent coordinates via TMC), never branch when one exists, merge multiple branches immediately, no worktrees unless the user explicitly directs it
 [ ] Developer-tool repos: Shipwright supply-chain audit run ([CI-SHIPWRIGHT])
 
 GITHUB REPO SETTINGS ([GITHUB-SETTINGS])

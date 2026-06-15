@@ -1,15 +1,8 @@
 # {{REPO_NAME}} — Agent Instructions
 
-> ⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`.
-> Smallest diff that solves the problem. Delete dead code, unused imports, stale comments.
-> Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
+⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`. Smallest diff that solves the problem. Delete dead code, unused imports, stale comments. Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
 
-> Read this file in full. Rules below are NON-NEGOTIABLE — violations are rejected in review.
-
-> ⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is
-> ambiguous, choose the most reasonable default, note the assumption, and keep working
-> to completion. Do not pause for confirmation, clarification, or approval mid-task.
-> Deliver finished work plus a short summary of any assumptions you made. ⚠️
+⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is ambiguous, choose the most reasonable default, note the assumption, and keep working to completion. Do not pause for confirmation, clarification, or approval mid-task. Deliver finished work plus a short summary of any assumptions you made. ⚠️
 
 <!--
 TEMPLATE NOTE FOR THE AGENT APPLYING THIS FILE (delete after rendering):
@@ -18,6 +11,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
   does not apply to {{languages}}. A Python repo MUST NOT mention Rust, Dart, C#, Go, etc.
 - Fill every {{placeholder}} with real content. NO {{...}} tokens in the rendered file.
 - Remove the example logging-library rows for languages not used.
+- Within reason, re-order sections in the targer instructions file to match the ordering here
 - Remove this HTML comment.
 - The test: a developer reading the rendered file should see ZERO references to
   languages, tools, or frameworks not used in this repo.
@@ -28,17 +22,23 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 {{One paragraph describing what this repo is and does.}}
 
 **Primary language(s):** {{languages}}
-**Build command:** `make ci`
-**Test command:** `make test`
-**Lint command:** `make lint`
-
-## Too Many Cooks (Multi-Agent Coordination)
-
-If the TMC server is available: register on start (name, intent, files), lock files before editing, broadcast your plan, check messages periodically, release locks when done. Never edit a locked file — wait or take another approach.
 
 ## Hard Rules — Universal (no exceptions)
 
-- **Git discipline — agents get this wrong, so it is spelled out:**
+- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
+- **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
+- **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
+- **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
+- **Functions < 20 lines. Files < 500 lines.** Refactor when over.
+- **Never delete or skip tests. Never remove assertions.** 100% coverage is the goal.
+- **Prefer E2E/integration tests.** Unit tests only for isolating problems.
+- **Heavy structured logging everywhere.** See Logging below.
+- **No linter suppressions.** Fix the code.
+- **Pure functions over statements.**
+- **Spec IDs are hierarchical, non-numeric: `[GROUP-TOPIC]` / `[GROUP-TOPIC-DETAIL]`** (e.g., `[AUTH-TOKEN-VERIFY]`, `[CI-TIMEOUT]`). Same-group sections sit adjacent in the TOC. NO sequential numbers (`[SPEC-001]`). Code/tests/docs that implement a spec section MUST reference its ID in a comment so `grep [AUTH-` finds spec → code → tests in one shot.
+
+### Git discipline — Only for situations where you've been given the green light to use git
+
   - **NEVER push to the default branch (`main`) directly.** Always PR → CI green → merge. No exceptions.
   - **NEVER list yourself as a commit co-author.** No `Co-Authored-By` trailer, no agent attribution.
   - **Work on exactly ONE branch at a time, always** — even with multiple agents working concurrently. Reuse it.
@@ -46,34 +46,11 @@ If the TMC server is available: register on start (name, intent, files), lock fi
   - **If multiple feature branches exist, merge them into one IMMEDIATELY before doing any other work.**
   - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
 - **Auto-memory is OFF.** Persistent rules go through a reviewed PR to this file — never auto-captured memory. (Claude Code: `"autoMemoryEnabled": false` in committed `.claude/settings.local.json`.)
-- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
-- **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
-- **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
-- **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
-- **Functions < 20 lines. Files < 500 lines.** Refactor when over.
-- **Never delete or skip tests. Never remove assertions.** 100% coverage is the goal.
-- **`make test` is FAIL-FAST.** Stops at first failing test. Never `--no-fail-fast`. Saves CI minutes; stops agents idling on doomed runs. See REPO-STANDARDS-SPEC [TEST-RULES].
-- **`make test` ALWAYS computes coverage AND enforces it.** Threshold lives in `coverage-thresholds.json` at the repo root — NOT env vars, NOT gh repo variables, NOT CI YAML. Below threshold = pipeline fails. Ratchet only. See [COVERAGE-THRESHOLDS-JSON].
-- **Prefer E2E/integration tests.** Unit tests only for isolating problems.
-- **Heavy structured logging everywhere.** See Logging below.
-- **No linter suppressions.** Fix the code.
-- **Pure functions over statements.**
-- **Spec IDs are hierarchical, non-numeric: `[GROUP-TOPIC]` / `[GROUP-TOPIC-DETAIL]`** (e.g., `[AUTH-TOKEN-VERIFY]`, `[CI-TIMEOUT]`). Same-group sections sit adjacent in the TOC. NO sequential numbers (`[SPEC-001]`). Code/tests/docs that implement a spec section MUST reference its ID in a comment so `grep [AUTH-` finds spec → code → tests in one shot.
 
-## Logging Standards
+### Duplication — Deslop (MANDATORY)
 
-- **Structured logging library only.** Never `print`/`console.log`/`println!`/`Debug.WriteLine`. Library per language: Rust `tracing`, TS `pino`, Python `structlog`, Dart `dart_logging`, C#/F# `Microsoft.Extensions.Logging`, Go `log/slog`.
-- **Log at entry/exit of significant operations.** Levels: `error|warn|info|debug|trace`. Silent failures are forbidden.
-- **Structured fields, not string interpolation.** `{ userId: 42, action: "checkout" }` — never `"user 42 did checkout"`.
-- **VS Code extensions:** detailed logs to a file in the extension's state folder (`.vsixname/` in workspace root) AND to the VS Code Output Channel.
-- **SaaS / server apps:** persist to database, but database/file writes MUST be async — never block the request path.
-- **NEVER log PII** (names, emails, phone, IPs unless audit with consent).
-- **NEVER log secrets.** Log `"key: present"` or a truncated hash, never the value.
-
-## Duplication — Deslop (MANDATORY)
-
-> Keep this section ONLY if this repo's language is Deslop-supported (Rust, C#, Dart, Python).
-> Delete it otherwise. Spec: REPO-STANDARDS-SPEC [CI-DESLOP]. Docs: https://deslop.live/docs/for-ai/
+Keep this section ONLY if this repo's language is Deslop-supported (Rust, C#, Dart, Python).
+Delete it otherwise. Spec: REPO-STANDARDS-SPEC [CI-DESLOP]. Docs: https://deslop.live/docs/for-ai/
 
 Deslop earns its keep through **prevention, not cleanup.** Use its MCP tools on every code change:
 
@@ -85,6 +62,32 @@ Deslop earns its keep through **prevention, not cleanup.** Use its MCP tools on 
 - **NEVER game the gate.** Do not silence findings by widening `max_duplication_percent`, marking code `hidden`, or splitting it into trivially different shapes.
 
 The duplication budget lives in committed `.deslop.toml` (`max_duplication_percent`). CI runs `deslop .` and the build **TANKS** (exit 3) if duplication exceeds it. The threshold ratchets **DOWN only** — lower it in the same PR when you reduce duplication; never raise it without written justification.
+
+## Testing Rules
+
+- **Never delete a failing test.** Fix the code or the expectation.
+- **Never skip a test** without a ticket number AND expiry date in the skip reason.
+- **`make test` is FAIL-FAST.** Stops at first failing test. Never `--no-fail-fast`. Saves CI minutes; stops agents idling on doomed runs. See REPO-STANDARDS-SPEC [TEST-RULES].
+- **`make test` ALWAYS computes coverage AND enforces it.** Threshold lives in `coverage-thresholds.json` at the repo root — NOT env vars, NOT gh repo variables, NOT CI YAML. Below threshold = pipeline fails. Ratchet only. See [COVERAGE-THRESHOLDS-JSON].
+- **Meaningful assertions only.** `assert True` / `assert.ok(true)` is illegal.
+- **No try/catch in tests that swallows exceptions and asserts success.**
+- **Deterministic.** No `sleep()`, no timing dependencies, no random state.
+- **E2E tests: black-box only** — public APIs, UI, or CLI. Never reach into internals.
+- **VS Code extension E2E:** interact only via `vscode.commands.executeCommand`.
+
+### Logging Standards
+
+- **Structured logging library only.** Never `print`/`console.log`/`println!`/`Debug.WriteLine`. Library per language: Rust `tracing`, TS `pino`, Python `structlog`, Dart `dart_logging`, C#/F# `Microsoft.Extensions.Logging`, Go `log/slog`.
+- **Log at entry/exit of significant operations.** Levels: `error|warn|info|debug|trace`. Silent failures are forbidden.
+- **Structured fields, not string interpolation.** `{ userId: 42, action: "checkout" }` — never `"user 42 did checkout"`.
+- **VS Code extensions:** detailed logs to a file in the extension's state folder (`.vsixname/` in workspace root) AND to the VS Code Output Channel.
+- **SaaS / server apps:** persist to database, but database/file writes MUST be async — never block the request path.
+- **NEVER log PII** (names, emails, phone, IPs unless audit with consent).
+- **NEVER log secrets.** Log `"key: present"` or a truncated hash, never the value.
+
+### Too Many Cooks (Multi-Agent Coordination)
+
+If the TMC server is available: register on start (name, intent, files), lock files before editing, broadcast your plan, check messages periodically, release locks when done. Never edit a locked file — wait or take another approach.
 
 ## Hard Rules — Language-Specific
 
@@ -125,16 +128,6 @@ The duplication budget lives in committed `.deslop.toml` (`max_duplication_perce
 - Secondary layer: `[tool.ruff]` (lint + auto-format) and `[tool.pyright]` (type-check safety net).
 - No `Any` in annotations. Annotate every parameter and return. No bare `except:`. No global mutable state. Use `Result[T,E]` — never raise.
 
-## Testing Rules
-
-- **Never delete a failing test.** Fix the code or the expectation.
-- **Never skip a test** without a ticket number AND expiry date in the skip reason.
-- **Specific assertions only.** `assert True` / `assert.ok(true)` is illegal.
-- **No try/catch in tests that swallows exceptions and asserts success.**
-- **Deterministic.** No `sleep()`, no timing dependencies, no random state.
-- **E2E tests: black-box only** — public APIs, UI, or CLI. Never reach into internals.
-- **VS Code extension E2E:** interact only via `vscode.commands.executeCommand`.
-
 ## Website (if one exists)
 
 **Theme is MANDATORY for dev-tool / docs sites:** build with [`eleventy-plugin-techdoc`](https://github.com/Nimblesite/eleventy-plugin-techdoc) on Eleventy 3.x. Supply only your color CSS variables; the plugin owns layouts, SEO metadata, and structure. Any other theme/SSG is non-compliant. Keep the plugin upgraded.
@@ -146,6 +139,10 @@ The duplication budget lives in committed `.deslop.toml` (`max_duplication_perce
 ## Build Commands
 
 Cross-platform GNU Make. On Windows: `choco install make` or use the one in Git for Windows.
+
+**Build command:** `make ci`
+**Test command:** `make test`
+**Lint command:** `make lint`
 
 ```bash
 make build   # compile everything
