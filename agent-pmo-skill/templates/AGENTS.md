@@ -136,6 +136,8 @@ If the TMC server is available: register on start (name, intent, files), lock fi
 - [Succeeding in Google's AI search experiences](https://developers.google.com/search/blog/2025/05/succeeding-in-ai-search)
 - [SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 
+- **CSS LOC BUDGET: 1.5k** by default. For Websites with elaborate sections and function web apps, you can boost this
+
 ## Build Commands
 
 Cross-platform GNU Make. On Windows: `choco install make` or use the one in Git for Windows.
