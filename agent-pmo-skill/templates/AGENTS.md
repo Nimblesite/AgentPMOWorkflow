@@ -2,7 +2,7 @@
 
 ⚠️ **TOKEN DISCIPLINE.** Check file size first. `Grep` over `Read`. Use `offset`/`limit`. Smallest diff that solves the problem. Delete dead code, unused imports, stale comments. Call out irrelevant context before proceeding. Bloat degrades reasoning. ⚠️
 
-⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is ambiguous, choose the most reasonable default, note the assumption, and keep working to completion. Do not pause for confirmation, clarification, or approval mid-task. Deliver finished work plus a short summary of any assumptions you made. ⚠️
+⚠️ **ACT AUTONOMOUSLY. DO NOT STOP TO ASK THE USER QUESTIONS.** When something is ambiguous, pick the most reasonable default, note the assumption, and work to completion. Deliver finished work plus a short summary of any assumptions you made. ⚠️
 
 <!--
 TEMPLATE NOTE FOR THE AGENT APPLYING THIS FILE (delete after rendering):
@@ -11,7 +11,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
   does not apply to {{languages}}. A Python repo MUST NOT mention Rust, Dart, C#, Go, etc.
 - Fill every {{placeholder}} with real content. NO {{...}} tokens in the rendered file.
 - Remove the example logging-library rows for languages not used.
-- Within reason, re-order sections in the targer instructions file to match the ordering here
+- Re-order sections to match the ordering here where reasonable.
 - Remove this HTML comment.
 - The test: a developer reading the rendered file should see ZERO references to
   languages, tools, or frameworks not used in this repo.
@@ -25,7 +25,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 
 ## Hard Rules — Universal (no exceptions)
 
-- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
+- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Run Deslop MCP tools before AND after every change — see **Duplication — Deslop** below.
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
 - **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
@@ -50,7 +50,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 ### Duplication — Deslop (MANDATORY)
 
 Keep this section ONLY if this repo's language is Deslop-supported (Rust, C#, Dart, Python).
-Delete it otherwise. Spec: REPO-STANDARDS-SPEC [CI-DESLOP]. Docs: https://deslop.live/docs/for-ai/
+Delete it otherwise. Spec: REPO-STANDARDS-SPEC [CI-DESLOP]. Read the [docs](https://deslop.live/docs/for-ai/). If you encounter false positives or other issues, log issues with Deslop [here](https://github.com/Nimblesite/Deslop/issues).
 
 Deslop earns its keep through **prevention, not cleanup.** Use its MCP tools on every code change:
 
@@ -154,9 +154,7 @@ make ci      # lint + test + build (full CI simulation)
 make setup   # post-create dev environment setup
 ```
 
-These are the **canonical** target names — use only the subset that applies to this repo, and never a synonym (see REPO-STANDARDS-SPEC [MAKE-TARGETS]). Repo-specific targets live in a separate section below the standard ones. `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
-
-**`make fmt`** formats code in-place. **`make lint`** runs linters/analyzers (read-only, no formatting). **`make test`** runs tests with coverage. Three separate targets — no overlap.
+These are the **canonical** target names — use only the subset that applies to this repo, and never a synonym (see REPO-STANDARDS-SPEC [MAKE-TARGETS]). Repo-specific targets live in a separate section below the standard ones. `fmt`, `lint`, and `test` never overlap. `make test` runs the test runner with its fail-fast flag, collects coverage, asserts measured ≥ threshold from `coverage-thresholds.json`, and exits non-zero on any failure. To debug a single test, invoke the runner directly — that is not a Makefile target.
 
 ## Repo Structure
 
