@@ -68,7 +68,9 @@ For each area below, record: what exists, what's missing, what's under a wrong n
   - A repo that HAS a website but whose `release.yml` has no website-deploy step (release MUST deploy the site).
   For release workflows, also flag these as critical blockers: checkout `ref: main` in tag jobs, any
   `git commit`/`git push`/tag mutation, source-control version bumps after the tag, ad hoc `sed`
-  stamping of structured files, and missing tests for build-time version stamping.
+  stamping of structured files, missing tests for build-time version stamping, and — for any repo with
+  a `codeql.yml` — a `release.yml` whose publish jobs do NOT `needs:` a gated CodeQL job (a release that
+  cannot be stopped by a security finding is a critical blocker, see [GITHUB-CODE-SCANNING]).
 - **2c. Makefile.** If present, read in full. Classify every public target per spec [MAKE-TARGETS]:
   - (i) A standard target that applies to this repo → note whether present/missing/wrongly-implemented. Do NOT flag an absent standard target as missing if it has nothing to do here (no `build` on a docs-only repo) — only the targets that apply are required.
   - (ii) Duplicates/shadows a standard target under a synonym (e.g. `test-all`, `lint-fix`, `build-release`) → candidate for merge+delete.
@@ -179,8 +181,9 @@ For every item: (1) compliant equivalent exists → leave alone; (2) equivalent 
     1. List the languages actually present in this repo (Step 1 language scan).
     2. Determine which languages **CodeQL supports right now**, at skill-run time — check live (CodeQL docs, or `codeql resolve languages` if the CLI is available). CodeQL's set grows (Rust was added; more will follow); the list in the spec is illustrative only.
     3. Write `.github/workflows/codeql.yml` from `templates/.github/workflows/codeql.yml` with one matrix `include:` entry per language in the **intersection** of 1 and 2, plus `actions` (always). Use `build-mode: none` for interpreted langs + rust/csharp; `autobuild`/manual for compiled langs that need a build (go, java-kotlin, c-cpp). Keep the SHA-pinned action versions and the `if: ...visibility == 'public'` gate.
-    4. **Triggers — exactly three:** `pull_request` to main, `schedule` (weekly), and `push` on the release tag `v*` (scan the exact released SHA before every release). NEVER add `push: branches:[main]`.
-    5. **If the intersection is empty** (e.g. Dart/Flutter- or F#-only repo), do NOT write codeql.yml — record in the Step 5 report that no CodeQL-supported language was found.
+    4. **Triggers:** `pull_request` to main, `schedule` (weekly), and `workflow_call` exposing a `gate` boolean input. NEVER add `push: branches:[main]`. **NEVER a standalone `push: tags` scan** — it runs alongside the release and can only file alerts *after* the artifact ships, so it cannot gate anything.
+    5. **Wire the HARD release gate — CodeQL MUST be able to stop a release.** If the repo ships releases (`release.yml` exists), add a `codeql` job that `uses: ./.github/workflows/codeql.yml` `with: { gate: true }` (job-level `permissions: security-events: write, actions: read, contents: read`) and add it to the `needs:` of the `release` job — so it transitively gates every publish job. With `gate: true` the analyze job parses its SARIF and FAILS on any finding whose `security-severity` is High/Critical (>= 7.0); a dirty scan then blocks publishing. A release MUST NOT be able to ship code CodeQL flagged. The gated call also scans the exact released SHA with the current query set.
+    6. **If the intersection is empty** (e.g. Dart/Flutter- or F#-only repo), do NOT write codeql.yml and add no gate job — record in the Step 5 report that no CodeQL-supported language was found.
   - **COMBINE — anti-duplication is mandatory (duplicate analysis wastes GitHub Actions minutes = money).** Before adding anything, AUDIT the repo's existing workflows and configs and enforce **exactly one owner per concern**; delete the loser:
     - Style/correctness → linters in `make lint`. **Strip any security-rule linter plugins** (eslint-plugin-security, gosec, bandit, semgrep-in-CI) that re-cover CodeQL.
     - Vulnerable code → CodeQL only. **Check Settings → Code security: if GitHub default-setup CodeQL is ON, turn it OFF** when committing `codeql.yml` (advanced setup) — running both scans the same code twice.

@@ -75,7 +75,7 @@ private repos. Every PR must undergo security scanning.
 
 | Feature | Where | Notes |
 |---|---|---|
-| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. |
+| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. **HARD release gate:** `release.yml` calls it with `gate: true` and the publish jobs `needs:` it, so a High/Critical finding blocks publishing ([GITHUB-CODE-SCANNING]). |
 | Dependency review | `security` job in `ci.yml` | Fails PRs that add vulnerable *dependencies* (`fail-on-severity: high`). |
 | Secret scanning | repo setting (below) | Detects committed keys/tokens. |
 | Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
@@ -86,9 +86,17 @@ private repos. Every PR must undergo security scanning.
 linting = style · CodeQL = vulnerable code · ONE dependency scanner (dependency-review
 *or* a native vuln-gate, never both) · platform secret scanning = secrets. Never add
 security-rule linter plugins that re-cover CodeQL, and never run GitHub default-setup
-CodeQL alongside a committed `codeql.yml`. CodeQL triggers are exactly: PR to main +
-weekly + release tag `v*` (scan the released SHA), with `build-mode: none` where allowed
-so it doesn't re-compile what `ci.yml` already builds.
+CodeQL alongside a committed `codeql.yml`. CodeQL triggers: PR to main + weekly +
+a `workflow_call` (gate input) — NO standalone `push: tags` scan (it can only file
+alerts after the artifact ships). `build-mode: none` where allowed so it doesn't
+re-compile what `ci.yml` already builds.
+
+**CodeQL gates releases.** `release.yml` calls `codeql.yml` with `gate: true` and the
+publish jobs `needs:` it; on a High/Critical finding (`security-severity >= 7.0`) the
+job fails and the release is blocked — a release can never ship code CodeQL flagged.
+For the PR gate to have teeth too, make the CodeQL check a **required status check** on
+the `main` ruleset and set the code-scanning **check-failure severity** (Settings → Code
+security → Code scanning → "Protection rules") to at least High.
 
 CodeQL docs: see [`SECURITY.md`](../SECURITY.md) for the GitHub policy/PVR doc links.
 

@@ -934,7 +934,9 @@ Grouping comes from committed `.github/dependabot.yml` ([template](templates/.gi
 
 Finds vulnerable *code* (taint/dataflow). Free for public; GHAS for private. [template](templates/.github/workflows/codeql.yml) → `.github/workflows/codeql.yml`. SEPARATE from `ci.yml` (needs job-scoped `security-events: write`; top-level `contents: read`) — never merge in.
 
-Triggers, exactly three: `pull_request`→main (gate); `schedule` weekly (re-scan unchanged code vs new queries); `push` tag `v*` (scan released SHA before every release). Never `push: branches:[main]`.
+Triggers: `pull_request`→main (advisory gate — enforced by branch protection) and `schedule` weekly (re-scan unchanged code vs new queries), plus a `workflow_call` exposing a `gate` input. Never `push: branches:[main]`. **Never a standalone `push: tags` scan** — it runs concurrently with the release and can only file alerts *after* the artifact has shipped, which is useless as a gate.
+
+**CodeQL is a HARD release gate, not advice.** `release.yml` MUST call this workflow (`uses: ./.github/workflows/codeql.yml` with `gate: true`) and the `release`/publish jobs MUST `needs:` that job. With `gate: true` the analyze job parses its SARIF and FAILS on any finding whose `security-severity` is High or Critical (>= 7.0), so a dirty scan BLOCKS publishing — a release can never ship code CodeQL flagged. The gated call also scans the exact released SHA with the current query set (the merge scan may be weeks stale). A repo with no CodeQL-supported language has no `codeql.yml` and therefore no gate job. (PR/weekly runs leave `gate` false and stay advisory; the PR check-failure severity threshold in repo settings governs merges.)
 
 Tailor matrix at skill-run time: intersect repo languages with languages CodeQL supports **now** (check live: `codeql resolve languages` / CodeQL docs — the set grows). One `include:` per language + always `actions`. Empty intersection (e.g. Dart/F#-only) → no codeql.yml; record it. Illustrative supported set: c-cpp, csharp, go, java-kotlin, javascript-typescript, python, ruby, swift, rust, actions — NOT Dart/Flutter, F#.
 
@@ -1077,7 +1079,8 @@ CI
 [ ] ci.yml: artifacts uploaded
 [ ] ci.yml has a `security` job running dependency-review (repos with manifests) ([GITHUB-DEP-REVIEW])
 [ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
-[ ] codeql.yml triggers are exactly: PR to main + weekly schedule + release tag `v*` (no `push: branches:[main]`) ([GITHUB-CODE-SCANNING])
+[ ] codeql.yml triggers are: PR to main + weekly schedule + `workflow_call` (gate input); NO `push: branches:[main]`, NO standalone `push: tags` scan ([GITHUB-CODE-SCANNING])
+[ ] codeql.yml is a HARD release gate: `release.yml` calls it with `gate: true` and the `release`/publish jobs `needs:` it; the analyze job fails on High/Critical (`security-severity >= 7.0`) so a dirty scan blocks publishing ([GITHUB-CODE-SCANNING]) — OR documented-absent because the repo ships no release artifacts / has no supported language
 [ ] Anti-duplication: one owner per concern (lint=style, CodeQL=code, ONE dep scanner, platform secret scanning); no GitHub default-setup CodeQL alongside codeql.yml; `build-mode: none` where allowed ([GITHUB-CODE-SCANNING])
 
 COVERAGE
