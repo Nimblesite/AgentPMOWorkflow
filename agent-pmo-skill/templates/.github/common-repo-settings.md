@@ -13,6 +13,7 @@ conventions described below.
 | Allow rebase merge | **false** | Disabled to keep linear history |
 | Allow auto merge | **true** | PRs merge automatically when checks pass |
 | Delete branch on merge | **true** | Clean up merged branches |
+| Allow update branch | **true** | Lets auto-merge refresh a stale PR branch so the strict up-to-date gate clears without a manual click |
 
 ## Squash Merge Commit Format
 
@@ -35,8 +36,32 @@ subject and the PR description as the commit body.
 
 ## Branch Protection / Rulesets
 
-If protection already exists, do nothing.
-Else add branch protection with the ci.yaml script. It should only fire on PRs to main and a PR is required
+Every repo MUST protect `main` with a ruleset (the `gh` command below creates or
+repairs it). The ruleset MUST require ALL of:
+
+- A PR to `main` — no direct pushes.
+- The CI status check passes before merge (context = the `ci.yml` job name).
+- **Branches up to date with `main` before merge —
+  `strict_required_status_checks_policy: true`. NON-NEGOTIABLE.**
+
+CI runs only on PRs and nothing re-runs on the merge itself, so the strict
+up-to-date flag is the *only* thing that keeps the green check honest: it forces
+the PR branch to contain the current tip of `main`, so the run that went green is
+the run for the merged result. **Without `strict`, a PR whose CI passed against a
+stale base merges and can silently break `main` — the green check is a lie.**
+
+**A stale PR auto-recovers — no manual click.** `strict` must never strand a PR
+behind `main`. With auto-merge enabled on the PR (`gh pr merge --auto --squash`)
+**and** `allow_update_branch: true` on the repo (see Merge Settings above), GitHub
+auto-updates the PR branch from `main` whenever `main` advances under it; that
+update re-runs CI against the fresh base, and the PR squash-merges the instant
+that run is green. So `strict` turns "behind `main`" into "auto-update from `main`
+and try again" with zero human steps — only a real merge conflict needs a person.
+
+**Existence is NOT conformance — never "do nothing because protection exists."**
+A ruleset with `strict_required_status_checks_policy: false` is the exact failure
+this prevents. When protection already exists, verify the strict flag and repair
+it in place if it is off. The `gh` command below is idempotent and does this.
 
 ## Other
 
@@ -112,11 +137,54 @@ gh api -X PATCH "repos/$REPO" \
   -f allow_rebase_merge=false \
   -f allow_auto_merge=true \
   -f delete_branch_on_merge=true \
+  -f allow_update_branch=true \
   -f squash_merge_commit_title=PR_TITLE \
   -f squash_merge_commit_message=PR_BODY \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Branch protection ruleset on the default branch.
+# The strict up-to-date flag is MANDATORY: CI runs only on PRs and nothing
+# re-runs on merge, so strict is the only guarantee the merged result passed CI.
+# Idempotent: create if absent, else REPAIR the strict flag (never "do nothing").
+# Replace "CI" with the exact check name your ci.yml job reports.
+RULESET_ID=$(gh api "repos/$REPO/rulesets" \
+  --jq '.[] | select(.name=="Protect main") | .id')
+if [ -z "$RULESET_ID" ]; then
+  gh api -X POST "repos/$REPO/rulesets" --input - <<'JSON'
+{
+  "name": "Protect main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    { "type": "pull_request", "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": ["squash"] } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [ { "context": "CI" } ] } }
+  ]
+}
+JSON
+else
+  # Protection exists — enforce strict in place; existence is not conformance.
+  gh api "repos/$REPO/rulesets/$RULESET_ID" \
+    | jq '{name, target, enforcement, bypass_actors, conditions, rules}
+          | .rules |= map(if .type == "required_status_checks"
+                          then .parameters.strict_required_status_checks_policy = true
+                          else . end)' \
+    | gh api -X PUT "repos/$REPO/rulesets/$RULESET_ID" --input -
+fi
 
 # Dependabot: enable alerts + automated security update PRs (per-repo).
 # Grouping is provided by the committed .github/dependabot.yml; grouped SECURITY

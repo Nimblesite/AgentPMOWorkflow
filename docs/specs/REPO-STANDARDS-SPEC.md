@@ -458,6 +458,22 @@ For multi-language repos, `_fmt` chains all formatters and `_lint` chains all li
 
 ---
 
+## [MODEL] Data Model Standard
+
+### [MODEL-TYPEDIAGRAM] Data models are GENERATED from typeDiagram — never hand-written (MANDATORY)
+
+> ⚠️ **NON-NEGOTIABLE.** ⚠️
+
+Every data model — every domain type, DTO, entity, enum, and algebraic data type (ADT) — MUST be defined in **[typeDiagram](https://typediagram.dev/docs/)** and the language types **generated** from that model. **Hand-crafting a data model is forbidden.** A by-hand model has no single source of truth, drifts across language bindings, and forfeits the exhaustiveness typeDiagram guarantees.
+
+- **The model is the source of truth.** The committed typeDiagram model is the artifact under review; the generated types are build output — the same model emits ADTs for whatever language the repo uses (Rust / C# / F# / Dart / TypeScript / Python / …).
+- **The pipeline generates the models.** `make build` runs typeDiagram code generation (directly or via a codegen step it calls) so generated types are never stale. Generated files keep their generated-code header and are **never edited by hand** — change the model and regenerate.
+- **typeDiagram can't express it? File an issue — do NOT hand-roll.** If typeDiagram is broken or missing a feature for the use case, open a GitHub issue on the typeDiagram repo (linked from its [docs](https://typediagram.dev/docs/)) describing the case, reference that issue in a comment at the narrowest possible temporary shim, and keep the shim minimal. Silently abandoning the generator to write the model by hand is a standards violation.
+
+Cross-reference: the typeDiagram model file, the codegen build step, and any temporary shim reference `[MODEL-TYPEDIAGRAM]`.
+
+---
+
 ## [LOG] Logging Standards
 
 Every repo MUST use structured logging. `print` / `console.log` / `println!` / `Debug.WriteLine` are prohibited for diagnostics.
@@ -844,6 +860,7 @@ instruction file ([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in in
 
 - **Default to NOT touching git at all.** Use git only when the user has explicitly green-lit it for the task (open a PR, merge, cut a branch). Absent that, leave commits, branches, pushes, and merges to the user and CI. The rules below govern the cases where you *have* been green-lit.
 - **NEVER push to the default branch (`main`) directly.** Every change ships through CI on a PR, then merges. The flow is always PR → CI green → merge. No exceptions.
+- **Once you open a PR, OWN it until it is green.** Enable auto-merge where the repo allows it (`gh pr merge --auto --squash`, [GITHUB-MERGE]) so it lands the moment checks pass — but auto-merge does NOT end your job. Monitor the pipeline; when a check fails, pull the logs, fix the cause, and push the fix, looping until every required check passes (or auto-merge has merged it). Never hand a PR back on a red or still-running pipeline. (Pushing fixes to your own PR is in-scope once green-lit — the co-author rule below still applies to those commits.)
 - **NEVER list yourself (the agent) as a commit co-author.** No `Co-Authored-By` trailer, no
   agent attribution in the commit message.
 - **Work on exactly ONE branch at a time. Always.** Even when multiple agents work the repo
@@ -907,6 +924,7 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 | Allow rebase merge | **false** |
 | Allow auto merge | **true** |
 | Delete branch on merge | **true** |
+| Allow update branch | **true** (lets auto-merge refresh a stale PR branch so the strict up-to-date gate in [GITHUB-PROTECTION] clears without a manual click) |
 | Squash merge commit title | **PR_TITLE** |
 | Squash merge commit message | **PR_BODY** |
 
@@ -921,13 +939,16 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 
 ### [GITHUB-PROTECTION] Branch Protection
 
-**Every repo MUST protect its default branch (`main`).** If no branch protection exists, add a ruleset requiring:
-- A PR to `main` — no direct pushes
+**Every repo MUST protect its default branch (`main`) with a ruleset requiring ALL of:**
+- A PR to `main` — no direct pushes (`pull_request` rule)
 - The `ci` status check (the job from `ci.yml`, [CI-JOBS]) passes before merge
+- **Branches up to date with `main` before merge — `strict_required_status_checks_policy: true`. NON-NEGOTIABLE.**
 
-This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR, protection makes that green check mandatory to merge, and nothing re-runs on the merge itself.
+This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs only on the PR and nothing re-runs on the merge itself. The strict up-to-date flag is therefore the *only* thing that keeps the green check honest — it forces the PR branch to contain the current tip of `main`, so the run that went green is the run for the merged result. **Without `strict`, a PR whose CI passed against a stale base merges and can silently break `main` — the green check is a lie.**
 
-If protection already exists, leave it alone.
+**A stale PR auto-recovers — no manual click.** `strict` must never strand a PR behind `main`. With auto-merge enabled on the PR (`gh pr merge --auto --squash`, run by the submit-pr flow per [GITHUB-MERGE]) **and** `allow_update_branch: true` on the repo, GitHub auto-updates the PR branch from `main` whenever `main` advances under it; that update re-runs CI against the fresh base, and the PR squash-merges the instant that run is green. So `strict` turns "behind `main`" into "auto-update from `main` and try again" with zero human steps — a real merge conflict is the only case that needs a person. Both repo settings (`allow_auto_merge`, `allow_update_branch`) are mandatory in [GITHUB-MERGE] precisely so this loop closes itself.
+
+**Existence is NOT conformance — do NOT "leave existing protection alone."** A ruleset that exists with `strict_required_status_checks_policy: false` is the precise failure this rule exists to prevent. When protection already exists you MUST read its `required_status_checks` rule, confirm `strict` is `true`, and repair it in place if it is not. [GITHUB-CLI] gives the idempotent create-or-repair command.
 
 ### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam
 
@@ -985,11 +1006,54 @@ gh api -X PATCH "repos/$REPO" \
   -f allow_rebase_merge=false \
   -f allow_auto_merge=true \
   -f delete_branch_on_merge=true \
+  -f allow_update_branch=true \
   -f squash_merge_commit_title=PR_TITLE \
   -f squash_merge_commit_message=PR_BODY \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
+
+# Branch protection ([GITHUB-PROTECTION]) — ruleset on the default branch.
+# The strict up-to-date flag is MANDATORY: CI runs only on PRs and nothing
+# re-runs on merge, so strict is the only guarantee the merged result passed CI.
+# Idempotent: create if absent, else REPAIR the strict flag (never "leave alone").
+# Replace "CI" with the exact check name your ci.yml job reports.
+RULESET_ID=$(gh api "repos/$REPO/rulesets" \
+  --jq '.[] | select(.name=="Protect main") | .id')
+if [ -z "$RULESET_ID" ]; then
+  gh api -X POST "repos/$REPO/rulesets" --input - <<'JSON'
+{
+  "name": "Protect main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    { "type": "pull_request", "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": ["squash"] } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [ { "context": "CI" } ] } }
+  ]
+}
+JSON
+else
+  # Protection exists — enforce strict in place; existence is not conformance.
+  gh api "repos/$REPO/rulesets/$RULESET_ID" \
+    | jq '{name, target, enforcement, bypass_actors, conditions, rules}
+          | .rules |= map(if .type == "required_status_checks"
+                          then .parameters.strict_required_status_checks_policy = true
+                          else . end)' \
+    | gh api -X PUT "repos/$REPO/rulesets/$RULESET_ID" --input -
+fi
 
 # Dependabot ([GITHUB-DEPENDABOT]) — alerts + automated security update PRs.
 # Grouping comes from the committed .github/dependabot.yml; grouped SECURITY
@@ -1049,6 +1113,7 @@ STRUCTURE
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
 [ ] .deslop.toml + ci.yml `deslop .` gate   (Rust/C#/Dart/Python repos — stored, ratcheted-down threshold, [CI-DESLOP])
 [ ] Canonical instruction file has the Deslop MCP agent-loop section (Rust/C#/Dart/Python repos, [CI-DESLOP])
+[ ] Data models generated from typeDiagram, never hand-written; codegen wired into `make build`; canonical instruction file carries the rule ([MODEL-TYPEDIAGRAM])
 [ ] Makefile uses canonical names for every standard target that applies; no hollow no-op targets, no synonyms ([MAKE-TARGETS])
 [ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section and were left intact ([MAKE-REPO-SPECIFIC])
 [ ] Editor extensions (.vsix/Zed/etc.) each have a `rebuild-install-<kind>` target ([MAKE-IDE-EXT])
@@ -1120,7 +1185,7 @@ FORMATTING
 BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
-[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): git only when the user green-lights it, no direct push to default branch, no agent co-author (never overridable), exactly one branch at a time (multi-agent coordinates via TMC), never branch when one exists, merge multiple branches immediately, no worktrees unless the user explicitly directs it
+[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): git only when the user green-lights it, no direct push to default branch, own every PR until green (enable auto-merge, monitor, fix-and-push until checks pass), no agent co-author (never overridable), exactly one branch at a time (multi-agent coordinates via TMC), never branch when one exists, merge multiple branches immediately, no worktrees unless the user explicitly directs it
 [ ] Developer-tool repos: Shipwright supply-chain audit run ([CI-SHIPWRIGHT])
 
 GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
@@ -1129,7 +1194,7 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Delete branch on merge enabled
 [ ] Squash commit title = PR_TITLE, message = PR_BODY
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
-[ ] Branch protection on main (require PR + CI pass)
+[ ] Branch protection ruleset on main: require PR + CI pass + branches up to date with main (required_status_checks rule has strict_required_status_checks_policy=true) ([GITHUB-PROTECTION])
 [ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
 [ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])

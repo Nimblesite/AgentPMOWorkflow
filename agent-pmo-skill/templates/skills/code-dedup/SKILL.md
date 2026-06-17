@@ -28,9 +28,8 @@ This skill is driven by **deslop** (docs: https://deslop.live/docs/for-ai/). It 
 - `mcp__deslop__rescan` — refresh the index; call after each merge/deletion to confirm the cluster is gone.
 
 **If the MCP server is unavailable, run the CLI instead** (same `.deslop.toml`, same report):
-- `deslop .` — full workspace scan, writes `deslop-report.json`.
-- `deslop . --no-fail-over` — local run without the CI gate.
-- `deslop . --fail-over 5.0` — CI gate at a duplication-% threshold.
+- `deslop .` — full workspace scan; reads `.deslop.toml`, writes `deslop-report.json`, exits 3 when duplication exceeds the stored threshold. **This is exactly the CI gate** — the threshold lives in `.deslop.toml`, never a CLI/YAML number ([CI-DESLOP]).
+- `deslop . --no-fail-over` — same scan, but never fails on breach; local inspection only.
 
 Parse **only `deslop-report.json`** (the `.txt`/`.html` outputs are for humans). Decision fields: `metrics.duplication_percent`, `metrics.threshold.breached`, `clusters[].weight` (sorted desc), `clusters[].signals.fused`, `clusters[].bucket`. Re-run `deslop .` after each change in place of `rescan`.
 

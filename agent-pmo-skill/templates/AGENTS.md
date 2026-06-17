@@ -26,6 +26,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 ## Hard Rules — Universal (no exceptions)
 
 - **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Run Deslop MCP tools before AND after every change — see **Duplication — Deslop** below.
+- **DATA MODELS — generate with typeDiagram, NEVER by hand.** Define every data model (types, DTOs, entities, enums, ADTs) in [typeDiagram](https://typediagram.dev/docs/) and generate the language code from it. The model is the source of truth; the build pipeline regenerates the types via typeDiagram codegen — never edit generated files, never hand-craft a model. If typeDiagram can't express your case, file an issue on its repo instead of hand-rolling. Spec: REPO-STANDARDS-SPEC [MODEL-TYPEDIAGRAM].
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
 - **NO PLACEHOLDERS.** Use `todo!()` / `raise NotImplementedError` / `failwith "TODO"` — never silently no-op.
@@ -40,6 +41,7 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 ### Git discipline — Only for situations where you've been given the green light to use git
 
   - **NEVER push to the default branch (`main`) directly.** Always PR → CI green → merge. No exceptions.
+  - **Once you open a PR, OWN it until it's green.** Enable auto-merge where allowed (`gh pr merge --auto --squash`) so it lands when checks pass — then keep monitoring: on a failure, pull the logs, fix it, push, and loop until every required check passes. Never hand back a red or still-running PR. (Co-author rule below still applies to fix commits.)
   - **NEVER list yourself as a commit co-author.** No `Co-Authored-By` trailer, no agent attribution.
   - **Work on exactly ONE branch at a time, always** — even with multiple agents working concurrently. Reuse it.
   - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.

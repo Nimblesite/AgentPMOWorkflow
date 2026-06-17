@@ -47,7 +47,7 @@ jobs:
     # pre-baked, so we skip `playwright install` entirely. The native runner
     # deterministically hangs at 100% of the chromium download; the container
     # avoids that download. Tag MUST match the @playwright/test version in
-    # dashboard/package-lock.json (currently 1.58.2).
+    # dashboard/package-lock.json (currently 1.60.0).
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
     steps:
