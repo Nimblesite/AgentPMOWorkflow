@@ -1,23 +1,24 @@
 # Dependabot — supply-chain defense without PR spam, and without burning CI on
 # `main` for routine bumps. Portfolio standard ([GITHUB-DEPENDABOT]).
 #
-# How this kills the spam:
+# How this kills the spam — EVERY bump ends up on the `dependabot-upgrades`
+# STAGING branch, swept there automatically by
+# .github/workflows/dependabot-automerge.yml (latest bump clobbers previous):
 #   * VERSION updates -> `target-branch: dependabot-upgrades`. Every routine bump
-#     PR is opened against the long-lived `dependabot-upgrades` STAGING branch,
-#     never against main. ci.yml / codeql.yml only trigger on
-#     `pull_request: [main]` (the filter matches the PR *base*), so these staging
-#     PRs run NO build/test/CodeQL. They are auto-merged into the staging branch
-#     by .github/workflows/dependabot-automerge.yml. When you want the batch in
-#     main you open ONE `dependabot-upgrades -> main` PR and CI runs exactly once.
-#   * SECURITY updates -> still raised automatically against `main`, untouched by
-#     this file. Per GitHub docs, `target-branch` only redirects *version*
-#     updates; security updates always use the repo's default branch. So a real
-#     CVE still opens a PR against main where you see it and CI runs. That channel
-#     is governed by the repo's "Dependabot security updates" setting, NOT here.
-#   * groups with no `update-types` filter -> each ecosystem collapses ALL bumps
-#     (patch, minor AND major) into ONE grouped PR per run. Majors no longer need
-#     their own review PR because nothing reaches main unattended — review happens
-#     once, at the consolidation PR.
+#     PR is opened against the staging branch, never against main. ci.yml /
+#     codeql.yml only trigger on `pull_request: [main]` (the filter matches the
+#     PR *base*), so these staging PRs run NO build/test/CodeQL.
+#   * SECURITY updates -> GitHub IGNORES `target-branch` for these and always
+#     opens them against the repo's default branch (`main`). The auto-merge
+#     workflow therefore also fires on `main` and folds the security bump into
+#     the SAME staging branch, then retires the PR — so a CVE bump never sits on
+#     main waiting for a human either. (ci.yml/codeql.yml skip Dependabot PRs, so
+#     the matrix never burns on a bump we immediately sweep away.)
+#   * groups -> each ecosystem collapses ALL version bumps (patch, minor AND
+#     major) into ONE PR, and a parallel `*-security` group (`applies-to:
+#     security-updates`) collapses CVE bumps the same way. Majors no longer need
+#     their own review PR because nothing reaches main unattended — review
+#     happens once, at the `dependabot-upgrades -> main` consolidation PR.
 #   * interval: weekly -> one grouped PR per ecosystem each week, not fifty.
 #
 # CUSTOMIZE: keep the `package-ecosystem` blocks whose manifests exist in THIS
@@ -46,8 +47,10 @@ updates:
         patterns: ["*"]
 
   # ── Language ecosystems: keep the ones this repo uses, delete the rest. ──
-  # Each ecosystem produces ONE grouped PR per run (all bump types collapsed in),
-  # opened against the dependabot-upgrades staging branch.
+  # Each ecosystem produces ONE version-bump PR (against the staging branch) AND
+  # ONE security-bump PR (the `*-security` group; GitHub opens it against main,
+  # whence the auto-merge workflow sweeps it into staging). All bump types
+  # collapse into their group — never leave an ecosystem ungrouped.
 
   # npm / Node — package.json
   - package-ecosystem: npm
@@ -59,6 +62,10 @@ updates:
     labels: ["dependencies"]
     groups:
       npm:
+        applies-to: version-updates
+        patterns: ["*"]
+      npm-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # Cargo / Rust — Cargo.toml
@@ -71,6 +78,10 @@ updates:
     labels: ["dependencies"]
     groups:
       cargo:
+        applies-to: version-updates
+        patterns: ["*"]
+      cargo-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # NuGet / .NET — *.csproj, *.fsproj, packages.config
@@ -83,6 +94,10 @@ updates:
     labels: ["dependencies"]
     groups:
       nuget:
+        applies-to: version-updates
+        patterns: ["*"]
+      nuget-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # pip / Python — pyproject.toml, requirements.txt
@@ -95,6 +110,10 @@ updates:
     labels: ["dependencies"]
     groups:
       pip:
+        applies-to: version-updates
+        patterns: ["*"]
+      pip-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # pub / Dart + Flutter — pubspec.yaml
@@ -107,6 +126,10 @@ updates:
     labels: ["dependencies"]
     groups:
       pub:
+        applies-to: version-updates
+        patterns: ["*"]
+      pub-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # Go modules — go.mod
@@ -119,6 +142,10 @@ updates:
     labels: ["dependencies"]
     groups:
       gomod:
+        applies-to: version-updates
+        patterns: ["*"]
+      gomod-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   # Docker — Dockerfile, compose.yaml (uncomment if the repo ships images)
@@ -131,4 +158,8 @@ updates:
   #   labels: ["dependencies"]
   #   groups:
   #     docker:
+  #       applies-to: version-updates
+  #       patterns: ["*"]
+  #     docker-security:
+  #       applies-to: security-updates
   #       patterns: ["*"]

@@ -145,6 +145,37 @@ Each target chains these steps in order (skip a step only if the toolchain has n
 
 Implement the steps as underscore-prefixed sub-recipes (`_vsix_uninstall`, `_vsix_package`, …) chained from the public `rebuild-install-<kind>` target, consistent with [MAKE-TARGETS].
 
+### [MAKE-IDE-EXT-PARITY] Tests MUST run the EXACT artifact the release ships
+
+> ⚠️ **NON-NEGOTIABLE for any repo that packages a distributable.** ⚠️
+
+The artifact the release publishes and the artifact the tests exercise MUST be the
+**same bytes**. A green test run against a different bundle than users install is
+worthless — it validates a build that never ships. For VSIX/Zed/installer/CLI-package
+repos:
+
+- **One packaging recipe.** Exactly one recipe builds the distributable
+  (compile → stage every bundled binary/asset → package). The release workflow, the
+  `rebuild-install-<kind>` target, AND the test target all route through it. No second
+  "test build" with a faster/different profile, target triple, or staging path.
+- **Tests run the shipped build.** The e2e/integration target runs that packaging
+  recipe **first**, then exercises the staged artifact — never a bespoke debug build.
+  Whatever the suite asserts against is exactly what `package` zips.
+- **One staging source of truth.** A single manifest-driven helper decides which
+  binaries/assets enter the bundle, shared by the release workflow and the local
+  recipe, so tested and shipped contents cannot drift.
+- **Verify the package.** Packaging asserts the bundle matches the manifest (reject
+  missing, unmanifested, or wrong-platform components) so drift fails the build
+  instead of shipping.
+
+The ONLY sanctioned difference between a local/test build and the released one is the
+**version string** — local builds keep `0.0.0-dev`; the release stamps the tag per
+[CI-RELEASE]. Structure and binaries are identical.
+
+This is a [MAKE-IDE-EXT] obligation and a [TEST-RULES] obligation: a dev-tool repo
+whose test target does not build and exercise the shipped artifact is non-compliant.
+Shipwright ([CI-SHIPWRIGHT]) owns the bundling/manifest/version-stamping mechanics.
+
 ### [MAKE-TEMPLATE] Standard Makefile Template
 
 **File:** [`templates/Makefile`](../../agent-pmo-skill/templates/Makefile)
@@ -960,14 +991,14 @@ non-conformant — including a repo with no language manifests, because the
 
 Dependabot on for every repo. Enable at account/org (+ "auto-enable new repos"): **alerts**, **security updates**, **grouped security updates**.
 
-Routine version bumps go to a long-lived **`dependabot-upgrades` staging branch**, never straight to `main`. Because `ci.yml`/`codeql.yml` only trigger on `pull_request: [main]` (the filter matches the PR *base*), staging PRs run **zero CI**; they auto-merge into staging unattended, and the whole batch reaches `main` through ONE consolidation PR where CI/CodeQL run exactly once. Config in committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
-- Every `updates:` block sets `target-branch: "dependabot-upgrades"`. Version PRs land on staging; security updates ignore `target-branch` and still open against `main` (where you see the CVE and CI runs).
+**EVERY** Dependabot bump ends up on a long-lived **`dependabot-upgrades` staging branch**, never straight to `main`. Because `ci.yml`/`codeql.yml` skip Dependabot PRs (and version PRs target staging, never `main`), the staging branch accumulates **zero CI**; bumps auto-merge into staging unattended, and the whole batch reaches `main` through ONE consolidation PR where CI/CodeQL run exactly once. Config in committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules cover version AND security bumps. Rules:
+- Every `updates:` block sets `target-branch: "dependabot-upgrades"`, so VERSION PRs land on staging directly. SECURITY PRs ignore `target-branch` (GitHub always opens them against the default branch, `main`) — the auto-merge workflow catches them there and folds them into staging too, so a CVE bump never sits on `main` waiting for a human.
 - Keep `github-actions` (any repo with workflows). Keep only `package-ecosystem` blocks whose manifests exist; delete the rest.
-- Every ecosystem grouped into ONE all-bumps PR per run: a single group with `patterns: ["*"]` and NO `update-types` filter (patch + minor + major collapse together — majors need no separate review PR because nothing reaches `main` unattended). Ungrouped (one PR/dep) is banned.
+- Every LANGUAGE ecosystem carries TWO groups (both `patterns: ["*"]`, NO `update-types` filter so patch + minor + major collapse together): one `applies-to: version-updates` and a `<eco>-security` group `applies-to: security-updates`. `github-actions` is version-only (no Dependabot advisory channel). Ungrouped (one PR/dep) is banned — for version AND security bumps.
 - `schedule: weekly`; `open-pull-requests-limit: 5`.
-- `.github/workflows/dependabot-automerge.yml` ([template](templates/.github/workflows/dependabot-automerge.yml)) squash-merges dependabot[bot] PRs into staging (`on: pull_request: branches: [dependabot-upgrades]`, `if: github.actor == 'dependabot[bot]'`). It is a ~10-second merge bot on the standard runner, NOT the CI pipeline.
-- The `dependabot-upgrades` branch must EXIST. Cut it from `main` AFTER `dependabot.yml` + `dependabot-automerge.yml` are on `main`, so the staging branch carries the auto-merge workflow (`pull_request` runs the workflow from the PR base ref).
-- `ci.yml`/`codeql.yml` MUST be `pull_request: [main]`-only (no `branches: [dependabot-upgrades]`), or the no-CI-on-staging guarantee breaks ([CI-WORKFLOWS], [GITHUB-CODE-SCANNING]).
+- `.github/workflows/dependabot-automerge.yml` ([template](templates/.github/workflows/dependabot-automerge.yml)) **clobber-merges** EVERY dependabot[bot] PR into staging, unattended, no questions asked: `git merge -X theirs` so the incoming bump ALWAYS wins and successive bumps of the same lock-file never conflict-stall (it retries on the live staging tip so racing PRs can't deadlock), then retires the PR + branch. Triggers on `on: pull_request: branches: [dependabot-upgrades, main]` (both — version PRs target staging, security PRs are force-opened against `main`; the bot folds both into staging), `if: github.actor == 'dependabot[bot]'`. It is a ~10-second merge bot on the standard runner, NOT the CI pipeline. NOT a squash merge.
+- The `dependabot-upgrades` branch must EXIST and stay UNPROTECTED (the bot pushes directly to it). Cut it from `main` AFTER `dependabot.yml` + `dependabot-automerge.yml` are on `main`, so BOTH `main` and the staging branch carry the auto-merge workflow (`pull_request` runs the workflow from the PR base ref).
+- `ci.yml`/`codeql.yml` stay `pull_request: [main]`-only (no `branches: [dependabot-upgrades]`) AND skip `github.actor == 'dependabot[bot]'` — a job-level `if:` on the CI/security jobs, `&& github.actor != 'dependabot[bot]'` on the CodeQL visibility gate. Otherwise a security PR force-opened on `main` burns the full matrix on a bump that is immediately swept away ([CI-WORKFLOWS], [GITHUB-CODE-SCANNING]).
 
 ### [GITHUB-CODE-SCANNING] CodeQL — mandatory where a supported language exists
 
@@ -1134,6 +1165,7 @@ STRUCTURE
 [ ] Makefile uses canonical names for every standard target that applies; no hollow no-op targets, no synonyms ([MAKE-TARGETS])
 [ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section and were left intact ([MAKE-REPO-SPECIFIC])
 [ ] Editor extensions (.vsix/Zed/etc.) each have a `rebuild-install-<kind>` target ([MAKE-IDE-EXT])
+[ ] Dev-tool repos: test/e2e target runs the SAME packaging recipe the release ships, before testing — no separate "test build" ([MAKE-IDE-EXT-PARITY])
 [ ] Makefile `_lint` runs linters/analyzers only (no formatting)
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
@@ -1213,8 +1245,8 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
 [ ] Branch protection ruleset on main: require PR + CI pass + branches up to date with main (required_status_checks rule has strict_required_status_checks_policy=true) ([GITHUB-PROTECTION])
 [ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
-[ ] .github/dependabot.yml present, every block `target-branch: "dependabot-upgrades"`, every ecosystem ONE grouped all-bumps PR (`patterns:["*"]`, no `update-types`), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
-[ ] .github/workflows/dependabot-automerge.yml present (auto-merges dependabot[bot] PRs into staging); `dependabot-upgrades` branch exists and carries it; ci.yml/codeql.yml are `pull_request:[main]`-only so staging PRs run no CI ([GITHUB-DEPENDABOT])
+[ ] .github/dependabot.yml present, every block `target-branch: "dependabot-upgrades"`, only ecosystems the repo uses, github-actions kept; every LANGUAGE ecosystem has BOTH a version-updates and a `<eco>-security` (`applies-to: security-updates`) group (`patterns:["*"]`, no `update-types`) ([GITHUB-DEPENDABOT])
+[ ] .github/workflows/dependabot-automerge.yml present, triggers on `[dependabot-upgrades, main]`, clobber-merges (`git merge -X theirs`) EVERY dependabot[bot] PR into staging + retires the PR; `dependabot-upgrades` branch exists (unprotected) and carries it; ci.yml/codeql.yml are `pull_request:[main]`-only AND skip `github.actor == 'dependabot[bot]'` ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
 [ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
 [ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])

@@ -17,6 +17,11 @@ concurrency:
 jobs:
   ci:
     name: CI
+    # Dependabot PRs are swept into `dependabot-upgrades` by
+    # dependabot-automerge.yml and never merge into main directly, so this would
+    # only burn minutes on a bump we discard. CI runs once, on the
+    # `dependabot-upgrades -> main` consolidation PR. ([GITHUB-DEPENDABOT])
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -122,6 +127,9 @@ jobs:
   # CodeQL — no doubling up. Delete this job only if the repo has no manifests.
   security:
     name: security
+    # Dependabot PRs are swept to staging and never merge to main directly;
+    # dependency-review would only burn minutes on a discarded bump. ([GITHUB-DEPENDABOT])
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
