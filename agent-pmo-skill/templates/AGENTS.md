@@ -25,7 +25,15 @@ This file is a multi-language STARTING POINT. Before writing it to a target repo
 
 ## Hard Rules — Universal (no exceptions)
 
-- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Run Deslop MCP tools before AND after every change — see **Duplication — Deslop** below.
+- **Git discipline — agents get this wrong, so it is spelled out:**
+  - **NEVER push to the default branch (`main`) directly.** Always PR → CI green → merge. No exceptions.
+  - **NEVER list yourself as a commit co-author.** No `Co-Authored-By` trailer, no agent attribution.
+  - **Work on exactly ONE branch at a time, always** — even with multiple agents working concurrently. Reuse it.
+  - **NEVER start a new branch when a feature branch already exists.** Check first; work on the open one.
+  - **If multiple feature branches exist, merge them into one IMMEDIATELY before doing any other work.**
+  - **Worktrees are forbidden.** Never run `git worktree` — agents consistently corrupt their state with it.
+- **Auto-memory is OFF.** Persistent rules go through a reviewed PR to this file — never auto-captured memory. (Claude Code: `"autoMemoryEnabled": false` in committed `.claude/settings.local.json`.)
+- **ZERO DUPLICATION.** Search before writing. Move code, don't copy it. Use the Deslop MCP tools before AND after every code change — see **Duplication — Deslop** below.
 - **DATA MODELS — generate with typeDiagram, NEVER by hand.** Define every data model (types, DTOs, entities, enums, ADTs) in [typeDiagram](https://typediagram.dev/docs/) and generate the language code from it. The model is the source of truth; the build pipeline regenerates the types via typeDiagram codegen — never edit generated files, never hand-craft a model. If typeDiagram can't express your case, file an issue on its repo instead of hand-rolling. Spec: REPO-STANDARDS-SPEC [MODEL-TYPEDIAGRAM].
 - **NO EXCEPTIONS for control flow.** Return `Result<T,E>`. Exceptions are panic-level only.
 - **NO REGEX on structured data.** Use real parsers for JSON/YAML/TOML/code.
