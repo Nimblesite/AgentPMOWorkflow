@@ -341,23 +341,32 @@ help:
 #     them. They are NOT "superfluous". See [MAKE-REPO-SPECIFIC].
 #   - Add them to .PHONY if they are phony.
 #
-# Editor extensions ([MAKE-IDE-EXT]): if this repo builds a .vsix / Zed / etc.
-# extension, add ONE `rebuild-install-<kind>` target per extension that runs a
-# full clean cycle — uninstall → clean → rebuild → package → install (if the
-# toolchain supports local install). Example for a VS Code extension:
+# Editor extensions ([MAKE-IDE-EXT], [MAKE-IDE-EXT-PARITY]): if this repo builds
+# a .vsix / Zed / etc. extension, add ONE `rebuild-install-<kind>` target per
+# extension that runs a full clean cycle — uninstall → clean → rebuild → package
+# → install (if the toolchain supports local install).
+#
+# PARITY ([MAKE-IDE-EXT-PARITY]): the test target and rebuild-install MUST share
+# ONE packaging recipe (`_vsix_release` below), so the bundle the tests exercise
+# is byte-for-byte the bundle the release ships — never a separate "test build".
+# The release workflow calls the SAME recipe. Example for a VS Code extension:
 #
 # .PHONY: rebuild-install-vsix
-# rebuild-install-vsix: _vsix_uninstall _vsix_clean _vsix_build _vsix_package _vsix_install
+# rebuild-install-vsix: _vsix_uninstall _vsix_clean _vsix_release _vsix_install
+# # _vsix_release is the SINGLE packaging recipe — compile, stage every bundled
+# # binary/asset via the manifest-driven helper, then package. Used by the
+# # release workflow AND by _test_vsix, so tested bundle == shipped bundle.
+# _vsix_release:
+# 	npm run compile && node scripts/stage-runtime.mjs && npx vsce package --out $(VSIX)
 # _vsix_uninstall:
 # 	-code --uninstall-extension {{PUBLISHER}}.{{EXT_NAME}}
 # _vsix_clean:
 # 	$(RM) *.vsix out dist
-# _vsix_build:
-# 	npm run compile
-# _vsix_package:
-# 	npx vsce package
 # _vsix_install:
-# 	code --install-extension $(wildcard *.vsix)
+# 	code --install-extension $(VSIX)
+# # The e2e gate builds the REAL bundle first, then tests it ([MAKE-IDE-EXT-PARITY]).
+# _test_vsix: _vsix_release
+# 	npm test
 # =============================================================================
 
 

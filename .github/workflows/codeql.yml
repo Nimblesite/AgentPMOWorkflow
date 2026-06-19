@@ -10,12 +10,21 @@ name: CodeQL
 on:
   pull_request:
     branches: [main]
-  push:
-    # Scan the exact released SHA before every release (PR scan = diff, weekly =
-    # drift, this = the release itself, with the current query set).
-    tags: ["v*"]
   schedule:
     - cron: "27 4 * * 1"
+  # A release pipeline calls this with gate=true to scan the released SHA and
+  # BLOCK publishing on any High/Critical finding (PR scan = diff, weekly =
+  # drift, gated call = the release itself, as a HARD gate). This repo ships no
+  # artifacts, so nothing calls it gated yet — but it matches the standard it
+  # publishes via the template. [GITHUB-CODE-SCANNING]
+  workflow_call:
+    inputs:
+      gate:
+        description: >-
+          When true (release calls), fail the job on any High/Critical finding so
+          the caller cannot publish. PR/weekly runs leave this false (advisory).
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -54,3 +63,60 @@ jobs:
         uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           category: "/language:${{ matrix.language }}"
+          # Drop SARIF on disk so the gate step can read it; `upload` stays on.
+          output: sarif-results
+      # Release gate. security-severity is the 0-10 CVSS-style score CodeQL
+      # attaches to each security rule; >= 7.0 == High or Critical. Enforced only
+      # on gated (release) calls, and FAILS CLOSED — missing/malformed SARIF
+      # errors rather than passing. [GITHUB-CODE-SCANNING]
+      - name: Enforce no high/critical findings (release gate)
+        if: inputs.gate
+        shell: bash
+        env:
+          SARIF_DIR: sarif-results
+          SEVERITY_THRESHOLD: '7.0'
+        run: |-
+          set -euo pipefail
+          shopt -s nullglob
+          # Fail closed: no SARIF means we cannot prove the code is clean.
+          sarifs=( "${SARIF_DIR}"/*.sarif )
+          if [ "${#sarifs[@]}" -eq 0 ]; then
+            echo "::error::CodeQL gate: no SARIF in ${SARIF_DIR}; cannot verify findings — failing closed."
+            exit 1
+          fi
+          offenders=0
+          for sarif in "${sarifs[@]}"; do
+            if ! jq -e '.runs' "${sarif}" >/dev/null 2>&1; then
+              echo "::error::CodeQL gate: ${sarif} is not valid SARIF (no .runs) — failing closed."
+              exit 1
+            fi
+            jq -r --arg f "${sarif##*/}" '
+              ([ (.runs[].tool.driver.rules // [])[],
+                 (.runs[].tool.extensions[]?.rules // [])[] ]) as $rules
+              | "CodeQL gate: \($f): results=\([.runs[].results[]?]|length) severity_rules=\([$rules[]|select(.properties["security-severity"])]|length)"
+            ' "${sarif}"
+            # CodeQL puts query rules in tool.extensions[].rules (driver.rules is
+            # empty in CodeQL output); union both, then keep results >= threshold.
+            hits="$(jq -r --argjson t "${SEVERITY_THRESHOLD}" '
+              .runs[]
+              | ( [ (.tool.driver.rules // [])[],
+                    (.tool.extensions[]?.rules // [])[] ]
+                  | map({ key: .id,
+                          value: ((.properties["security-severity"] // "0") | tonumber) })
+                  | from_entries
+                ) as $severity
+              | .results[]
+              | select( ($severity[.ruleId] // 0) >= $t )
+              | .ruleId
+            ' "${sarif}" | sort | uniq -c | sort -rn)"
+            if [ -n "${hits}" ]; then
+              echo "::error::High/critical CodeQL findings in ${sarif}:"
+              echo "${hits}"
+              offenders=$((offenders + 1))
+            fi
+          done
+          if [ "${offenders}" -gt 0 ]; then
+            echo "::error::CodeQL gate failed — release blocked."
+            exit 1
+          fi
+          echo "CodeQL gate passed: nothing at or above severity ${SEVERITY_THRESHOLD}."

@@ -145,6 +145,37 @@ Each target chains these steps in order (skip a step only if the toolchain has n
 
 Implement the steps as underscore-prefixed sub-recipes (`_vsix_uninstall`, `_vsix_package`, …) chained from the public `rebuild-install-<kind>` target, consistent with [MAKE-TARGETS].
 
+### [MAKE-IDE-EXT-PARITY] Tests MUST run the EXACT artifact the release ships
+
+> ⚠️ **NON-NEGOTIABLE for any repo that packages a distributable.** ⚠️
+
+The artifact the release publishes and the artifact the tests exercise MUST be the
+**same bytes**. A green test run against a different bundle than users install is
+worthless — it validates a build that never ships. For VSIX/Zed/installer/CLI-package
+repos:
+
+- **One packaging recipe.** Exactly one recipe builds the distributable
+  (compile → stage every bundled binary/asset → package). The release workflow, the
+  `rebuild-install-<kind>` target, AND the test target all route through it. No second
+  "test build" with a faster/different profile, target triple, or staging path.
+- **Tests run the shipped build.** The e2e/integration target runs that packaging
+  recipe **first**, then exercises the staged artifact — never a bespoke debug build.
+  Whatever the suite asserts against is exactly what `package` zips.
+- **One staging source of truth.** A single manifest-driven helper decides which
+  binaries/assets enter the bundle, shared by the release workflow and the local
+  recipe, so tested and shipped contents cannot drift.
+- **Verify the package.** Packaging asserts the bundle matches the manifest (reject
+  missing, unmanifested, or wrong-platform components) so drift fails the build
+  instead of shipping.
+
+The ONLY sanctioned difference between a local/test build and the released one is the
+**version string** — local builds keep `0.0.0-dev`; the release stamps the tag per
+[CI-RELEASE]. Structure and binaries are identical.
+
+This is a [MAKE-IDE-EXT] obligation and a [TEST-RULES] obligation: a dev-tool repo
+whose test target does not build and exercise the shipped artifact is non-compliant.
+Shipwright ([CI-SHIPWRIGHT]) owns the bundling/manifest/version-stamping mechanics.
+
 ### [MAKE-TEMPLATE] Standard Makefile Template
 
 **File:** [`templates/Makefile`](../../agent-pmo-skill/templates/Makefile)
@@ -455,6 +486,22 @@ ruff format is the formatter (`make fmt`). `make lint` runs: Basilisk (primary l
 ### [FMT-MULTI] Multi-language repos
 
 For multi-language repos, `_fmt` chains all formatters and `_lint` chains all linters/analyzers. They do not overlap.
+
+---
+
+## [MODEL] Data Model Standard
+
+### [MODEL-TYPEDIAGRAM] Data models are GENERATED from typeDiagram — never hand-written (MANDATORY)
+
+> ⚠️ **NON-NEGOTIABLE.** ⚠️
+
+Every data model — every domain type, DTO, entity, enum, and algebraic data type (ADT) — MUST be defined in **[typeDiagram](https://typediagram.dev/docs/)** and the language types **generated** from that model. **Hand-crafting a data model is forbidden.** A by-hand model has no single source of truth, drifts across language bindings, and forfeits the exhaustiveness typeDiagram guarantees.
+
+- **The model is the source of truth.** The committed typeDiagram model is the artifact under review; the generated types are build output — the same model emits ADTs for whatever language the repo uses (Rust / C# / F# / Dart / TypeScript / Python / …).
+- **The pipeline generates the models.** `make build` runs typeDiagram code generation (directly or via a codegen step it calls) so generated types are never stale. Generated files keep their generated-code header and are **never edited by hand** — change the model and regenerate.
+- **typeDiagram can't express it? File an issue — do NOT hand-roll.** If typeDiagram is broken or missing a feature for the use case, open a GitHub issue on the typeDiagram repo (linked from its [docs](https://typediagram.dev/docs/)) describing the case, reference that issue in a comment at the narrowest possible temporary shim, and keep the shim minimal. Silently abandoning the generator to write the model by hand is a standards violation.
+
+Cross-reference: the typeDiagram model file, the codegen build step, and any temporary shim reference `[MODEL-TYPEDIAGRAM]`.
 
 ---
 
@@ -838,21 +885,30 @@ All repos: `main` (never `master`)
 
 ### [BRANCH-AGENT] Agent git discipline (canonical instruction file MUST state these)
 
-These rules exist because agents reliably get git wrong. The canonical instruction file
-([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
+These rules exist because agents reliably get git wrong — most often by cutting branch after
+branch until the repo is a tangle, especially when several agents share it. The canonical
+instruction file ([AGENT-TEMPLATE]) MUST carry every one of them, verbatim in intent:
 
+- **Default to NOT touching git at all.** Use git only when the user has explicitly green-lit it for the task (open a PR, merge, cut a branch). Absent that, leave commits, branches, pushes, and merges to the user and CI. The rules below govern the cases where you *have* been green-lit.
 - **NEVER push to the default branch (`main`) directly.** Every change ships through CI on a PR, then merges. The flow is always PR → CI green → merge. No exceptions.
+- **Once you open a PR, OWN it until it is green.** Enable auto-merge where the repo allows it (`gh pr merge --auto --squash`, [GITHUB-MERGE]) so it lands the moment checks pass — but auto-merge does NOT end your job. Monitor the pipeline; when a check fails, pull the logs, fix the cause, and push the fix, looping until every required check passes (or auto-merge has merged it). Never hand a PR back on a red or still-running pipeline. (Pushing fixes to your own PR is in-scope once green-lit — the co-author rule below still applies to those commits.)
 - **NEVER list yourself (the agent) as a commit co-author.** No `Co-Authored-By` trailer, no
   agent attribution in the commit message.
 - **Work on exactly ONE branch at a time. Always.** Even when multiple agents work the repo
-  concurrently. Reuse the existing feature branch; never open a second.
+  concurrently — they share the single branch and coordinate through the Too Many Cooks (TMC)
+  server, never cut their own. Reuse the existing feature branch; never open a second.
 - **NEVER start a new branch when a feature branch already exists.** Check first; if one is open,
   work on it.
 - **If multiple feature branches already exist, merge them into one IMMEDIATELY, before doing any
   other work.** Converge to a single branch first — do not start the task on top of a fragmented
   set of branches.
-- **Worktrees are forbidden.** Never run `git worktree`. (Not a judgement on the feature — agents
-  consistently corrupt their state with it.)
+- **Worktrees are forbidden by default.** Never run `git worktree` unless the user explicitly
+  demands it and directs you to use one. (Not a judgement on the feature — agents consistently
+  corrupt their state with it, and parallel checkouts fragment the repo.)
+
+These are the defaults for autonomous work. An explicit user instruction overrides the git
+*mechanics* above (e.g. "use a worktree", "cut a release branch") — but **never** the co-author
+rule: agent attribution stays off regardless.
 
 ### [AGENT-AUTONOMY] Autonomous operation (canonical instruction file MUST state this)
 
@@ -899,6 +955,7 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 | Allow rebase merge | **false** |
 | Allow auto merge | **true** |
 | Delete branch on merge | **true** |
+| Allow update branch | **true** (lets auto-merge refresh a stale PR branch so the strict up-to-date gate in [GITHUB-PROTECTION] clears without a manual click) |
 | Squash merge commit title | **PR_TITLE** |
 | Squash merge commit message | **PR_BODY** |
 
@@ -913,28 +970,43 @@ Every repo MUST have these GitHub settings applied. The authoritative reference 
 
 ### [GITHUB-PROTECTION] Branch Protection
 
-**Every repo MUST protect its default branch (`main`).** If no branch protection exists, add a ruleset requiring:
-- A PR to `main` — no direct pushes
+**Every repo MUST protect its default branch (`main`) with a ruleset requiring ALL of:**
+- A PR to `main` — no direct pushes (`pull_request` rule)
 - The `ci` status check (the job from `ci.yml`, [CI-JOBS]) passes before merge
+- **Branches up to date with `main` before merge — `strict_required_status_checks_policy: true`. NON-NEGOTIABLE.**
 
-This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs on the PR, protection makes that green check mandatory to merge, and nothing re-runs on the merge itself.
+This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs only on the PR and nothing re-runs on the merge itself. The strict up-to-date flag is therefore the *only* thing that keeps the green check honest — it forces the PR branch to contain the current tip of `main`, so the run that went green is the run for the merged result. **Without `strict`, a PR whose CI passed against a stale base merges and can silently break `main` — the green check is a lie.**
 
-If protection already exists, leave it alone.
+**A stale PR auto-recovers — no manual click.** `strict` must never strand a PR behind `main`. With auto-merge enabled on the PR (`gh pr merge --auto --squash`, run by the submit-pr flow per [GITHUB-MERGE]) **and** `allow_update_branch: true` on the repo, GitHub auto-updates the PR branch from `main` whenever `main` advances under it; that update re-runs CI against the fresh base, and the PR squash-merges the instant that run is green. So `strict` turns "behind `main`" into "auto-update from `main` and try again" with zero human steps — a real merge conflict is the only case that needs a person. Both repo settings (`allow_auto_merge`, `allow_update_branch`) are mandatory in [GITHUB-MERGE] precisely so this loop closes itself.
 
-### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam
+**Existence is NOT conformance — do NOT "leave existing protection alone."** A ruleset that exists with `strict_required_status_checks_policy: false` is the precise failure this rule exists to prevent. When protection already exists you MUST read its `required_status_checks` rule, confirm `strict` is `true`, and repair it in place if it is not. [GITHUB-CLI] gives the idempotent create-or-repair command.
+
+### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam, no CI on routine bumps
+
+**MANDATORY for EVERY repo — no exceptions.** All three artifacts ship together:
+`.github/dependabot.yml` (staging-branch config), `.github/workflows/dependabot-automerge.yml`
+(the merge bot), and the `dependabot-upgrades` branch. A repo missing any one is
+non-conformant — including a repo with no language manifests, because the
+`github-actions` ecosystem alone still applies to anything with workflows under `.github/`.
 
 Dependabot on for every repo. Enable at account/org (+ "auto-enable new repos"): **alerts**, **security updates**, **grouped security updates**.
 
-Grouping comes from committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
+**EVERY** Dependabot bump ends up on a long-lived **`dependabot-upgrades` staging branch**, never straight to `main`. Because `ci.yml`/`codeql.yml` skip Dependabot PRs (and version PRs target staging, never `main`), the staging branch accumulates **zero CI**; bumps auto-merge into staging unattended, and the whole batch reaches `main` through ONE consolidation PR where CI/CodeQL run exactly once. Config in committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules cover version AND security bumps. Rules:
+- Every `updates:` block sets `target-branch: "dependabot-upgrades"`, so VERSION PRs land on staging directly. SECURITY PRs ignore `target-branch` (GitHub always opens them against the default branch, `main`) — the auto-merge workflow catches them there and folds them into staging too, so a CVE bump never sits on `main` waiting for a human.
 - Keep `github-actions` (any repo with workflows). Keep only `package-ecosystem` blocks whose manifests exist; delete the rest.
-- Every ecosystem grouped: `*-minor` (minor+patch) + `*-major`. Ungrouped (one PR/dep) is banned.
+- Every LANGUAGE ecosystem carries TWO groups (both `patterns: ["*"]`, NO `update-types` filter so patch + minor + major collapse together): one `applies-to: version-updates` and a `<eco>-security` group `applies-to: security-updates`. `github-actions` is version-only (no Dependabot advisory channel). Ungrouped (one PR/dep) is banned — for version AND security bumps.
 - `schedule: weekly`; `open-pull-requests-limit: 5`.
+- `.github/workflows/dependabot-automerge.yml` ([template](templates/.github/workflows/dependabot-automerge.yml)) **clobber-merges** EVERY dependabot[bot] PR into staging, unattended, no questions asked: `git merge -X theirs` so the incoming bump ALWAYS wins and successive bumps of the same lock-file never conflict-stall (it retries on the live staging tip so racing PRs can't deadlock), then retires the PR + branch. Triggers on `on: pull_request: branches: [dependabot-upgrades, main]` (both — version PRs target staging, security PRs are force-opened against `main`; the bot folds both into staging), `if: github.actor == 'dependabot[bot]'`. It is a ~10-second merge bot on the standard runner, NOT the CI pipeline. NOT a squash merge.
+- The `dependabot-upgrades` branch must EXIST and stay UNPROTECTED (the bot pushes directly to it). Cut it from `main` AFTER `dependabot.yml` + `dependabot-automerge.yml` are on `main`, so BOTH `main` and the staging branch carry the auto-merge workflow (`pull_request` runs the workflow from the PR base ref).
+- `ci.yml`/`codeql.yml` stay `pull_request: [main]`-only (no `branches: [dependabot-upgrades]`) AND skip `github.actor == 'dependabot[bot]'` — a job-level `if:` on the CI/security jobs, `&& github.actor != 'dependabot[bot]'` on the CodeQL visibility gate. Otherwise a security PR force-opened on `main` burns the full matrix on a bump that is immediately swept away ([CI-WORKFLOWS], [GITHUB-CODE-SCANNING]).
 
 ### [GITHUB-CODE-SCANNING] CodeQL — mandatory where a supported language exists
 
 Finds vulnerable *code* (taint/dataflow). Free for public; GHAS for private. [template](templates/.github/workflows/codeql.yml) → `.github/workflows/codeql.yml`. SEPARATE from `ci.yml` (needs job-scoped `security-events: write`; top-level `contents: read`) — never merge in.
 
-Triggers, exactly three: `pull_request`→main (gate); `schedule` weekly (re-scan unchanged code vs new queries); `push` tag `v*` (scan released SHA before every release). Never `push: branches:[main]`.
+Triggers: `pull_request`→main (advisory gate — enforced by branch protection) and `schedule` weekly (re-scan unchanged code vs new queries), plus a `workflow_call` exposing a `gate` input. Never `push: branches:[main]`. **Never a standalone `push: tags` scan** — it runs concurrently with the release and can only file alerts *after* the artifact has shipped, which is useless as a gate.
+
+**CodeQL is a HARD release gate, not advice.** `release.yml` MUST call this workflow (`uses: ./.github/workflows/codeql.yml` with `gate: true`) and the `release`/publish jobs MUST `needs:` that job. With `gate: true` the analyze job parses its SARIF and FAILS on any finding whose `security-severity` is High or Critical (>= 7.0), so a dirty scan BLOCKS publishing — a release can never ship code CodeQL flagged. The gated call also scans the exact released SHA with the current query set (the merge scan may be weeks stale). A repo with no CodeQL-supported language has no `codeql.yml` and therefore no gate job. (PR/weekly runs leave `gate` false and stay advisory; the PR check-failure severity threshold in repo settings governs merges.)
 
 Tailor matrix at skill-run time: intersect repo languages with languages CodeQL supports **now** (check live: `codeql resolve languages` / CodeQL docs — the set grows). One `include:` per language + always `actions`. Empty intersection (e.g. Dart/F#-only) → no codeql.yml; record it. Illustrative supported set: c-cpp, csharp, go, java-kotlin, javascript-typescript, python, ruby, swift, rust, actions — NOT Dart/Flutter, F#.
 
@@ -975,17 +1047,67 @@ gh api -X PATCH "repos/$REPO" \
   -f allow_rebase_merge=false \
   -f allow_auto_merge=true \
   -f delete_branch_on_merge=true \
+  -f allow_update_branch=true \
   -f squash_merge_commit_title=PR_TITLE \
   -f squash_merge_commit_message=PR_BODY \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
 
+# Branch protection ([GITHUB-PROTECTION]) — ruleset on the default branch.
+# The strict up-to-date flag is MANDATORY: CI runs only on PRs and nothing
+# re-runs on merge, so strict is the only guarantee the merged result passed CI.
+# Idempotent: create if absent, else REPAIR the strict flag (never "leave alone").
+# Replace "CI" with the exact check name your ci.yml job reports.
+RULESET_ID=$(gh api "repos/$REPO/rulesets" \
+  --jq '.[] | select(.name=="Protect main") | .id')
+if [ -z "$RULESET_ID" ]; then
+  gh api -X POST "repos/$REPO/rulesets" --input - <<'JSON'
+{
+  "name": "Protect main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    { "type": "pull_request", "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": ["squash"] } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [ { "context": "CI" } ] } }
+  ]
+}
+JSON
+else
+  # Protection exists — enforce strict in place; existence is not conformance.
+  gh api "repos/$REPO/rulesets/$RULESET_ID" \
+    | jq '{name, target, enforcement, bypass_actors, conditions, rules}
+          | .rules |= map(if .type == "required_status_checks"
+                          then .parameters.strict_required_status_checks_policy = true
+                          else . end)' \
+    | gh api -X PUT "repos/$REPO/rulesets/$RULESET_ID" --input -
+fi
+
 # Dependabot ([GITHUB-DEPENDABOT]) — alerts + automated security update PRs.
 # Grouping comes from the committed .github/dependabot.yml; grouped SECURITY
 # updates is an account/org-level toggle (set it in the UI per common-repo-settings.md).
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Staging branch for routine version bumps ([GITHUB-DEPENDABOT]). Idempotent.
+# Cut from main, which must already carry dependabot.yml + dependabot-automerge.yml.
+gh api "repos/$REPO/git/ref/heads/dependabot-upgrades" >/dev/null 2>&1 || \
+  gh api -X POST "repos/$REPO/git/refs" \
+    -f ref=refs/heads/dependabot-upgrades \
+    -f sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
 
 # Secret scanning + push protection ([GITHUB-SECRET-SCANNING]).
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'
@@ -1039,9 +1161,11 @@ STRUCTURE
 [ ] coverage-thresholds.json               (every repo — single source of truth, [COVERAGE-THRESHOLDS-JSON])
 [ ] .deslop.toml + ci.yml `deslop .` gate   (Rust/C#/Dart/Python repos — stored, ratcheted-down threshold, [CI-DESLOP])
 [ ] Canonical instruction file has the Deslop MCP agent-loop section (Rust/C#/Dart/Python repos, [CI-DESLOP])
+[ ] Data models generated from typeDiagram, never hand-written; codegen wired into `make build`; canonical instruction file carries the rule ([MODEL-TYPEDIAGRAM])
 [ ] Makefile uses canonical names for every standard target that applies; no hollow no-op targets, no synonyms ([MAKE-TARGETS])
 [ ] Repo-specific targets (if any) are in a separate `Repo-Specific Targets` section and were left intact ([MAKE-REPO-SPECIFIC])
 [ ] Editor extensions (.vsix/Zed/etc.) each have a `rebuild-install-<kind>` target ([MAKE-IDE-EXT])
+[ ] Dev-tool repos: test/e2e target runs the SAME packaging recipe the release ships, before testing — no separate "test build" ([MAKE-IDE-EXT-PARITY])
 [ ] Makefile `_lint` runs linters/analyzers only (no formatting)
 [ ] Makefile has OS detection block ([MAKE-CROSS-PLATFORM])
 [ ] Makefile uses $(RM)/$(MKDIR) instead of rm -rf/mkdir -p
@@ -1077,7 +1201,8 @@ CI
 [ ] ci.yml: artifacts uploaded
 [ ] ci.yml has a `security` job running dependency-review (repos with manifests) ([GITHUB-DEP-REVIEW])
 [ ] .github/workflows/codeql.yml present, matrix = repo languages ∩ CodeQL-supported-at-runtime, `actions` kept, SHA-pinned, public-visibility gate ([GITHUB-CODE-SCANNING]) — OR documented-absent because no supported language
-[ ] codeql.yml triggers are exactly: PR to main + weekly schedule + release tag `v*` (no `push: branches:[main]`) ([GITHUB-CODE-SCANNING])
+[ ] codeql.yml triggers are: PR to main + weekly schedule + `workflow_call` (gate input); NO `push: branches:[main]`, NO standalone `push: tags` scan ([GITHUB-CODE-SCANNING])
+[ ] codeql.yml is a HARD release gate: `release.yml` calls it with `gate: true` and the `release`/publish jobs `needs:` it; the analyze job fails on High/Critical (`security-severity >= 7.0`) so a dirty scan blocks publishing ([GITHUB-CODE-SCANNING]) — OR documented-absent because the repo ships no release artifacts / has no supported language
 [ ] Anti-duplication: one owner per concern (lint=style, CodeQL=code, ONE dep scanner, platform secret scanning); no GitHub default-setup CodeQL alongside codeql.yml; `build-mode: none` where allowed ([GITHUB-CODE-SCANNING])
 
 COVERAGE
@@ -1109,7 +1234,7 @@ FORMATTING
 BRANCH
 [ ] Default branch is 'main' (not 'master')
 [ ] Branch naming convention documented in CLAUDE.md
-[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): no direct push to default branch, no agent co-author, exactly one branch at a time, never branch when one exists, merge multiple branches immediately, no worktrees
+[ ] Agent git discipline in canonical instruction file ([BRANCH-AGENT]): git only when the user green-lights it, no direct push to default branch, own every PR until green (enable auto-merge, monitor, fix-and-push until checks pass), no agent co-author (never overridable), exactly one branch at a time (multi-agent coordinates via TMC), never branch when one exists, merge multiple branches immediately, no worktrees unless the user explicitly directs it
 [ ] Developer-tool repos: Shipwright supply-chain audit run ([CI-SHIPWRIGHT])
 
 GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
@@ -1118,9 +1243,10 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Delete branch on merge enabled
 [ ] Squash commit title = PR_TITLE, message = PR_BODY
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
-[ ] Branch protection on main (require PR + CI pass)
+[ ] Branch protection ruleset on main: require PR + CI pass + branches up to date with main (required_status_checks rule has strict_required_status_checks_policy=true) ([GITHUB-PROTECTION])
 [ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
-[ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
+[ ] .github/dependabot.yml present, every block `target-branch: "dependabot-upgrades"`, only ecosystems the repo uses, github-actions kept; every LANGUAGE ecosystem has BOTH a version-updates and a `<eco>-security` (`applies-to: security-updates`) group (`patterns:["*"]`, no `update-types`) ([GITHUB-DEPENDABOT])
+[ ] .github/workflows/dependabot-automerge.yml present, triggers on `[dependabot-upgrades, main]`, clobber-merges (`git merge -X theirs`) EVERY dependabot[bot] PR into staging + retires the PR; `dependabot-upgrades` branch exists (unprotected) and carries it; ci.yml/codeql.yml are `pull_request:[main]`-only AND skip `github.actor == 'dependabot[bot]'` ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
 [ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
 [ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])

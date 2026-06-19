@@ -13,6 +13,7 @@ conventions described below.
 | Allow rebase merge | **false** | Disabled to keep linear history |
 | Allow auto merge | **true** | PRs merge automatically when checks pass |
 | Delete branch on merge | **true** | Clean up merged branches |
+| Allow update branch | **true** | Lets auto-merge refresh a stale PR branch so the strict up-to-date gate clears without a manual click |
 
 ## Squash Merge Commit Format
 
@@ -35,8 +36,32 @@ subject and the PR description as the commit body.
 
 ## Branch Protection / Rulesets
 
-If protection already exists, do nothing.
-Else add branch protection with the ci.yaml script. It should only fire on PRs to main and a PR is required
+Every repo MUST protect `main` with a ruleset (the `gh` command below creates or
+repairs it). The ruleset MUST require ALL of:
+
+- A PR to `main` — no direct pushes.
+- The CI status check passes before merge (context = the `ci.yml` job name).
+- **Branches up to date with `main` before merge —
+  `strict_required_status_checks_policy: true`. NON-NEGOTIABLE.**
+
+CI runs only on PRs and nothing re-runs on the merge itself, so the strict
+up-to-date flag is the *only* thing that keeps the green check honest: it forces
+the PR branch to contain the current tip of `main`, so the run that went green is
+the run for the merged result. **Without `strict`, a PR whose CI passed against a
+stale base merges and can silently break `main` — the green check is a lie.**
+
+**A stale PR auto-recovers — no manual click.** `strict` must never strand a PR
+behind `main`. With auto-merge enabled on the PR (`gh pr merge --auto --squash`)
+**and** `allow_update_branch: true` on the repo (see Merge Settings above), GitHub
+auto-updates the PR branch from `main` whenever `main` advances under it; that
+update re-runs CI against the fresh base, and the PR squash-merges the instant
+that run is green. So `strict` turns "behind `main`" into "auto-update from `main`
+and try again" with zero human steps — only a real merge conflict needs a person.
+
+**Existence is NOT conformance — never "do nothing because protection exists."**
+A ruleset with `strict_required_status_checks_policy: false` is the exact failure
+this prevents. When protection already exists, verify the strict flag and repair
+it in place if it is off. The `gh` command below is idempotent and does this.
 
 ## Other
 
@@ -58,11 +83,38 @@ Every repo MUST have Dependabot on — but grouped, so it patches dependencies
 | Grouped security updates | **on** | One PR per ecosystem, not one per advisory |
 | Automatically enable for new repositories | **on** | Set at the account/org level so future repos inherit this |
 
-Grouped *version* updates come from the committed `.github/dependabot.yml`
-(template: [`dependabot.yml`](dependabot.yml)). Its `groups:` rules also apply
-to security updates, so security fixes land grouped too. Keep only the
-`package-ecosystem` blocks the repo actually uses; keep `github-actions` for any
-repo with workflows.
+**Staging-branch auto-merge model — MANDATORY for every repo, no exceptions.**
+Routine *version* bumps must NOT land on `main` one PR at a time, and must NOT
+burn CI for each bump. Instead they pile up on a long-lived `dependabot-upgrades`
+staging branch and reach `main` in one hit. All four pieces are required:
+
+1. **`.github/dependabot.yml`** (template: [`dependabot.yml`](dependabot.yml)) —
+   every `updates:` block sets `target-branch: "dependabot-upgrades"` and uses
+   ONE all-bumps group per ecosystem (`patterns: ["*"]`, no `update-types`
+   split, so patch + minor + major collapse into a single PR). Keep
+   `github-actions` (any repo with workflows) and only the `package-ecosystem`
+   blocks the repo actually uses; delete the rest. The `groups:` rules also apply
+   to security updates, so those land grouped too.
+2. **`.github/workflows/dependabot-automerge.yml`** (template:
+   [`workflows/dependabot-automerge.yml`](workflows/dependabot-automerge.yml)) —
+   a ~10-second merge bot (`on: pull_request: branches: [dependabot-upgrades]`,
+   `if: github.actor == 'dependabot[bot]'`) that squash-merges each bump into the
+   staging branch on the standard runner. It is NOT the CI pipeline.
+3. **The `dependabot-upgrades` branch must exist.** Cut it from `main` AFTER the
+   two files above are on `main`, so the staging branch carries the auto-merge
+   workflow (`pull_request` runs the workflow from the PR base ref). The `gh`
+   block below cuts it idempotently.
+4. **`ci.yml` / `codeql.yml` stay `pull_request: [main]`-only.** Never add
+   `branches: [dependabot-upgrades]`, or staging PRs would burn the CI/CodeQL
+   matrix on every bump and defeat the whole model.
+
+Why it is safe to auto-merge unattended: nothing reaches `main` this way. Because
+`ci.yml`/`codeql.yml` trigger only on `pull_request: [main]` (the filter matches
+the PR *base*), staging PRs run **zero** build/test/CodeQL. The whole accumulated
+batch reaches `main` through ONE `dependabot-upgrades -> main` consolidation PR —
+the single place review happens and the expensive matrix runs exactly once.
+**Security** updates are unaffected: `target-branch` only redirects *version*
+updates, so a real CVE still opens a PR against `main` where you see it and CI runs.
 
 The three toggles and "auto-enable for new repos" live on the account/org
 **Settings → Code security** page (the "Enable all" / "Automatically enable for
@@ -75,7 +127,7 @@ private repos. Every PR must undergo security scanning.
 
 | Feature | Where | Notes |
 |---|---|---|
-| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. |
+| CodeQL code scanning | `.github/workflows/codeql.yml` | Finds vulnerable *code*. Matrix tailored per repo (languages ∩ CodeQL-supported-at-runtime) + `actions`. Self-skips on private repos via a visibility gate. **HARD release gate:** `release.yml` calls it with `gate: true` and the publish jobs `needs:` it, so a High/Critical finding blocks publishing ([GITHUB-CODE-SCANNING]). |
 | Dependency review | `security` job in `ci.yml` | Fails PRs that add vulnerable *dependencies* (`fail-on-severity: high`). |
 | Secret scanning | repo setting (below) | Detects committed keys/tokens. |
 | Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
@@ -86,9 +138,17 @@ private repos. Every PR must undergo security scanning.
 linting = style · CodeQL = vulnerable code · ONE dependency scanner (dependency-review
 *or* a native vuln-gate, never both) · platform secret scanning = secrets. Never add
 security-rule linter plugins that re-cover CodeQL, and never run GitHub default-setup
-CodeQL alongside a committed `codeql.yml`. CodeQL triggers are exactly: PR to main +
-weekly + release tag `v*` (scan the released SHA), with `build-mode: none` where allowed
-so it doesn't re-compile what `ci.yml` already builds.
+CodeQL alongside a committed `codeql.yml`. CodeQL triggers: PR to main + weekly +
+a `workflow_call` (gate input) — NO standalone `push: tags` scan (it can only file
+alerts after the artifact ships). `build-mode: none` where allowed so it doesn't
+re-compile what `ci.yml` already builds.
+
+**CodeQL gates releases.** `release.yml` calls `codeql.yml` with `gate: true` and the
+publish jobs `needs:` it; on a High/Critical finding (`security-severity >= 7.0`) the
+job fails and the release is blocked — a release can never ship code CodeQL flagged.
+For the PR gate to have teeth too, make the CodeQL check a **required status check** on
+the `main` ruleset and set the code-scanning **check-failure severity** (Settings → Code
+security → Code scanning → "Protection rules") to at least High.
 
 CodeQL docs: see [`SECURITY.md`](../SECURITY.md) for the GitHub policy/PVR doc links.
 
@@ -104,17 +164,68 @@ gh api -X PATCH "repos/$REPO" \
   -f allow_rebase_merge=false \
   -f allow_auto_merge=true \
   -f delete_branch_on_merge=true \
+  -f allow_update_branch=true \
   -f squash_merge_commit_title=PR_TITLE \
   -f squash_merge_commit_message=PR_BODY \
   -f has_wiki=false \
   -f has_projects=false \
   -f has_discussions=true
 
+# Branch protection ruleset on the default branch.
+# The strict up-to-date flag is MANDATORY: CI runs only on PRs and nothing
+# re-runs on merge, so strict is the only guarantee the merged result passed CI.
+# Idempotent: create if absent, else REPAIR the strict flag (never "do nothing").
+# Replace "CI" with the exact check name your ci.yml job reports.
+RULESET_ID=$(gh api "repos/$REPO/rulesets" \
+  --jq '.[] | select(.name=="Protect main") | .id')
+if [ -z "$RULESET_ID" ]; then
+  gh api -X POST "repos/$REPO/rulesets" --input - <<'JSON'
+{
+  "name": "Protect main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    { "type": "pull_request", "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": ["squash"] } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [ { "context": "CI" } ] } }
+  ]
+}
+JSON
+else
+  # Protection exists — enforce strict in place; existence is not conformance.
+  gh api "repos/$REPO/rulesets/$RULESET_ID" \
+    | jq '{name, target, enforcement, bypass_actors, conditions, rules}
+          | .rules |= map(if .type == "required_status_checks"
+                          then .parameters.strict_required_status_checks_policy = true
+                          else . end)' \
+    | gh api -X PUT "repos/$REPO/rulesets/$RULESET_ID" --input -
+fi
+
 # Dependabot: enable alerts + automated security update PRs (per-repo).
 # Grouping is provided by the committed .github/dependabot.yml; grouped SECURITY
 # updates + "auto-enable for new repos" are account/org toggles set in the UI.
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Staging branch for routine version bumps ([GITHUB-DEPENDABOT]). Idempotent.
+# Cut from main, which must already carry dependabot.yml + dependabot-automerge.yml
+# so the staging branch inherits the auto-merge workflow.
+gh api "repos/$REPO/git/ref/heads/dependabot-upgrades" >/dev/null 2>&1 || \
+  gh api -X POST "repos/$REPO/git/refs" \
+    -f ref=refs/heads/dependabot-upgrades \
+    -f sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
 
 # Secret scanning + push protection (GHAS; free for public repos).
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'

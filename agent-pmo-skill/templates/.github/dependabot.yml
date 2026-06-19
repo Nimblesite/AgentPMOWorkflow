@@ -1,14 +1,35 @@
-# Dependabot — portfolio standard.
+# Dependabot — supply-chain defense without PR spam, and without burning CI on
+# `main` for routine bumps. Portfolio standard ([GITHUB-DEPENDABOT]).
 #
-# Goal: keep dependencies patched (supply-chain defense) WITHOUT blanketing the
-# repo in pull requests. Every ecosystem here is GROUPED, so a run opens at most
-# two PRs per ecosystem (one for minor/patch, one for majors) instead of one PR
-# per dependency. These group rules ALSO apply to Dependabot security updates,
-# so security fixes land grouped too.
+# How this kills the spam — EVERY bump ends up on the `dependabot-upgrades`
+# STAGING branch, swept there automatically by
+# .github/workflows/dependabot-automerge.yml (latest bump clobbers previous):
+#   * VERSION updates -> `target-branch: dependabot-upgrades`. Every routine bump
+#     PR is opened against the staging branch, never against main. ci.yml /
+#     codeql.yml only trigger on `pull_request: [main]` (the filter matches the
+#     PR *base*), so these staging PRs run NO build/test/CodeQL.
+#   * SECURITY updates -> GitHub IGNORES `target-branch` for these and always
+#     opens them against the repo's default branch (`main`). The auto-merge
+#     workflow therefore also fires on `main` and folds the security bump into
+#     the SAME staging branch, then retires the PR — so a CVE bump never sits on
+#     main waiting for a human either. (ci.yml/codeql.yml skip Dependabot PRs, so
+#     the matrix never burns on a bump we immediately sweep away.)
+#   * groups -> each ecosystem collapses ALL version bumps (patch, minor AND
+#     major) into ONE PR, and a parallel `*-security` group (`applies-to:
+#     security-updates`) collapses CVE bumps the same way. Majors no longer need
+#     their own review PR because nothing reaches main unattended — review
+#     happens once, at the `dependabot-upgrades -> main` consolidation PR.
+#   * interval: weekly -> one grouped PR per ecosystem each week, not fifty.
 #
 # CUSTOMIZE: keep the `package-ecosystem` blocks whose manifests exist in THIS
 # repo; delete the rest. The `github-actions` block applies to EVERY repo that
-# has workflows under .github/ — keep it.
+# has workflows under .github/ — keep it. Set `directory:` to the manifest's
+# location (use `directories:` with a list when one ecosystem spans several).
+#
+# REQUIREMENT: the `dependabot-upgrades` branch must exist, and
+# .github/workflows/dependabot-automerge.yml must be present. Cut the branch from
+# main AFTER this file + the auto-merge workflow are on main, so the staging
+# branch carries the auto-merge workflow (pull_request runs from the PR base ref).
 version: 2
 
 updates:
@@ -16,6 +37,7 @@ updates:
   # prime supply-chain target, so keep them current.
   - package-ecosystem: github-actions
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -25,95 +47,119 @@ updates:
         patterns: ["*"]
 
   # ── Language ecosystems: keep the ones this repo uses, delete the rest. ──
-  # Each ecosystem splits into two grouped PRs:
-  #   <eco>-minor — minor + patch bumps (low risk, merge freely)
-  #   <eco>-major — major bumps (breaking, review individually)
+  # Each ecosystem produces ONE version-bump PR (against the staging branch) AND
+  # ONE security-bump PR (the `*-security` group; GitHub opens it against main,
+  # whence the auto-merge workflow sweeps it into staging). All bump types
+  # collapse into their group — never leave an ecosystem ungrouped.
 
   # npm / Node — package.json
   - package-ecosystem: npm
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      npm-minor:
-        update-types: ["minor", "patch"]
-      npm-major:
-        update-types: ["major"]
+      npm:
+        applies-to: version-updates
+        patterns: ["*"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Cargo / Rust — Cargo.toml
   - package-ecosystem: cargo
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      cargo-minor:
-        update-types: ["minor", "patch"]
-      cargo-major:
-        update-types: ["major"]
+      cargo:
+        applies-to: version-updates
+        patterns: ["*"]
+      cargo-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # NuGet / .NET — *.csproj, *.fsproj, packages.config
   - package-ecosystem: nuget
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      nuget-minor:
-        update-types: ["minor", "patch"]
-      nuget-major:
-        update-types: ["major"]
+      nuget:
+        applies-to: version-updates
+        patterns: ["*"]
+      nuget-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # pip / Python — pyproject.toml, requirements.txt
   - package-ecosystem: pip
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      pip-minor:
-        update-types: ["minor", "patch"]
-      pip-major:
-        update-types: ["major"]
+      pip:
+        applies-to: version-updates
+        patterns: ["*"]
+      pip-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # pub / Dart + Flutter — pubspec.yaml
   - package-ecosystem: pub
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      pub-minor:
-        update-types: ["minor", "patch"]
-      pub-major:
-        update-types: ["major"]
+      pub:
+        applies-to: version-updates
+        patterns: ["*"]
+      pub-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Go modules — go.mod
   - package-ecosystem: gomod
     directory: /
+    target-branch: "dependabot-upgrades"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ["dependencies"]
     groups:
-      gomod-minor:
-        update-types: ["minor", "patch"]
-      gomod-major:
-        update-types: ["major"]
+      gomod:
+        applies-to: version-updates
+        patterns: ["*"]
+      gomod-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Docker — Dockerfile, compose.yaml (uncomment if the repo ships images)
   # - package-ecosystem: docker
   #   directory: /
+  #   target-branch: "dependabot-upgrades"
   #   schedule:
   #     interval: weekly
   #   open-pull-requests-limit: 5
   #   labels: ["dependencies"]
   #   groups:
   #     docker:
+  #       applies-to: version-updates
+  #       patterns: ["*"]
+  #     docker-security:
+  #       applies-to: security-updates
   #       patterns: ["*"]
