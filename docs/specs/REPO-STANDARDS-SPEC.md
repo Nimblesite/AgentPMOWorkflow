@@ -950,14 +950,24 @@ This is the other half of the trigger model in [CI-WORKFLOWS]: CI runs only on t
 
 **Existence is NOT conformance — do NOT "leave existing protection alone."** A ruleset that exists with `strict_required_status_checks_policy: false` is the precise failure this rule exists to prevent. When protection already exists you MUST read its `required_status_checks` rule, confirm `strict` is `true`, and repair it in place if it is not. [GITHUB-CLI] gives the idempotent create-or-repair command.
 
-### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam
+### [GITHUB-DEPENDABOT] Dependabot — patch deps, no PR spam, no CI on routine bumps
+
+**MANDATORY for EVERY repo — no exceptions.** All three artifacts ship together:
+`.github/dependabot.yml` (staging-branch config), `.github/workflows/dependabot-automerge.yml`
+(the merge bot), and the `dependabot-upgrades` branch. A repo missing any one is
+non-conformant — including a repo with no language manifests, because the
+`github-actions` ecosystem alone still applies to anything with workflows under `.github/`.
 
 Dependabot on for every repo. Enable at account/org (+ "auto-enable new repos"): **alerts**, **security updates**, **grouped security updates**.
 
-Grouping comes from committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
+Routine version bumps go to a long-lived **`dependabot-upgrades` staging branch**, never straight to `main`. Because `ci.yml`/`codeql.yml` only trigger on `pull_request: [main]` (the filter matches the PR *base*), staging PRs run **zero CI**; they auto-merge into staging unattended, and the whole batch reaches `main` through ONE consolidation PR where CI/CodeQL run exactly once. Config in committed `.github/dependabot.yml` ([template](templates/.github/dependabot.yml)); its `groups:` rules group security PRs too. Rules:
+- Every `updates:` block sets `target-branch: "dependabot-upgrades"`. Version PRs land on staging; security updates ignore `target-branch` and still open against `main` (where you see the CVE and CI runs).
 - Keep `github-actions` (any repo with workflows). Keep only `package-ecosystem` blocks whose manifests exist; delete the rest.
-- Every ecosystem grouped: `*-minor` (minor+patch) + `*-major`. Ungrouped (one PR/dep) is banned.
+- Every ecosystem grouped into ONE all-bumps PR per run: a single group with `patterns: ["*"]` and NO `update-types` filter (patch + minor + major collapse together — majors need no separate review PR because nothing reaches `main` unattended). Ungrouped (one PR/dep) is banned.
 - `schedule: weekly`; `open-pull-requests-limit: 5`.
+- `.github/workflows/dependabot-automerge.yml` ([template](templates/.github/workflows/dependabot-automerge.yml)) squash-merges dependabot[bot] PRs into staging (`on: pull_request: branches: [dependabot-upgrades]`, `if: github.actor == 'dependabot[bot]'`). It is a ~10-second merge bot on the standard runner, NOT the CI pipeline.
+- The `dependabot-upgrades` branch must EXIST. Cut it from `main` AFTER `dependabot.yml` + `dependabot-automerge.yml` are on `main`, so the staging branch carries the auto-merge workflow (`pull_request` runs the workflow from the PR base ref).
+- `ci.yml`/`codeql.yml` MUST be `pull_request: [main]`-only (no `branches: [dependabot-upgrades]`), or the no-CI-on-staging guarantee breaks ([CI-WORKFLOWS], [GITHUB-CODE-SCANNING]).
 
 ### [GITHUB-CODE-SCANNING] CodeQL — mandatory where a supported language exists
 
@@ -1060,6 +1070,13 @@ fi
 # updates is an account/org-level toggle (set it in the UI per common-repo-settings.md).
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Staging branch for routine version bumps ([GITHUB-DEPENDABOT]). Idempotent.
+# Cut from main, which must already carry dependabot.yml + dependabot-automerge.yml.
+gh api "repos/$REPO/git/ref/heads/dependabot-upgrades" >/dev/null 2>&1 || \
+  gh api -X POST "repos/$REPO/git/refs" \
+    -f ref=refs/heads/dependabot-upgrades \
+    -f sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
 
 # Secret scanning + push protection ([GITHUB-SECRET-SCANNING]).
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'
@@ -1196,7 +1213,8 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] Wiki disabled, Projects disabled, Discussions enabled (public only)
 [ ] Branch protection ruleset on main: require PR + CI pass + branches up to date with main (required_status_checks rule has strict_required_status_checks_policy=true) ([GITHUB-PROTECTION])
 [ ] Dependabot alerts + security updates enabled; grouped security updates on; auto-enable for new repos ([GITHUB-DEPENDABOT])
-[ ] .github/dependabot.yml present, every ecosystem grouped (minor/patch + major), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
+[ ] .github/dependabot.yml present, every block `target-branch: "dependabot-upgrades"`, every ecosystem ONE grouped all-bumps PR (`patterns:["*"]`, no `update-types`), only ecosystems the repo uses, github-actions kept ([GITHUB-DEPENDABOT])
+[ ] .github/workflows/dependabot-automerge.yml present (auto-merges dependabot[bot] PRs into staging); `dependabot-upgrades` branch exists and carries it; ci.yml/codeql.yml are `pull_request:[main]`-only so staging PRs run no CI ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
 [ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
 [ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])

@@ -83,11 +83,38 @@ Every repo MUST have Dependabot on — but grouped, so it patches dependencies
 | Grouped security updates | **on** | One PR per ecosystem, not one per advisory |
 | Automatically enable for new repositories | **on** | Set at the account/org level so future repos inherit this |
 
-Grouped *version* updates come from the committed `.github/dependabot.yml`
-(template: [`dependabot.yml`](dependabot.yml)). Its `groups:` rules also apply
-to security updates, so security fixes land grouped too. Keep only the
-`package-ecosystem` blocks the repo actually uses; keep `github-actions` for any
-repo with workflows.
+**Staging-branch auto-merge model — MANDATORY for every repo, no exceptions.**
+Routine *version* bumps must NOT land on `main` one PR at a time, and must NOT
+burn CI for each bump. Instead they pile up on a long-lived `dependabot-upgrades`
+staging branch and reach `main` in one hit. All four pieces are required:
+
+1. **`.github/dependabot.yml`** (template: [`dependabot.yml`](dependabot.yml)) —
+   every `updates:` block sets `target-branch: "dependabot-upgrades"` and uses
+   ONE all-bumps group per ecosystem (`patterns: ["*"]`, no `update-types`
+   split, so patch + minor + major collapse into a single PR). Keep
+   `github-actions` (any repo with workflows) and only the `package-ecosystem`
+   blocks the repo actually uses; delete the rest. The `groups:` rules also apply
+   to security updates, so those land grouped too.
+2. **`.github/workflows/dependabot-automerge.yml`** (template:
+   [`workflows/dependabot-automerge.yml`](workflows/dependabot-automerge.yml)) —
+   a ~10-second merge bot (`on: pull_request: branches: [dependabot-upgrades]`,
+   `if: github.actor == 'dependabot[bot]'`) that squash-merges each bump into the
+   staging branch on the standard runner. It is NOT the CI pipeline.
+3. **The `dependabot-upgrades` branch must exist.** Cut it from `main` AFTER the
+   two files above are on `main`, so the staging branch carries the auto-merge
+   workflow (`pull_request` runs the workflow from the PR base ref). The `gh`
+   block below cuts it idempotently.
+4. **`ci.yml` / `codeql.yml` stay `pull_request: [main]`-only.** Never add
+   `branches: [dependabot-upgrades]`, or staging PRs would burn the CI/CodeQL
+   matrix on every bump and defeat the whole model.
+
+Why it is safe to auto-merge unattended: nothing reaches `main` this way. Because
+`ci.yml`/`codeql.yml` trigger only on `pull_request: [main]` (the filter matches
+the PR *base*), staging PRs run **zero** build/test/CodeQL. The whole accumulated
+batch reaches `main` through ONE `dependabot-upgrades -> main` consolidation PR —
+the single place review happens and the expensive matrix runs exactly once.
+**Security** updates are unaffected: `target-branch` only redirects *version*
+updates, so a real CVE still opens a PR against `main` where you see it and CI runs.
 
 The three toggles and "auto-enable for new repos" live on the account/org
 **Settings → Code security** page (the "Enable all" / "Automatically enable for
@@ -191,6 +218,14 @@ fi
 # updates + "auto-enable for new repos" are account/org toggles set in the UI.
 gh api -X PUT "repos/$REPO/vulnerability-alerts"        # Dependabot alerts
 gh api -X PUT "repos/$REPO/automated-security-fixes"    # Dependabot security updates
+
+# Staging branch for routine version bumps ([GITHUB-DEPENDABOT]). Idempotent.
+# Cut from main, which must already carry dependabot.yml + dependabot-automerge.yml
+# so the staging branch inherits the auto-merge workflow.
+gh api "repos/$REPO/git/ref/heads/dependabot-upgrades" >/dev/null 2>&1 || \
+  gh api -X POST "repos/$REPO/git/refs" \
+    -f ref=refs/heads/dependabot-upgrades \
+    -f sha="$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)"
 
 # Secret scanning + push protection (GHAS; free for public repos).
 gh api -X PATCH "repos/$REPO" --input - <<'JSON'
