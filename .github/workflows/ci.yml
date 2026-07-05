@@ -18,7 +18,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Detect non-website changes
@@ -51,7 +51,7 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # The Playwright image is minimal: ensure make (build entrypoint) and git
       # (the F# fixture tests init/inspect temp repos) are present.
@@ -125,7 +125,7 @@ jobs:
       contents: read
       pull-requests: write  # dependency-review posts its PR summary
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Dependency review
         uses: actions/dependency-review-action@v5
         with:
