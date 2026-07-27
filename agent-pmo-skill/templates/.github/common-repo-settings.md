@@ -132,7 +132,7 @@ private repos. Every PR must undergo security scanning.
 | Secret scanning | repo setting (below) | Detects committed keys/tokens. |
 | Push protection | repo setting (below) | Blocks a push that contains a secret before it leaves the machine. |
 | Private vulnerability reporting | repo setting (below) | "Report a vulnerability" button on the Security tab. Pairs with `SECURITY.md`. |
-| Security policy | `SECURITY.md` (root or `.github/`) | How to report + supported versions. Template: [`../SECURITY.md`](../SECURITY.md). |
+| Security policy | `.github/SECURITY.md` (GitHub also reads root and `docs/`) | How to report + supported versions. Template: [`SECURITY.md`](SECURITY.md). |
 
 **Anti-duplication (saves Actions minutes = money): exactly one owner per concern.**
 linting = style · CodeQL = vulnerable code · ONE dependency scanner (dependency-review
@@ -150,7 +150,7 @@ For the PR gate to have teeth too, make the CodeQL check a **required status che
 the `main` ruleset and set the code-scanning **check-failure severity** (Settings → Code
 security → Code scanning → "Protection rules") to at least High.
 
-CodeQL docs: see [`SECURITY.md`](../SECURITY.md) for the GitHub policy/PVR doc links.
+CodeQL docs: see [`SECURITY.md`](SECURITY.md) for the GitHub policy/PVR doc links.
 
 ## `gh` CLI Commands to Apply These Settings
 

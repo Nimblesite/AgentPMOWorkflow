@@ -619,8 +619,8 @@ When writing web content, optimise for SEO and AI search:
 | OpenAI Codex | `.codex/`, `.agents/` | Skills and instructions |
 | Cline / Roo | `.cline/`, `.clinerules/` | Rules and skills |
 | OpenCode | `.opencode/` | Skills and instructions |
-| Cursor | `.cursorrules` | Agent rules |
-| Windsurf | `.windsurfrules` | Agent rules |
+| Cursor | `.cursor/` (and legacy `.cursorrules`) | Agent rules |
+| Windsurf | `.windsurf/`, `.devin/` (and legacy `.windsurfrules`) | Agent rules |
 | GitHub Copilot | `.github/copilot-instructions.md` | Agent instructions |
 | Agent instruction files | `AGENTS.md`, `CLAUDE.md` | Agent rules — the whole point of this system |
 
@@ -741,12 +741,14 @@ Before placing or modifying any file, identify the canonical file:
 | Priority | Condition | Canonical file |
 |----------|-----------|----------------|
 | 1 | `AGENTS.md` exists with substantial content (>10 lines, not a pointer) | `AGENTS.md` |
-| 2 | `CLAUDE.md` exists with substantial content (>10 lines, not a pointer) | `CLAUDE.md` |
+| 2 | `CLAUDE.md` exists with substantial content (>10 lines, not a pointer) | `CLAUDE.md` — but ASK first, see below |
 | 3 | Neither exists (uninitiated repo) | Create `AGENTS.md` per [AGENT-PLACEMENT] |
 
-For an uninitiated repo (priority 3), default to the generic `AGENTS.md` even when Claude Code is the agent ([DESIGN] 5a). `CLAUDE.md` becomes a pointer that imports it (`@AGENTS.md`), so Claude still works.
+For an uninitiated repo (priority 3), default to the generic `AGENTS.md` even when Claude Code is the agent ([DESIGN] 5a). `.claude/CLAUDE.md` becomes a pointer that imports it (`@../AGENTS.md`), so Claude still works.
 
-If a canonical file exists, **merge into it — never replace**. Preserve existing structure and repo-specific context; cut redundant prose while adding what's missing. The file should get leaner, not longer. All other agent files become pointers.
+**Priority 2 — ask the user.** When a pre-existing canonical `CLAUDE.md` is found, ask the user whether they'd like to switch to `AGENTS.md` as canonical (recommended: one generic file serves every agent). If yes: move the content into `AGENTS.md` and reduce `CLAUDE.md` to the `.claude/CLAUDE.md` pointer. If no: keep `CLAUDE.md` canonical and merge into it, don't fight it.
+
+If a canonical file exists (and, for `CLAUDE.md`, the user declined the switch), **merge into it — never replace**. Preserve existing structure and repo-specific context; cut redundant prose while adding what's missing. The file should get leaner, not longer. All other agent files become pointers.
 
 ### [AGENT-PLACEMENT] File Placement Rules
 
@@ -754,18 +756,18 @@ When creating from scratch, **default to the generic `AGENTS.md` as canonical fo
 
 | Primary Agent | Canonical file |
 |---|---|
-| Claude Code | `AGENTS.md` (canonical) + `CLAUDE.md` pointer importing it (`@AGENTS.md`, plus any Claude-specific addendum) |
+| Claude Code | `AGENTS.md` (canonical) + `.claude/CLAUDE.md` pointer importing it (`@../AGENTS.md`, plus any Claude-specific addendum) |
 | Cursor / Cline / Roo / Windsurf / GitHub Copilot / Unknown | `AGENTS.md` |
 
-Keep a `CLAUDE.md` only as a non-canonical artifact if a pre-existing canonical `CLAUDE.md` was detected per [AGENT-CANONICAL] (priority 2) — in that case merge into it, don't fight it.
+Keep a root `CLAUDE.md` only as the canonical file when [AGENT-CANONICAL] priority 2 applies and the user declined switching to `AGENTS.md`.
 
 All non-canonical agent files become pointers to the canonical one.
 
-- When `AGENTS.md` is canonical (the default): `CLAUDE.md` uses `@AGENTS.md` import (plus any Claude-specific addendum); other files point to `AGENTS.md`. `.claude/skills/` is still placed if Claude is used at all — it doesn't interfere with other agents.
+- When `AGENTS.md` is canonical (the default): `.claude/CLAUDE.md` uses `@../AGENTS.md` import (plus any Claude-specific addendum); other files point to `AGENTS.md`. `.claude/skills/` is still placed if Claude is used at all — it doesn't interfere with other agents.
 - When a pre-existing `CLAUDE.md` is canonical: `AGENTS.md` and all other files point to it.
 
 **Pointer syntax is agent-specific** (use the docs in [AGENT-DOCS]):
-- **Claude Code**: `@AGENTS.md` import in `CLAUDE.md`
+- **Claude Code**: `@../AGENTS.md` import in `.claude/CLAUDE.md` (Claude resolves relative imports from the importing file's directory, so the pointer under `.claude/` needs the `../` prefix)
 - **Copilot / Cline / Roo / Cursor / Windsurf**: plain text "read {{CANONICAL_FILE}}" in the respective rules file
 - **OpenCode**: `opencode.json` `"instructions"` array references the canonical file
 
@@ -775,10 +777,10 @@ Every repo gets pointer files for agents that are NOT primary. Each redirects to
 
 | Agent / Tool | File | Template |
 |--------------|------|----------|
-| Claude Code | `CLAUDE.md` (pointer when not primary) | [`templates/CLAUDE.md`](templates/CLAUDE.md) |
+| Claude Code | `.claude/CLAUDE.md` (pointer when not primary) | [`templates/.claude/CLAUDE.md`](templates/.claude/CLAUDE.md) |
 | Cline / Roo | `.clinerules/00-read-instructions.md` | [`templates/.clinerules/00-read-instructions.md`](templates/.clinerules/00-read-instructions.md) |
-| Cursor | `.cursorrules` | [`templates/.cursorrules`](templates/.cursorrules) |
-| Windsurf | `.windsurfrules` | [`templates/.windsurfrules`](templates/.windsurfrules) |
+| Cursor | `.cursor/rules/00-read-instructions.mdc` | [`templates/.cursor/rules/00-read-instructions.mdc`](templates/.cursor/rules/00-read-instructions.mdc) |
+| Windsurf | `.windsurf/rules/00-read-instructions.md` | [`templates/.windsurf/rules/00-read-instructions.md`](templates/.windsurf/rules/00-read-instructions.md) |
 | GitHub Copilot | `.github/copilot-instructions.md` | [`templates/.github/copilot-instructions.md`](templates/.github/copilot-instructions.md) |
 | OpenCode | `opencode.json` | [`templates/opencode.json`](templates/opencode.json) |
 
@@ -786,6 +788,7 @@ Every repo gets pointer files for agents that are NOT primary. Each redirects to
 - NEVER add project rules to pointer files. All rules live in the canonical file.
 - Pointer files MUST be minimal — single redirect, no preamble, no copied rules. Strip any existing pointer to the bare minimum.
 - New agent tool? Add a pointer file — never a second set of rules.
+- **Dot-folder locations are canonical where the product's official docs support them — migrate legacy root files.** Verified against official docs: Claude Code reads `./CLAUDE.md` or `./.claude/CLAUDE.md`; Cursor reads only `.cursor/rules/*.mdc` (a plain `.md` there is ignored — frontmatter required; root `.cursorrules` is no longer documented); Windsurf reads `.windsurf/rules/*.md` with `trigger:` frontmatter (current docs prefer `.devin/rules/`; root `.windsurfrules` is "legacy single-file"). In target repos, place pointers at these dot-folder locations, delete legacy root `.cursorrules`/`.windsurfrules`, and move a root *pointer* `CLAUDE.md` to `.claude/CLAUDE.md` (import becomes `@../<canonical>`). Do NOT relocate a pre-existing *canonical* `CLAUDE.md`. `AGENTS.md` (agents.md standard: repo root, nested per subproject) and `opencode.json` (OpenCode: project root) have no documented dot-folder location — they stay at the root.
 
 ---
 
@@ -1031,7 +1034,7 @@ Both on; push protection blocks a secret before it leaves the machine. Free for 
 
 ### [GITHUB-SECURITY-POLICY] SECURITY.md + private vulnerability reporting — mandatory
 
-1. `SECURITY.md` at repo root (or `.github/`; GitHub also reads `docs/`). [template](templates/SECURITY.md). State: how to report (PVR first, email fallback), expectations (ack 3 business days, assessment 10), supported versions. Fill `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}`.
+1. `.github/SECURITY.md` (highest precedence per GitHub docs: `.github/` > root > `docs/`). [template](templates/.github/SECURITY.md). State: how to report (PVR first, email fallback), expectations (ack 3 business days, assessment 10), supported versions. Fill `{{OWNER}}`/`{{REPO}}`/`{{SECURITY_CONTACT_EMAIL}}`.
 2. Private vulnerability reporting on ("Report a vulnerability" button, Security tab). Free for public; GHAS for private. Enable via [GITHUB-CLI].
 
 Docs to cite in SECURITY.md: https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy · https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository
@@ -1174,8 +1177,8 @@ STRUCTURE
 [ ] Non-canonical instruction file is a pointer to canonical file ([AGENT-POINTERS])
 [ ] Auto-memory disabled ([AGENT-AUTOMEMORY]) — Claude: committed `.claude/settings.local.json` with `"autoMemoryEnabled": false`
 [ ] .clinerules/00-read-instructions.md (pointer → canonical file)
-[ ] .cursorrules (pointer → canonical file)
-[ ] .windsurfrules (pointer → canonical file)
+[ ] .cursor/rules/00-read-instructions.mdc (pointer → canonical file; legacy .cursorrules removed)
+[ ] .windsurf/rules/00-read-instructions.md (pointer → canonical file; legacy .windsurfrules removed)
 [ ] .github/copilot-instructions.md (pointer → canonical file)
 [ ] opencode.json (instructions array referencing canonical file)
 
@@ -1249,7 +1252,7 @@ GITHUB REPO SETTINGS ([GITHUB-SETTINGS])
 [ ] .github/workflows/dependabot-automerge.yml present, triggers on `[dependabot-upgrades, main]`, clobber-merges (`git merge -X theirs`) EVERY dependabot[bot] PR into staging + retires the PR; `dependabot-upgrades` branch exists (unprotected) and carries it; ci.yml/codeql.yml are `pull_request:[main]`-only AND skip `github.actor == 'dependabot[bot]'` ([GITHUB-DEPENDABOT])
 [ ] Secret scanning + push protection enabled ([GITHUB-SECRET-SCANNING])
 [ ] CodeQL code scanning enabled (codeql.yml, tailored matrix) or documented-absent ([GITHUB-CODE-SCANNING])
-[ ] SECURITY.md present (root or .github/), placeholders filled ([GITHUB-SECURITY-POLICY])
+[ ] .github/SECURITY.md present, placeholders filled ([GITHUB-SECURITY-POLICY])
 [ ] Private vulnerability reporting enabled ([GITHUB-SECURITY-POLICY])
 
 IDE
@@ -1384,19 +1387,26 @@ All template files live in [`templates/`](templates/):
 
 ```
 templates/
+├── .claude/
+│   ├── CLAUDE.md                # Pointer to AGENTS.md (used when Claude is not primary)
+│   └── settings.local.json
 ├── .clinerules/
 │   └── 00-read-instructions.md
-├── .cursorrules
+├── .cursor/
+│   └── rules/
+│       └── 00-read-instructions.mdc
 ├── .github/
+│   ├── SECURITY.md
 │   ├── copilot-instructions.md
 │   ├── pull_request_template.md
 │   └── workflows/
 │       ├── ci.yml
 │       ├── deploy-pages.yml
 │       └── release.yml
-├── .windsurfrules
+├── .windsurf/
+│   └── rules/
+│       └── 00-read-instructions.md
 ├── AGENTS.md                    # Canonical template (all rules, agent-neutral)
-├── CLAUDE.md                    # Pointer to AGENTS.md (used when Claude is not primary)
 ├── Makefile
 ├── opencode.json
 ├── coverage-calc/

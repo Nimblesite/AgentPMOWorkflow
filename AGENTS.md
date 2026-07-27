@@ -164,10 +164,13 @@ AgentPMOWorkflow/
 │   ├── SKILL.md                   # The skill definition
 │   └── templates/                 # Portfolio-wide templates (agent-agnostic)
 │       ├── AGENTS.md              # Canonical template (all rules, agent-neutral)
-│       ├── CLAUDE.md              # Pointer to AGENTS.md (with Claude-specific skill links)
-│       ├── SECURITY.md            # Security policy template (GITHUB-SECURITY-POLICY)
 │       ├── Makefile
+│       ├── .claude/
+│       │   └── CLAUDE.md          # Pointer to AGENTS.md (Claude reads ./ or .claude/)
+│       ├── .cursor/rules/         # Cursor pointer rule (.mdc, alwaysApply)
+│       ├── .windsurf/rules/       # Windsurf pointer rule (trigger: always_on)
 │       ├── .github/
+│       │   ├── SECURITY.md        # Security policy template (GITHUB-SECURITY-POLICY)
 │       │   ├── common-repo-settings.md
 │       │   ├── copilot-instructions.md
 │       │   ├── dependabot.yml      # Dependabot: staging-branch auto-merge model (GITHUB-DEPENDABOT)

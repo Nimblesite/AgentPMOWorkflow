@@ -1,0 +1,6 @@
+---
+description: Canonical agent instructions for this repository
+alwaysApply: true
+---
+
+@{{CANONICAL_FILE}}
