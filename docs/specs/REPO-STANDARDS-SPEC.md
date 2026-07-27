@@ -18,7 +18,7 @@
 3. **Fail fast, fail loud.** Lint before test. Coverage threshold blocks merge. Zero warnings — all linters in errors-as-warnings mode. Every `make test` MUST stop at the first failure (see [TEST-RULES]).
 4. **No git in Claude sessions.** CI and GitHub Actions do the git work.
 5. **Multi-language repos are the norm.** Each language adds its targets/jobs orthogonally without breaking the uniform interface.
-5a. **Prefer the generic/open standard over agent-specific variants.** When a vendor-neutral file or location and a Claude-specific one both work, the generic one is canonical: `AGENTS.md` over `CLAUDE.md`, the open Agent Skills directory `.agents/skills/` over `.claude/skills/`. Generic artifacts serve every agent at once. This is a tie-breaker, **not** a licence to break Claude — Claude-specific files still exist as pointers/mirrors so Claude keeps working (see [AGENT-PLACEMENT], [SKILL-PLACEMENT]). Follow the open Agent Skills standard ([agentskills.io](https://agentskills.io/home)).
+5a. **Prefer the generic/open standard over agent-specific variants.** When a vendor-neutral file or location and a Claude-specific one both work, the generic one is canonical: `AGENTS.md` over `CLAUDE.md`, the open Agent Skills directory `.agents/skills/` over `.claude/skills/`. Generic artifacts serve every agent at once. This is a tie-breaker, **not** a licence to break Claude — Claude-specific files still exist as pointers/symlinks so Claude keeps working, never as duplicated copies (see [AGENT-PLACEMENT], [SKILL-PLACEMENT]). Follow the open Agent Skills standard ([agentskills.io](https://agentskills.io/home)).
 6. **Spec IDs are hierarchical descriptive slugs, NEVER numbered.** Format: `[GROUP-TOPIC]` or `[GROUP-TOPIC-DETAIL]`. Uppercase, hyphen-separated, no sequential numbers.
 
    The first word is the **group**; sections sharing a group MUST appear together in the TOC. Depth varies (`[AUTH-LOGIN]`, `[AUTH-TOKEN-VERIFY]`, `[AUTH-OAUTH-REFRESH-FLOW]`) and MUST mirror heading structure.
@@ -816,9 +816,10 @@ Before placing or converting skill files, read the target agent's official skill
 
 Placement rules:
 1. **Prefer the generic open-standard directory `.agents/skills/`** ([DESIGN] 5a). It is the open Agent Skills location ([agentskills.io](https://agentskills.io/home)) and is scanned by Copilot, Cline, and OpenCode — one copy serves the most agents. Make it the canonical skill home whenever it works.
-2. **Claude Code is the exception — it reads ONLY `.claude/skills/`.** So when Claude is used, skills MUST live in `.claude/skills/` too, or Claude can't see them. Preferring generic does NOT mean dropping `.claude/skills/` — that would break Claude. Place skills in `.claude/skills/` for Claude; mirror to / prefer `.agents/skills/` for the rest.
-3. **Other primary agents get their native directory** when it isn't `.agents/skills/` (Copilot → `.github/skills/`, etc.).
-4. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body, per the open standard. Content is portable.
+2. **Claude Code is the exception — it reads ONLY `.claude/skills/`. Bridge with a symlink, NEVER a copy (ZERO duplication).** Official Claude Code docs: a `.claude/skills/<name>` entry "can be a symlink to a directory elsewhere on disk" — Claude follows it and reads the target's `SKILL.md`. Commit `.claude/skills/<name>` → `../../.agents/skills/<name>`. Never mirror a skill into two directories — duplicated copies drift.
+3. **Windows caveat — ask the user first.** Repo symlinks on Windows require Developer Mode or admin rights (per Claude Code docs) plus git `core.symlinks=true`; without them git checks out plain text files and skill discovery silently breaks. If the target repo has (or may have) Windows developers, ask the user whether to move skills to the generic-plus-symlink layout anyway; if they decline, keep the single copy in the primary agent's native skill directory instead — still exactly one copy, never two.
+4. **Other primary agents get their native directory** when it isn't `.agents/skills/` (Copilot → `.github/skills/`, etc.).
+5. **SKILL.md format is universal.** YAML frontmatter (`name`, `description`) + markdown body, per the open standard. Content is portable.
 
 ### [SKILL-INSTALLATION] Install every skill unless clearly irrelevant
 
